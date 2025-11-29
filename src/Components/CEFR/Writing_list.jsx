@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { FaRandom, FaCrown } from 'react-icons/fa'
 import { FiFilter } from 'react-icons/fi'
 import { MdClose, MdCheckCircle } from 'react-icons/md'
-import { TiTick } from 'react-icons/ti'
 
 export default function Writing_list() {
     const [filterOpen, setFilterOpen] = useState(false)
@@ -30,8 +29,7 @@ export default function Writing_list() {
             parts: [
                 { id: 1, name: 'Part A', description: 'Letter Writing', time: '10 min' },
                 { id: 2, name: 'Part B', description: 'Essay Writing', time: '10 min' }
-            ],
-            solved:true
+            ]
         },
         2: {
             title: 'Writing Task 2',
@@ -41,8 +39,7 @@ export default function Writing_list() {
             parts: [
                 { id: 1, name: 'Part A', description: 'Response to Advertisement', time: '12 min' },
                 { id: 2, name: 'Part B', description: 'Formal Letter', time: '13 min' }
-            ],
-            solved:false
+            ]
         },
         3: {
             title: 'Writing Task 3',
@@ -52,8 +49,7 @@ export default function Writing_list() {
             parts: [
                 { id: 1, name: 'Part A', description: 'Report Writing', time: '15 min' },
                 { id: 2, name: 'Part B', description: 'Analysis Essay', time: '15 min' }
-            ],
-            solved:false
+            ]
         },
         4: {
             title: 'Writing Task 4',
@@ -63,8 +59,7 @@ export default function Writing_list() {
             parts: [
                 { id: 1, name: 'Part A', description: 'Short Answer', time: '7 min' },
                 { id: 2, name: 'Part B', description: 'Paragraph', time: '8 min' }
-            ],
-            solved:false
+            ]
         }
     }
 
@@ -102,6 +97,11 @@ export default function Writing_list() {
         setSelectedPart(null)
     }
 
+    const selectRandomTask = () => {
+        const randomTaskId = Math.floor(Math.random() * 4) + 1
+        openTaskModal(randomTaskId)
+    }
+
     const closeMockModal = () => {
         setMockModalOpen(false)
         setSelectedTaskId(null)
@@ -118,14 +118,14 @@ export default function Writing_list() {
     }
 
     return (
-        <div className='rounded-xl w-full min-h-screen flex flex-col items-start gap-5 p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800'>
+        <div className='w-full min-h-screen flex flex-col items-start gap-5 p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800'>
             <h3 className="text-4xl font-bold text-gray-800 dark:text-white">CEFR writing tasks</h3>
 
             <div className="list w-full dark:bg-slate-700 bg-slate-300 rounded-lg p-5 flex flex-col gap-5">
                 {/* Toolbar */}
                 <div className="extras w-full flex items-center gap-4 flex-wrap">
                     {/* Random Button */}
-                    <button className='flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg rounded-full text-white font-semibold hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer'>
+                    <button onClick={selectRandomTask} className='flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg rounded-full text-white font-semibold hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer'>
                         <FaRandom className='text-white' size={16} />
                         <span>Select random</span>
                     </button>
@@ -233,7 +233,7 @@ export default function Writing_list() {
                                     <span className={`text-xs px-2 py-1 rounded-full font-semibold ${getDifficultyColor(['Medium', 'Hard', 'Hard', 'Easy'][task-1])}`}>
                                         {['Medium', 'Hard', 'Hard', 'Easy'][task-1]}
                                     </span>
-                                    {task<3 ? <span className="text-xs text-gray-500 dark:text-gray-400">Not solved</span> : <span className="text-xs text-green-500 dark:text-green-400 flex items-center gap-1"><TiTick /> solved</span>}
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">Not solved</span>
                                 </div>
                             </div>
                         ))}
@@ -263,9 +263,14 @@ export default function Writing_list() {
                                     <p className="text-xs text-white/90">Premium feature - Complete all parts with instant feedback</p>
                                 </div>
                             </div>
-                            <button className="px-4 py-2 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100 transition-all transform hover:scale-105">
-                                Upgrade
-                            </button>
+                            <a
+                                href={`/mock/cefr/writing/${selectedTaskId}?part=all`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100 transition-all transform hover:scale-105 cursor-pointer"
+                            >
+                                Try Full Mock
+                            </a>
                         </div>
                     )}
 
@@ -291,7 +296,7 @@ export default function Writing_list() {
                                 <div className="grid grid-cols-2 gap-4 mb-6">
                                     <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
                                         <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Difficulty</p>
-                                        <p className={`text-lg rounded-lg px-5 w-max font-bold ${getDifficultyColor(taskDetails[selectedTaskId].difficulty)}`}>
+                                        <p className={`text-lg font-bold ${getDifficultyColor(taskDetails[selectedTaskId].difficulty)}`}>
                                             {taskDetails[selectedTaskId].difficulty}
                                         </p>
                                     </div>
@@ -342,18 +347,17 @@ export default function Writing_list() {
                                     <p className="text-gray-600 dark:text-gray-400 mb-4">
                                         {taskDetails[selectedTaskId].parts.find(p => p.id === selectedPart)?.description}
                                     </p>
-                                    <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-center text-gray-500 dark:text-gray-400">
-                                        📝 Writing area will be here
-                                    </div>
                                 </div>
 
                                 <div className="flex gap-3 mt-6">
-                                    <button className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all">
-                                        Save Progress
-                                    </button>
-                                    <button className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:shadow-lg transition-all">
-                                        Submit
-                                    </button>
+                                    <a
+                                        href={`/mock/cefr/writing/${selectedTaskId}?part=${selectedPart}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:shadow-lg transition-all text-center"
+                                    >
+                                        Start Writing
+                                    </a>
                                 </div>
                             </div>
                         )}
