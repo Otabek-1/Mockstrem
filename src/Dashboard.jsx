@@ -271,8 +271,8 @@ export default function Dashboard() {
                         className="w-12 h-12 rounded-full border-2 border-blue-500"
                       />
                       <div>
-                        <p className="font-bold text-gray-900 dark:text-white">John Doe</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-300">john@example.com</p>
+                        <p className="font-bold text-gray-900 dark:text-white">{user.username}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-300">{user.email}</p>
                       </div>
                     </div>
                   </div>

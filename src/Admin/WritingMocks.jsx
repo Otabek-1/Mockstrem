@@ -1,27 +1,11 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import api from "../api";
 
 export default function WritingMocks() {
   // Example mock — replace with API later
-  const MOCK = [
-    {
-      id: "u_1001",
-      fullname: "Aziza Karimova",
-      username: "aziza_k",
-      badge: "premium",
-      checked: false,
-      submittedAt: "2025-11-28T14:32:00Z",
-
-      // Questions
-      q_task11: "Task 1.1 Question text here...",
-      q_task12: "Task 1.2 Question text here...",
-      q_task2: "Task 2 Question text here...",
-
-      // User answers
-      a_task11: "User answer for Task 1.1 …",
-      a_task12: "User answer for Task 1.2 …",
-      a_task2: "User answer for Task 2 …",
-    },
-  ];
+  const [MOCK, setMOCK] = useState([]);
+  const [mockData, setMockData] = useState();
+  const [users, setUsers] = useState();
 
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(null);
@@ -35,6 +19,33 @@ export default function WritingMocks() {
   });
 
   const [band, setBand] = useState("");
+  const [feedbacks, setFeedbacks] = useState({
+    task11: "",
+    task12: "",
+    task2: ""
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.get("/mock/writing/results").then(res => {
+      setMOCK(res.data);
+      api.get(`/mock/writing/mock/${res.data[0].mock_id}`).then(res => {
+        setMockData(res.data);
+      }).catch(err => {
+        console.log(err);
+      })
+
+    }).catch(err => {
+      console.log(err);
+      alert("Error in getting results. (See console)")
+    })
+
+    api.get("/user/users").then(res => {
+      setUsers(res.data);
+    }).catch(err => {
+      alert("Error! (See console.)")
+    })
+  }, [])
 
   const updateScore = (field, value) => {
     const v = Number(value);
@@ -50,20 +61,66 @@ export default function WritingMocks() {
     else setBand("C2");
   };
 
-  const filtered = useMemo(() => {
-    return MOCK.filter((u) => {
-      const q = query.toLowerCase();
-      const match =
-        u.id.toLowerCase().includes(q) ||
-        u.fullname.toLowerCase().includes(q) ||
-        u.username.toLowerCase().includes(q);
 
-      if (!match) return false;
-      if (filterBadge === "premium") return u.badge === "premium";
-      if (filterBadge === "normal") return u.badge === "normal";
-      return true;
-    });
-  }, [query, filterBadge]);
+  const handleSubmitReview = async (id) => {
+    // Validate inputs
+    if (!scores.task11 || !scores.task12 || !scores.task2) {
+      alert("Please fill in all scores");
+      return;
+    }
+
+    if (!feedbacks.task11.trim() || !feedbacks.task12.trim() || !feedbacks.task2.trim()) {
+      alert("Please write feedback for all tasks");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    // Prepare review data
+    const reviewData = {
+      mock_id: selected.id,
+      user_id: selected.user_id,
+      scores: {
+        task11: scores.task11,
+        task12: scores.task12,
+        task2: scores.task2,
+        total: scores.task11 + scores.task12 + scores.task2
+      },
+      band: band,
+      feedbacks: {
+        task11: feedbacks.task11,
+        task12: feedbacks.task12,
+        task2: feedbacks.task2
+      },
+      submitted_at: new Date().toISOString(),
+      send_email: selected.badge === "premium" ? document.querySelector('input[type="checkbox"]')?.checked : false
+    };
+
+    try {
+      const response = await api.post(`/mock/writing/check/${id}`, { result: reviewData });
+      alert("Review submitted successfully!");
+      setSelected(null);
+      setScores({ task11: 0, task12: 0, task2: 0 });
+      setBand("");
+      setFeedbacks({ task11: "", task12: "", task2: "" });
+
+      // Refresh the list
+      api.get("/mock/writing/results").then(res => {
+        setMOCK(res.data);
+      });
+    } catch (err) {
+      console.log(err);
+      alert("Error submitting review. (See console)");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!users || !MOCK || !mockData) {
+    return (
+      <div>Please wait...</div>
+    )
+  }
 
   return (
     <div className="p-6">
@@ -104,25 +161,33 @@ export default function WritingMocks() {
           </thead>
 
           <tbody>
-            {filtered.map((u) => (
+            {MOCK.map((u) => (
               <tr key={u.id} className="hover:bg-gray-50">
-                <td className="px-4 py-4 font-medium">{u.fullname}</td>
+                <td className="px-4 py-4 font-medium">{users.filter(user => user.id == u.user_id)[0].username}</td>
 
                 <td className="px-4 py-4 text-sm">
-                  <div>@{u.username}</div>
-                  <div className="font-mono text-xs text-gray-500">{u.id}</div>
 
                   <span
-                    className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold ${
-                      u.badge === "premium"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-gray-100 text-gray-700"
-                    }`}
+                    className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold ${(() => {
+                      const user = users.find(user => user.id === u.user_id);
+                      if (!user || !user.premium_duration) return "bg-gray-100 text-gray-700"; // null yoki user yo'q
+                      const now = new Date();
+                      const premiumDate = new Date(user.premium_duration);
+                      return premiumDate > now ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-700";
+                    })()
+                      }`}
                   >
-                    {u.badge === "premium" ? "Premium" : "Standard"}
+                    {(() => {
+                      const user = users.find(user => user.id === u.user_id);
+                      if (!user || !user.premium_duration) return "Standard";
+                      const now = new Date();
+                      const premiumDate = new Date(user.premium_duration);
+                      return premiumDate > now ? "Premium" : "Standard";
+                    })()}
                   </span>
 
-                  {u.checked && (
+
+                  {u.result && (
                     <span className="ml-2 text-green-600 text-xs font-semibold">
                       ✔ Checked
                     </span>
@@ -130,7 +195,7 @@ export default function WritingMocks() {
                 </td>
 
                 <td className="px-4 py-4 text-xs text-gray-500">
-                  {new Date(u.submittedAt).toLocaleString()}
+                  {new Date(u.created_at).toLocaleString()}
                 </td>
 
                 <td className="px-4 py-4 text-right">
@@ -139,6 +204,7 @@ export default function WritingMocks() {
                       setSelected(u);
                       setScores({ task11: 0, task12: 0, task2: 0 });
                       setBand("");
+                      setFeedbacks({ task11: "", task12: "", task2: "" });
                     }}
                     className="px-3 py-1 bg-rose-600 text-white rounded text-sm"
                   >
@@ -161,11 +227,10 @@ export default function WritingMocks() {
 
           <div className="relative bg-white p-6 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-auto">
             <h2 className="text-lg font-semibold mb-1">
-              {selected.fullname} — {selected.id}
+              {users.filter(user => user.id == selected.user_id)[0].username} — ID:{selected.id}
             </h2>
             <div className="text-xs text-gray-500 mb-5">
-              @{selected.username} —{" "}
-              {new Date(selected.submittedAt).toLocaleString()}
+              {new Date(selected.created_at).toLocaleString()}
             </div>
 
             {/* TASK 1.1 */}
@@ -175,23 +240,35 @@ export default function WritingMocks() {
               <div className="text-gray-700 text-sm mb-1 font-medium">
                 Question:
               </div>
-              <p className="text-sm text-gray-600 mb-3">{selected.q_task11}</p>
+              <p className="text-sm text-gray-600 mb-3">{mockData.task1.task11}</p>
 
               <div className="text-gray-700 text-sm mb-1 font-medium">
                 Student Answer:
               </div>
-              <p className="text-sm text-gray-700 mb-3">{selected.a_task11}</p>
+              <p className="text-sm text-gray-700 mb-3">{selected.task1.split(" ---TASK--- ")[0]}</p>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 mb-3">
                 <input
                   type="number"
                   min="0"
                   max="5"
                   placeholder="Score (0–5)"
+                  value={scores.task11 || ""}
                   className="px-3 py-2 border rounded w-32"
                   onChange={(e) => updateScore("task11", e.target.value)}
                 />
               </div>
+
+              <div className="text-gray-700 text-sm mb-1 font-medium">
+                Feedback:
+              </div>
+              <textarea
+                placeholder="Write feedback for Task 1.1..."
+                value={feedbacks.task11}
+                onChange={(e) => setFeedbacks({ ...feedbacks, task11: e.target.value })}
+                className="w-full px-3 py-2 border rounded text-sm"
+                rows="3"
+              />
             </section>
 
             {/* TASK 1.2 */}
@@ -201,20 +278,32 @@ export default function WritingMocks() {
               <div className="text-gray-700 text-sm mb-1 font-medium">
                 Question:
               </div>
-              <p className="text-sm text-gray-600 mb-3">{selected.q_task12}</p>
+              <p className="text-sm text-gray-600 mb-3">{mockData.task1.task12}</p>
 
               <div className="text-gray-700 text-sm mb-1 font-medium">
                 Student Answer:
               </div>
-              <p className="text-sm text-gray-700 mb-3">{selected.a_task12}</p>
+              <p className="text-sm text-gray-700 mb-3">{selected.task1.split(" ---TASK--- ")[1]}</p>
 
               <input
                 type="number"
                 min="0"
                 max="6"
                 placeholder="Score (0–6)"
-                className="px-3 py-2 border rounded w-32"
+                value={scores.task12 || ""}
+                className="px-3 py-2 border rounded w-32 mb-3"
                 onChange={(e) => updateScore("task12", e.target.value)}
+              />
+
+              <div className="text-gray-700 text-sm mb-1 font-medium">
+                Feedback:
+              </div>
+              <textarea
+                placeholder="Write feedback for Task 1.2..."
+                value={feedbacks.task12}
+                onChange={(e) => setFeedbacks({ ...feedbacks, task12: e.target.value })}
+                className="w-full px-3 py-2 border rounded text-sm"
+                rows="3"
               />
             </section>
 
@@ -225,20 +314,32 @@ export default function WritingMocks() {
               <div className="text-gray-700 text-sm mb-1 font-medium">
                 Question:
               </div>
-              <p className="text-sm text-gray-600 mb-3">{selected.q_task2}</p>
+              <p className="text-sm text-gray-600 mb-3">{mockData.task2.task2}</p>
 
               <div className="text-gray-700 text-sm mb-1 font-medium">
                 Student Answer:
               </div>
-              <p className="text-sm text-gray-700 mb-3">{selected.a_task2}</p>
+              <p className="text-sm text-gray-700 mb-3">{selected.task2}</p>
 
               <input
                 type="number"
                 min="0"
                 max="6"
                 placeholder="Score (0–6)"
-                className="px-3 py-2 border rounded w-32"
+                value={scores.task2 || ""}
+                className="px-3 py-2 border rounded w-32 mb-3"
                 onChange={(e) => updateScore("task2", e.target.value)}
+              />
+
+              <div className="text-gray-700 text-sm mb-1 font-medium">
+                Feedback:
+              </div>
+              <textarea
+                placeholder="Write feedback for Task 2..."
+                value={feedbacks.task2}
+                onChange={(e) => setFeedbacks({ ...feedbacks, task2: e.target.value })}
+                className="w-full px-3 py-2 border rounded text-sm"
+                rows="3"
               />
             </section>
 
@@ -252,11 +353,20 @@ export default function WritingMocks() {
             </section>
 
             {/* EMAIL CHECKBOX */}
-            {selected.badge === "premium" && (
-              <label className="flex items-center gap-2 mb-4 text-sm">
-                <input type="checkbox" /> Send result to email
-              </label>
-            )}
+            {(() => {
+              const user = users.find(user => user.id === selected.user_id);
+              if (!user || !user.premium_duration) return null;
+
+              const now = new Date();
+              const premiumDate = new Date(user.premium_duration);
+              const isPremium = premiumDate > now;
+
+              return isPremium && (
+                <label className="flex items-center gap-2 mb-4 text-sm">
+                  <input type="checkbox" /> Send result to email
+                </label>
+              );
+            })()}
 
             {/* ACTIONS */}
             <div className="flex justify-end gap-3 mt-4">
@@ -267,8 +377,12 @@ export default function WritingMocks() {
                 Close
               </button>
 
-              <button className="px-4 py-2 bg-rose-600 text-white rounded">
-                Submit Review
+              <button
+                onClick={() => handleSubmitReview(selected.id)}
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-rose-600 text-white rounded disabled:opacity-50"
+              >
+                {isSubmitting ? "Submitting..." : "Submit Review"}
               </button>
             </div>
           </div>

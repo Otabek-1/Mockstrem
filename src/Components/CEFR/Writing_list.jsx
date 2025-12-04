@@ -29,8 +29,10 @@ export default function WritingList() {
     const fetchMocks = async () => {
       try {
         setLoading(true)
-        const data = await api.get("/mock/writing/all")
-        setMockData(Array.isArray(data) ? data : [])
+        const data = await api.get("/mock/writing/all").catch(err=>{
+          alert("Error in getting writing tasks. Reload page or contact to support.")
+        })
+        setMockData(Array.isArray(data.data) ? data.data : [])
         setError(null)
       } catch (err) {
         console.log("[v0] Error fetching mocks:", err.message)
@@ -330,7 +332,7 @@ export default function WritingList() {
                   <div className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
                     <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Time</p>
                     <p className="text-lg font-bold text-green-700 dark:text-green-300">
-                      {selectedTask.task1?.time || "20 minutes"}
+                      {selectedTask.task1?.time || "1 hour"}
                     </p>
                   </div>
                 </div>
@@ -353,7 +355,7 @@ export default function WritingList() {
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          ⏱️ {selectedTask.task1?.time || "10 min"}
+                          ~⏱️ {selectedTask.task1?.time || "20 min"}
                         </p>
                       </div>
                     </div>
@@ -374,7 +376,7 @@ export default function WritingList() {
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          ⏱️ {selectedTask.task2?.time || "10 min"}
+                          ~⏱️ {selectedTask.task2?.time || "40 min"}
                         </p>
                       </div>
                     </div>

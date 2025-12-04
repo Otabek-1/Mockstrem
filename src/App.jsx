@@ -48,7 +48,7 @@ export default function App() {
           <h1 className="text-slate-800 text-6xl font-semibold">Train your English language skills with us.</h1>
           <div className="buttons flex items-center gap-5">
             <Link
-              to="/dashboard"
+              to="/auth"
               className="text-xl px-6 py-3 bg-blue-500 text-white font-semibold rounded-full shadow-lg transition-all duration-300 hover:bg-blue-600 hover:scale-105 hover:shadow-xl active:scale-95"
             >
               Get started
@@ -97,7 +97,7 @@ export default function App() {
         </p>
         <div className="flex gap-5">
           <Link
-            to="/dashboard"
+            to="/auth"
             className="px-8 py-4 bg-white text-blue-600 font-semibold rounded-full shadow-lg transition-all duration-300 hover:scale-105 hover:bg-blue-600 hover:text-white"
           >
             Get Started

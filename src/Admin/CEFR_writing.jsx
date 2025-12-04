@@ -6,33 +6,32 @@ import api from "../api";
 
 export default function CEFR_Writing() {
   const [writings, setWritings] = useState([
-    { id: 1, title: "Environment essay", level: "B1" },
-    { id: 2, title: "Daily routine description", level: "A2" },
   ]);
 
-  const [newTitle, setNewTitle] = useState("");
-  const [newLevel, setNewLevel] = useState("A1");
+  function getMocks() {
+    api.get("/mock/writing/all").then(res => {
+      setWritings(res.data);
+    }).catch(err => {
+      console.log(err);
+    })
+  }
 
-  const addWriting = () => {
-    if (!newTitle.trim()) return;
-
-    const newItem = {
-      id: Date.now(),
-      title: newTitle,
-      level: newLevel,
-    };
-
-    setWritings([newItem, ...writings]);
-    setNewTitle("");
+  const deleteWriting = async (id) => {
+    api.delete(`/mock/writing/delete/${id}`).then(async res => {
+      if (res.status === 200) {
+        alert("Deleted successfully.")
+        getMocks()
+      }
+    }).catch(err => {
+      console.log(err);
+      alert("Error in deleting mock. (See console)")
+    })
   };
 
-  const deleteWriting = (id) => {
-    setWritings(writings.filter((w) => w.id !== id));
-  };
 
-  useEffect(()=>{
-    api.get("")
-  },[])
+  useEffect(() => {
+    getMocks();
+  }, [])
 
   return (
     <div className="p-6">
@@ -44,7 +43,6 @@ export default function CEFR_Writing() {
 
         <div className="flex gap-3">
           <Link to="/mock/cefr/writing/form"
-            onClick={addWriting}
             className="px-4 bg-blue-600 text-white rounded-lg flex items-center gap-2"
           >
             <FaPlus /> Add
@@ -52,7 +50,6 @@ export default function CEFR_Writing() {
 
           <Link to="/mock/cefr/writing/check-list"
             target="_blank"
-            onClick={addWriting}
             className="px-4 bg-blue-600 text-white rounded-lg flex items-center gap-2"
           >
             <RiReceiptFill /> Check mocks
@@ -76,12 +73,12 @@ export default function CEFR_Writing() {
           <tbody>
             {writings.map((w) => (
               <tr key={w.id} className="border-b dark:border-gray-700">
-                <td className="p-2">{w.title}</td>
-                <td className="p-2">{w.level}</td>
+                <td className="p-2">Writing #{w.id}</td>
+                <td className="p-2">B2</td>
                 <td className="p-2 flex gap-3">
-                  <button className="p-2 bg-yellow-500 text-white rounded-lg">
+                  <Link to={`/mock/cefr/writing/form?edit=true&id=${w.id}`} className="p-2 bg-yellow-500 text-white rounded-lg">
                     <FaEdit />
-                  </button>
+                  </Link>
 
                   <button
                     onClick={() => deleteWriting(w.id)}

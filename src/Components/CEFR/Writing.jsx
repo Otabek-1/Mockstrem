@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { FaClock, FaCheck } from 'react-icons/fa'
+import { Link, useParams } from 'react-router-dom'
+import api from '../../api'
 
 export default function WritingExam() {
   const [examStarted, setExamStarted] = useState(false)
@@ -7,13 +9,16 @@ export default function WritingExam() {
   const [answers, setAnswers] = useState({ t11: '', t12: '', t2: '' })
   const [submitted, setSubmitted] = useState(false)
   const [part, setPart] = useState(null)
-  const [isFullMock, setIsFullMock] = useState(false)
+  const [isFullMock, setIsFullMock] = useState(false);
+  const [mockData, setMockData] = useState();
+
+  const { id } = useParams();
 
   // Get query parameters
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const partParam = params.get('part')
-    
+
     if (partParam === 'all') {
       setIsFullMock(true)
       setPart('all')
@@ -25,13 +30,20 @@ export default function WritingExam() {
       setPart(2)
       setTimeLeft(1500) // 25 minutes
     }
-    
+
     setExamStarted(true)
+
+    api.get(`/mock/writing/mock/${id}`).then(res => {
+      setMockData(res.data);
+    }).catch(err => {
+      alert("Error in getting mock. Reload page or contact to support.")
+      console.log(err);
+    })
   }, [])
 
   useEffect(() => {
     if (!examStarted || submitted || timeLeft === 0) return
-    
+
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -41,7 +53,7 @@ export default function WritingExam() {
         return prev - 1
       })
     }, 1000)
-    
+
     return () => clearInterval(timer)
   }, [examStarted, submitted])
 
@@ -58,7 +70,15 @@ export default function WritingExam() {
   }
 
   const handleSubmit = () => {
-    setSubmitted(true)
+    api.post(`/mock/writing/submit?token=${localStorage.getItem("access_token")}`, { mock_id: id, task1: `${answers.t11} ---TASK--- ${answers.t12}`, task2: answers.t2 }).then(res => {
+      if (res.status) {
+        setSubmitted(true);
+      }
+    }).catch(err => {
+      alert("Error in submitting, before reload page, make sure you've copied your writings :)");
+      console.log(err);
+    })
+
   }
 
   if (submitted) {
@@ -67,12 +87,12 @@ export default function WritingExam() {
         <div className="bg-white rounded-2xl p-12 shadow-2xl max-w-2xl text-center border-4 border-green-500">
           <div className="text-7xl mb-6 animate-bounce">✅</div>
           <h1 className="text-4xl font-bold text-green-600 mb-4">Exam Submitted Successfully!</h1>
-          
+
           <div className="bg-green-50 border-2 border-green-300 rounded-lg p-8 mb-8">
             <p className="text-gray-700 text-lg mb-6">
               Your exam has been received and is being processed.
             </p>
-            
+
             <div className="space-y-4 text-left mb-8">
               <div className="flex items-center gap-3 text-gray-700 text-lg">
                 <FaCheck className="text-green-600 text-2xl" />
@@ -100,18 +120,19 @@ export default function WritingExam() {
             </div>
           </div>
 
-          <button
+          <Link
+            to="/dashboard"
             onClick={() => window.history.back()}
-            className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-xl rounded-xl hover:shadow-lg transition-all"
+            className="w-full px-10 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-xl rounded-xl hover:shadow-lg transition-all"
           >
             ← Back to Courses
-          </button>
+          </Link>
         </div>
       </div>
     )
   }
 
-  if (!part) {
+  if (!mockData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
@@ -133,12 +154,11 @@ export default function WritingExam() {
               {isFullMock ? 'Full Mock Exam - All Parts' : `Part ${part} - Timed Assessment`}
             </p>
           </div>
-          
-          <div className={`flex items-center gap-3 text-2xl font-bold px-8 py-3 rounded-lg ${
-            timeLeft <= 300 
-              ? 'bg-red-500/30 text-red-200 animate-pulse' 
-              : 'bg-white/20 text-white'
-          }`}>
+
+          <div className={`flex items-center gap-3 text-2xl font-bold px-8 py-3 rounded-lg ${timeLeft <= 300
+            ? 'bg-red-500/30 text-red-200 animate-pulse'
+            : 'bg-white/20 text-white'
+            }`}>
             <FaClock />
             {formatTime(timeLeft)}
           </div>
@@ -147,7 +167,7 @@ export default function WritingExam() {
 
       {/* Progress Bar */}
       <div className="h-1.5 bg-gray-700">
-        <div 
+        <div
           className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
           style={{ width: `${Math.max(0, 100 - (timeLeft / (isFullMock ? 36 : 10)))}%` }}
         />
@@ -162,8 +182,8 @@ export default function WritingExam() {
             {(isFullMock || part === 1) && (
               <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-8">
-                  <h2 className="text-3xl font-bold mb-2">📋 PART 1: Correspondence</h2>
-                  <p className="text-blue-100">Write two pieces of correspondence based on the scenario</p>
+                  <h2 className="text-3xl font-bold mb-2">📋 PART 1</h2>
+                  <p className="text-blue-100">Write two tasks.</p>
                 </div>
 
                 <div className="p-8">
@@ -171,18 +191,18 @@ export default function WritingExam() {
                   <div className="bg-blue-50 border-l-4 border-blue-600 p-6 rounded-lg mb-8">
                     <h3 className="font-bold text-blue-900 mb-3">📌 Scenario Context:</h3>
                     <p className="text-gray-800 leading-relaxed">
-                      You are a student at a language school. You received this message from the school magazine editor: "Dear Student, We are starting a new section in the school magazine called Student Voices. We'd like to include more opinions and ideas. What topics would you like to read about? Would you be interested in writing something? What would you write about?"
+                      {mockData.task1.scenario}
                     </p>
                   </div>
 
                   {/* Task 1.1 */}
                   <div className="mb-10">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-2xl font-bold text-gray-800">Task 1.1 - Informal Note</h3>
+                      <h3 className="text-2xl font-bold text-gray-800">Task 1.1 - Note</h3>
                       <span className="text-sm font-semibold px-3 py-1 bg-purple-100 text-purple-700 rounded-full">~50 words</span>
                     </div>
                     <p className="text-gray-700 mb-4 p-4 bg-gray-50 rounded-lg border-l-4 border-purple-500">
-                      Write an informal note to your friend about the magazine and share your thoughts on what topics they should include.
+                      {mockData.task1.task11}
                     </p>
                     <textarea
                       value={answers.t11}
@@ -203,11 +223,11 @@ export default function WritingExam() {
                   {/* Task 1.2 */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-2xl font-bold text-gray-800">Task 1.2 - Formal Letter</h3>
+                      <h3 className="text-2xl font-bold text-gray-800">Task 1.2 - Letter</h3>
                       <span className="text-sm font-semibold px-3 py-1 bg-purple-100 text-purple-700 rounded-full">120-150 words</span>
                     </div>
                     <p className="text-gray-700 mb-4 p-4 bg-gray-50 rounded-lg border-l-4 border-purple-500">
-                      Write a formal letter to the magazine manager with your suggestions and ideas for the new Student Voices section.
+                      {mockData.task1.task12}
                     </p>
                     <textarea
                       value={answers.t12}
@@ -232,18 +252,18 @@ export default function WritingExam() {
             {(isFullMock || part === 2) && (
               <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
                 <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-8">
-                  <h2 className="text-3xl font-bold mb-2">✍️ PART 2: Blog Post</h2>
-                  <p className="text-purple-100">Write a blog post expressing your opinion with supporting examples</p>
+                  <h2 className="text-3xl font-bold mb-2">✍️ PART 2</h2>
+                  <p className="text-purple-100">Write a blog post.</p>
                 </div>
 
                 <div className="p-8">
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-2xl font-bold text-gray-800">Blog Post</h3>
+                      <h3 className="text-2xl font-bold text-gray-800">Post</h3>
                       <span className="text-sm font-semibold px-3 py-1 bg-purple-100 text-purple-700 rounded-full">180-200 words</span>
                     </div>
                     <p className="text-gray-700 mb-4 p-4 bg-gray-50 rounded-lg border-l-4 border-purple-500">
-                      Write a blog post about the advantages and disadvantages of working from home. Include your personal opinion and provide specific examples to support your ideas.
+                      {mockData.task2.task2}
                     </p>
                     <textarea
                       value={answers.t2}
