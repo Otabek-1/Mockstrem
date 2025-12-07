@@ -123,9 +123,11 @@ export default function Dashboard() {
 
   const goto = (data) => {
 
-    api.put(`/notifications/${data.id}`, { title: data.title, body: data.body, is_read: true }).then(res => {
-    }).catch(err => {
-    })
+    if (!data.is_read) {
+      api.put(`/notifications/${data.id}`, { title: data.title, body: data.body, is_read: true }).then(res => {
+      }).catch(err => {
+      })
+    }
     if (data.title == "Writing mock results") {
       const id = data.body.split(" ")[2].split("")[1];
       nav(`/mock/result/${id}`);
