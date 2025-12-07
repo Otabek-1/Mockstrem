@@ -93,7 +93,11 @@ export default function Plan() {
   ]
 
   const handleSendRequestForSubscription = () =>{
-    alert("Your request has been sended successfully. Wait for response.")
+    // Telegram link - @DavirbekKhasanov
+    const telegramUsername = 'DavirbekKhasanov'
+    const message = 'Salom! Men Premium subscription qilmoqchiman.'
+    const telegramLink = `https://t.me/${telegramUsername}?text=${encodeURIComponent(message)}`
+    window.open(telegramLink, '_blank')
   }
 
   return (
@@ -195,12 +199,12 @@ export default function Plan() {
                 </div>
 
                 {/* CTA Button */}
-                <button onClick={handleSendRequestForSubscription} className={`w-full py-3 rounded-lg font-bold mb-8 transition-all duration-200 transform hover:scale-105 ${
+                <button onClick={handleSendRequestForSubscription} className={`w-full py-3 rounded-lg font-bold mb-8 transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2 ${
                   plan.highlighted
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl'
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}>
-                  {plan.buttonText}
+                }`} title={plan.name === 'Premium' ? 'Contact via Telegram' : 'Already included'}>
+                  {plan.name === 'Premium' ? '💬 ' : ''}{plan.buttonText}
                 </button>
 
                 {/* Feature Highlights */}
