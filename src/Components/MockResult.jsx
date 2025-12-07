@@ -1,21 +1,32 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { FaDownload, FaShareAlt, FaClock, FaCheckCircle, FaAward, FaCrown, FaArrowLeft } from 'react-icons/fa'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import api from '../api'
+import { jsPDF } from 'jspdf'
 
 export default function MockResult() {
-  const { mockId, resultId } = useParams()
+  const { resultId } = useParams()
   const navigate = useNavigate()
+  const pdfRef = useRef()
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [mock, setMock] = useState(null)
+  const [pdfLoading, setPdfLoading] = useState(false)
 
   useEffect(() => {
-    const fetchResult = async () => {
+    const fetchResultAndMock = async () => {
       try {
         setLoading(true)
-        const res = await api.get(`/mock/writing/result/${resultId}`)
-        setResult(res.data)
+        // Result fetch - API response structure: { user_id, mock_id, task1, task2, created_at, id, result: {...} }
+        const resRes = await api.get(`/mock/writing/result/${resultId}?token=${localStorage.getItem("acces_token")}`)
+        const fullResultData = resRes.data.mock
+        setResult(fullResultData)
+        
+        // Mock fetch
+        const mockRes = await api.get(`/mock/writing/mock/${fullResultData.mock_id}`)
+        setMock(mockRes.data)
+
         setError(null)
       } catch (err) {
         console.error('Error fetching result:', err)
@@ -25,7 +36,7 @@ export default function MockResult() {
       }
     }
 
-    fetchResult()
+    fetchResultAndMock()
   }, [resultId])
 
   if (loading) {
@@ -39,7 +50,7 @@ export default function MockResult() {
     )
   }
 
-  if (error || !result) {
+  if (error || !result || !result.result) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
         <div className="text-center max-w-md">
@@ -55,64 +66,183 @@ export default function MockResult() {
     )
   }
 
+  // Extract result object (scores, band, feedbacks)
+  const resultObj = result.result || {}
+
   const tasks = [
     {
       id: 'task1_1',
       title: 'Task 1.1 - Informal Note',
-      wordLimit: '~50 words',
-      userAnswer: result.task1?.task11_answer || '',
-      score: result.task1?.task11_score || 0,
-      maxScore: 10,
-      feedback: result.task1?.task11_feedback || 'No feedback available',
+      wordLimit: mock?.task1_description || '~50 words',
+      userAnswer: result.task1?.split('---TASK---')[0]?.trim() || '',
+      score: resultObj.scores?.task11 || 0,
+      maxScore: 5,
+      feedback: resultObj.feedbacks?.task11 || 'No feedback available',
     },
     {
       id: 'task1_2',
       title: 'Task 1.2 - Formal Letter',
-      wordLimit: '120-150 words',
-      userAnswer: result.task1?.task12_answer || '',
-      score: result.task1?.task12_score || 0,
-      maxScore: 10,
-      feedback: result.task1?.task12_feedback || 'No feedback available',
+      wordLimit: mock?.task2_description || '120-150 words',
+      userAnswer: result.task1?.split('---TASK---')[1]?.trim() || '',
+      score: resultObj.scores?.task12 || 0,
+      maxScore: 6,
+      feedback: resultObj.feedbacks?.task12 || 'No feedback available',
     },
     {
       id: 'task2',
       title: 'Task 2 - Blog Post',
-      wordLimit: '180-200 words',
-      userAnswer: result.task2?.task2_answer || '',
-      score: result.task2?.task2_score || 0,
-      maxScore: 10,
-      feedback: result.task2?.task2_feedback || 'No feedback available',
+      wordLimit: mock?.task3_description || '180-200 words',
+      userAnswer: result.task2 || '',
+      score: resultObj.scores?.task2 || 0,
+      maxScore: 6,
+      feedback: resultObj.feedbacks?.task2 || 'No feedback available',
     },
   ]
 
-  const totalScore = tasks.reduce((sum, task) => sum + task.score, 0)
-  const maxTotalScore = tasks.reduce((sum, task) => sum + task.maxScore, 0)
+  const totalScore = resultObj.scores?.total || 0
+  const maxTotalScore = 16
   const percentage = Math.round((totalScore / maxTotalScore) * 100)
 
-  const getBandScore = (percentage) => {
-    if (percentage >= 90) return { band: 9, level: 'Proficient User' }
-    if (percentage >= 75) return { band: 8, level: 'Very Good User' }
-    if (percentage >= 60) return { band: 7, level: 'Good User' }
-    if (percentage >= 50) return { band: 6, level: 'Competent User' }
-    if (percentage >= 40) return { band: 5, level: 'Modest User' }
-    return { band: 4, level: 'Limited User' }
+  const getBandScore = (bandString) => {
+    const bandMap = {
+      'A1': { band: 'A1', level: 'Elementary User' },
+      'A2': { band: 'A2', level: 'Elementary User' },
+      'B1': { band: 'B1', level: 'Independent User' },
+      'B2': { band: 'B2', level: 'Independent User' },
+      'C1': { band: 'C1', level: 'Proficient User' },
+      'C2': { band: 'C2', level: 'Proficient User' },
+    }
+    return bandMap[bandString] || { band: 'N/A', level: 'Not Available' }
   }
 
-  const bandInfo = getBandScore(percentage)
+  const bandInfo = getBandScore(resultObj.band)
+
+  const downloadPDF = async () => {
+    try {
+      setPdfLoading(true)
+      
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 15
+      let yPosition = margin
+
+      // Add watermark logo first (background)
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.src = '/logo.jpg'
+        await new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = reject
+        })
+        const logoWidth = 120
+        const logoHeight = 120
+        const x = (pageWidth - logoWidth) / 2
+        const y = (pageHeight - logoHeight) / 2
+        // Add with opacity using putImageData
+        pdf.addImage(img, 'JPEG', x, y, logoWidth, logoHeight, 'logo-watermark', 'MULTIPLY', 0.15)
+      } catch (err) {
+        console.log('Logo watermark skipped:', err)
+      }
+
+      // Add Header
+      pdf.setFontSize(24)
+      pdf.text('MockStream', pageWidth / 2, yPosition, { align: 'center' })
+      yPosition += 10
+
+      pdf.setFontSize(14)
+      pdf.text('CEFR Writing Mock Exam Result', pageWidth / 2, yPosition, { align: 'center' })
+      yPosition += 8
+
+      pdf.setFontSize(10)
+      pdf.setTextColor(100, 100, 100)
+      pdf.text(`Exam Date: ${new Date(result.created_at).toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' })
+      yPosition += 15
+
+      pdf.setTextColor(0, 0, 0)
+
+      // Overall Scores
+      pdf.setFontSize(16)
+      pdf.text('Overall Score', margin, yPosition)
+      yPosition += 8
+
+      pdf.setFontSize(12)
+      pdf.setTextColor(0, 102, 204)
+      pdf.text(`Total: ${totalScore}/${maxTotalScore} (${percentage}%)`, margin, yPosition)
+      yPosition += 7
+
+      pdf.setTextColor(0, 0, 0)
+      pdf.text(`Band: ${bandInfo.band} - ${bandInfo.level}`, margin, yPosition)
+      yPosition += 7
+
+      pdf.text(`Submitted: ${new Date(resultObj.submitted_at).toLocaleString()}`, margin, yPosition)
+      yPosition += 15
+
+      // Task Results
+      tasks.forEach((task, idx) => {
+        if (yPosition > pageHeight - margin - 30) {
+          pdf.addPage()
+          yPosition = margin
+        }
+
+        pdf.setFontSize(12)
+        pdf.setTextColor(0, 102, 204)
+        pdf.text(`${task.title}`, margin, yPosition)
+        yPosition += 6
+
+        pdf.setTextColor(0, 0, 0)
+        pdf.setFontSize(10)
+        pdf.text(`Score: ${task.score}/${task.maxScore}`, margin, yPosition)
+        yPosition += 5
+
+        pdf.text(`Word Limit: ${task.wordLimit}`, margin, yPosition)
+        yPosition += 5
+
+        // User Answer
+        pdf.setTextColor(80, 80, 80)
+        pdf.setFontSize(9)
+        const answerLines = pdf.splitTextToSize(`Answer: ${task.userAnswer || 'No answer'}`, pageWidth - 2 * margin)
+        pdf.text(answerLines, margin, yPosition)
+        yPosition += answerLines.length * 4 + 2
+
+        // Feedback
+        pdf.setTextColor(150, 100, 0)
+        const feedbackLines = pdf.splitTextToSize(`Feedback: ${task.feedback}`, pageWidth - 2 * margin)
+        pdf.text(feedbackLines, margin, yPosition)
+        yPosition += feedbackLines.length * 4 + 10
+
+        pdf.setTextColor(0, 0, 0)
+      })
+
+      // Footer
+      if (yPosition < pageHeight - 30) {
+        yPosition = pageHeight - 30
+      }
+      
+      pdf.setFontSize(10)
+      pdf.setTextColor(150, 150, 150)
+      pdf.text('For more detailed feedback and personalized training, upgrade to Premium', pageWidth / 2, yPosition, { align: 'center' })
+
+      pdf.save(`MockStream-Result-${resultId}.pdf`)
+      setPdfLoading(false)
+    } catch (err) {
+      console.error('Error generating PDF:', err)
+      alert('Error generating PDF. Please try again.')
+      setPdfLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold mb-4 transition-colors"
-        >
-          <FaArrowLeft /> Back to Results
-        </button>
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">CEFR Writing Mock Result</h1>
-        <p className="text-gray-600 dark:text-gray-400">Exam Date: {new Date(result.created_at).toLocaleDateString()}</p>
-      </div>
+      {/* Content to be converted to PDF */}
+      <div ref={pdfRef} className="bg-white p-8">
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">MockStream</h1>
+          <p className="text-gray-600">CEFR Writing Mock Exam Result</p>
+          <p className="text-gray-600 text-sm">Exam Date: {new Date(result.created_at).toLocaleDateString()}</p>
+        </div>
 
       {/* Overall Score Card */}
       <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-2xl p-8 mb-8 text-white">
@@ -139,10 +269,10 @@ export default function MockResult() {
             <div className="flex justify-center mb-2">
               <FaClock className="text-4xl" />
             </div>
-            <div className="text-2xl font-bold mb-2">
-              {Math.round((result.time_taken || 3600) / 60)} min
+            <div className="text-xl font-bold mb-2">
+              {resultObj.submitted_at ? new Date(resultObj.submitted_at).toLocaleString() : 'N/A'}
             </div>
-            <p className="text-blue-100 text-sm">Time Taken</p>
+            <p className="text-blue-100 text-sm">Submitted</p>
           </div>
         </div>
       </div>
@@ -245,20 +375,35 @@ export default function MockResult() {
 
           {/* Action */}
           <div className="flex flex-col gap-4">
-            <button className="px-8 py-4 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-2">
+            <Link to="/plans" className="px-8 py-4 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-2">
               <FaCrown /> Upgrade to Premium
-            </button>
-            <button className="px-8 py-4 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg transition-all border-2 border-white">
+            </Link>
+            <Link to="/plans" className="px-8 text-center py-4 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg transition-all border-2 border-white">
               Learn More
-            </button>
+            </Link>
           </div>
         </div>
+      </div>
+      </div>
+
+      {/* Back Button */}
+      <div className="mb-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors"
+        >
+          <FaArrowLeft /> Back to Results
+        </button>
       </div>
 
       {/* Action Buttons */}
       <div className="flex gap-4 justify-center flex-wrap">
-        <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all">
-          <FaDownload /> Download Report
+        <button 
+          onClick={downloadPDF}
+          disabled={pdfLoading}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FaDownload /> {pdfLoading ? 'Generating...' : 'Download Report'}
         </button>
         <button className="flex items-center gap-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-all">
           <FaShareAlt /> Share Result

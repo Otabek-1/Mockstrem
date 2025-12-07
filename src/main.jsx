@@ -22,7 +22,7 @@ createRoot(document.getElementById('root')).render(
       <Route path='/dashboard' element={<Dashboard />}/>
       <Route path='/plans' element={<Plan />}/>
       <Route path='/mock/cefr/writing/:id' element={<Writing />}/>
-      <Route path='/mock/result/:mockId/:resultId' element={<MockResult />}/>
+      <Route path='/mock/result/:resultId' element={<MockResult />}/>
       <Route path='/admin/dashboard' element={<Dashboard_admin />}/>
       <Route path='/mock/cefr/writing/form' element={<WritingMockForm />}/>
       <Route path='/mock/cefr/writing/form/:id' element={<WritingMockForm />}/>

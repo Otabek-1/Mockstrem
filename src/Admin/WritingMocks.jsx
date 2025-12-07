@@ -96,9 +96,9 @@ export default function WritingMocks() {
       send_email: document.querySelector('input[type="checkbox"]')?.checked
     };
 
-    
+
     try {
-      const response = await api.post(`/mock/writing/check/${id}`, { result: reviewData }).then(res=>console.log(res));
+      const response = await api.post(`/mock/writing/check/${id}`, { result: reviewData }).then(res => console.log(res));
       alert("Review submitted successfully!");
       setSelected(null);
       setScores({ task11: 0, task12: 0, task2: 0 });
@@ -115,6 +115,15 @@ export default function WritingMocks() {
     } finally {
       setIsSubmitting(false);
     }
+
+    
+    const user = users.filter(user => user.id == selected.user_id)[0];
+    api.post("/notifications/", { title: `Writing mock results`, body: `Writing mock #${selected.id} is ready. Check your results.`, user_id: user.id }).then(res=>{
+      console.log(res);
+    }).catch(err=>{
+      alert("Error in sending notification (see console).")
+      console.log(err);
+    })
   };
 
   if (!users || !MOCK || !mockData) {
@@ -122,7 +131,6 @@ export default function WritingMocks() {
       <div>Please wait...</div>
     )
   }
-
   return (
     <div className="p-6">
       {/* HEADER */}

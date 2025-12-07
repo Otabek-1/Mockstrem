@@ -8,6 +8,29 @@ import Profile from "./Components/Profile";
 import { Link, useNavigate } from "react-router-dom";
 import api from "./api";
 
+// Vaqtni "X minutes ago" formatiga o'tkazish
+const formatTimeAgo = (dateString) => {
+  const now = new Date();
+  const date = new Date(dateString);
+  const seconds = Math.floor((now - date) / 1000);
+
+  if (seconds < 60) return "just now";
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w ago`;
+
+  return date.toLocaleDateString();
+};
+
 export default function Dashboard() {
   const [active, setActive] = useState("home");
   const [theme, setTheme] = useState("light");
@@ -18,15 +41,11 @@ export default function Dashboard() {
   const [hoveredMenu, setHoveredMenu] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [user, setUser] = useState(null);
-
+  const [notifications, setNotifications] = useState([]);
+  const nav = useNavigate();
   const [isAdmin, setIsAdmin] = useState(true); // Change to false for non-admin users
   const [isPremium, setIsPremium] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: "Exam Result", message: "Your CEFR Writing exam has been graded", time: "2 hours ago", read: false },
-    { id: 2, title: "New Feature", message: "Check out our new AI feedback system", time: "1 day ago", read: false },
-    { id: 3, title: "Premium Expired", message: "Your premium subscription will expire in 7 days", time: "3 days ago", read: true },
-  ]);
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
@@ -46,16 +65,30 @@ export default function Dashboard() {
 
         setUser(data);
         setIsAdmin(data.role === "admin");
-        
+
         // Check premium status: if premium_duration exists and is in future
         const isPremiumUser = data.premium_duration && new Date(data.premium_duration) > new Date();
         setIsPremium(isPremiumUser);
+
+        // USER ID OLINGANDAN SO'NG NOTIFICATIONS FETCH QIL
+        await fetchNotifications(data.id);
       } catch (error) {
         console.error("Error fetching user:", error);
       }
     };
 
+    const fetchNotifications = async (userId) => {
+      try {
+        const res = await api.get(`/notifications/${userId}`);
+        setNotifications(res.data || []);
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+        setNotifications([]);
+      }
+    };
+
     fetchUser();
+
   }, []);
 
 
@@ -87,6 +120,23 @@ export default function Dashboard() {
     },
   ];
 
+  const goto = (data) => {
+
+    api.put(`/notifications/${data.id}`, { title: data.title, body: data.body, is_read: true }).then(res=>{   
+    }).catch(err=>{
+    })
+    if (data.title == "Writing mock results") {
+      const id = data.body.split(" ")[2].split("")[1];
+      nav(`/mock/result/${id}`);
+    }
+  }
+
+  if (!user) {
+    return (
+      <div>Loading...</div>
+    )
+  }
+
   return (
     <div className={`flex h-screen transition-colors duration-300 ${theme === "dark" ? "bg-gray-950" : "bg-gradient-to-br from-gray-50 to-gray-100"}`}>
       {/* Sidebar */}
@@ -109,11 +159,10 @@ export default function Dashboard() {
           {menuItems.map((item, idx) => (
             <div key={idx} className="relative group">
               <div
-                className={`flex items-center gap-4 px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 group/item relative ${
-                  item.premium && !isPremium
-                    ? "opacity-60 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    : "hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600"
-                }`}
+                className={`flex items-center gap-4 px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 group/item relative ${item.premium && !isPremium
+                  ? "opacity-60 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  : "hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600"
+                  }`}
                 onClick={() => {
                   // Check premium requirement
                   if (item.premium && !isPremium) {
@@ -177,9 +226,6 @@ export default function Dashboard() {
                         {sub}
                       </div>
                     ))
-
-
-
                   )}
                 </div>
               )}
@@ -222,7 +268,7 @@ export default function Dashboard() {
 
           {/* Logout Tooltip */}
           {!sidebarOpen && (
-            <div onClick={()=>{localStorage.removeItem("acces_token"); nav("/auth")}} className="absolute left-28 bottom-1/2 transform translate-y-1/2 opacity-0 invisible group-hover/logout-btn:opacity-100 group-hover/logout-btn:visible transition-all duration-200 z-50 pointer-events-none">
+            <div onClick={() => { localStorage.removeItem("acces_token"); nav("/auth") }} className="absolute left-28 bottom-1/2 transform translate-y-1/2 opacity-0 invisible group-hover/logout-btn:opacity-100 group-hover/logout-btn:visible transition-all duration-200 z-50 pointer-events-none">
               <div className="bg-gradient-to-r from-red-600 to-pink-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-2xl whitespace-nowrap relative">
                 Log Out
                 <div className="absolute right-full top-1/2 transform -translate-y-1/2 w-2 h-2 bg-gradient-to-r from-red-600 to-pink-600 rotate-45 -mr-1"></div>
@@ -256,12 +302,12 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-6">
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
                 className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
               >
                 <FaBell size={20} />
-                {notifications.some(n => !n.read) && (
+                {notifications.some(n => !n.is_read) && (
                   <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
                 )}
               </button>
@@ -287,18 +333,18 @@ export default function Dashboard() {
                     {notifications.length > 0 ? (
                       notifications.map((notif) => (
                         <div
+                          onClick={() => goto(notif)}
                           key={notif.id}
-                          className={`p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${
-                            !notif.read ? "bg-blue-50 dark:bg-blue-900/20" : ""
-                          }`}
+                          className={`p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${!notif.read ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                            }`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
                               <p className="font-semibold text-gray-900 dark:text-white text-sm">{notif.title}</p>
-                              <p className="text-gray-600 dark:text-gray-400 text-xs mt-1">{notif.message}</p>
-                              <p className="text-gray-500 dark:text-gray-500 text-xs mt-2">{notif.time}</p>
+                              <p className="text-gray-600 dark:text-gray-400 text-xs mt-1">{notif.body}</p>
+                              <p className="text-gray-500 dark:text-gray-500 text-xs mt-2">{formatTimeAgo(notif.created_at)}</p>
                             </div>
-                            {!notif.read && (
+                            {!notif.is_read && (
                               <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
                             )}
                           </div>
