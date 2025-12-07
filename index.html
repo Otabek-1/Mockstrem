@@ -33,6 +33,65 @@
     <meta name="color-scheme" content="light dark" />
     
     <title>MockStream - Online IELTS & CEFR Mock Exams</title>
+    <style>
+      /* Global Text & Input Styles */
+      * {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      input, textarea, select, button {
+        font-family: inherit;
+        color: inherit;
+      }
+      
+      input::placeholder, textarea::placeholder {
+        color: rgba(107, 114, 128, 0.5);
+      }
+      
+      /* Light mode text */
+      body {
+        color: #111827;
+      }
+      
+      /* Dark mode text */
+      body.dark {
+        color: #f3f4f6;
+      }
+      
+      /* Input field styling */
+      input[type="text"], 
+      input[type="email"], 
+      input[type="password"], 
+      input[type="number"],
+      textarea, 
+      select {
+        background-color: #f3f4f6;
+        color: #111827;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 1rem;
+        transition: all 0.2s;
+      }
+      
+      body.dark input[type="text"], 
+      body.dark input[type="email"], 
+      body.dark input[type="password"], 
+      body.dark input[type="number"],
+      body.dark textarea, 
+      body.dark select {
+        background-color: #374151;
+        color: #f3f4f6;
+        border-color: #4b5563;
+      }
+      
+      input:focus, textarea:focus, select:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px #3b82f6;
+        border-color: #3b82f6;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
