@@ -11,16 +11,16 @@ export default function News() {
     const [news, setNews] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [user,setUser] = useState(null)
+    const [user, setUser] = useState(null)
 
     useEffect(() => {
         fetchNews()
 
-        api.get("/user/me").then(res=>{
-            if(res.status===200){
+        api.get("/user/me").then(res => {
+            if (res.status === 200) {
                 setUser(res.data)
             }
-        }).catch(err=>{
+        }).catch(err => {
             alert("Error! Reload page.")
         })
     }, [slug])
@@ -53,7 +53,7 @@ export default function News() {
             return dateString
         }
     }
-    
+
 
     if (loading) {
         return (
@@ -84,7 +84,7 @@ export default function News() {
 
     const react = (emoji) => {
         api.post(`/news/react/${news.id}`, { emoji }).then(res => {
-            
+
         }).catch(err => {
             // console.log(err);
         })
@@ -142,12 +142,18 @@ export default function News() {
 
                     <div className="w-full h-max mt-5 flex items-center gap-4 pl-5">
                         {emojis.map(emoji => {
+                            const reactionList = news.reactions?.[emoji] || [];
                             return (
-                                <span onClick={() => react(emoji)} className={`${news.reactions[emoji]?.includes(user.id)? "bg-blue-500" : "bg-white dark:bg-gray-700"} relative flex items-center gap-3 px-3 py-1   rounded-full shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-blue-500/70 transition-all cursor-pointer z-10`} style={{ textShadow: '0 0 10px rgba(59, 130, 246, 0.5)' }}>
-                                    {emoji} {news.reactions[emoji]?.length || 0}
+                                <span
+                                    onClick={() => react(emoji)}
+                                    className={`${reactionList.includes(user.id) ? "bg-blue-500" : "bg-white dark:bg-gray-700"} relative flex items-center gap-3 px-3 py-1 rounded-full shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-blue-500/70 transition-all cursor-pointer z-10`}
+                                    style={{ textShadow: '0 0 10px rgba(59, 130, 246, 0.5)' }}
+                                >
+                                    {emoji} {reactionList.length}
                                 </span>
                             )
                         })}
+
                     </div>
                 </div>
 
