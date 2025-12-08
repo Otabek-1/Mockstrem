@@ -13,6 +13,7 @@ import { MdClose, MdMenu, MdArrowDropDown } from "react-icons/md";
 import CEFR_Writing from "./CEFR_writing";
 import Users from "./Users";
 import { useNavigate } from "react-router-dom";
+import Main_admin from "./Main";
 
 export default function Dashboard_admin() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -129,6 +130,7 @@ export default function Dashboard_admin() {
       <div className="flex-1 ml-20 md:ml-0 p-6 overflow-auto">
         {activeMenu === "cefr_writing" && <CEFR_Writing />}
         {activeMenu === "Users" && <Users />}
+        {activeMenu === "Dashboard" && <Main_admin />}
       </div>
     </div>
   );

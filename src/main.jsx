@@ -12,6 +12,7 @@ import Dashboard_admin from './Admin/Dashboard.jsx'
 import WritingMockForm from './Admin/WritingMockForm.jsx'
 import WritingMocks from './Admin/WritingMocks.jsx'
 import MockResult from './Components/MockResult.jsx'
+import News from './Components/News.jsx'
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
@@ -27,6 +28,7 @@ createRoot(document.getElementById('root')).render(
       <Route path='/mock/cefr/writing/form' element={<WritingMockForm />}/>
       <Route path='/mock/cefr/writing/form/:id' element={<WritingMockForm />}/>
       <Route path='/mock/cefr/writing/check-list' element={<WritingMocks />}/>
+      <Route path='/news/:slug' element={<News />}/>
     </Routes>
   </BrowserRouter>
 )

@@ -1,36 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+import api from '../api'
+import { Link } from 'react-router-dom'
 
 export default function Main() {
     const [currentSlide, setCurrentSlide] = useState(0)
     const [autoPlay, setAutoPlay] = useState(true)
 
-    const slides = [
-        {
-            id: 1,
-            title: "New: IELTS Writing is available!",
-            image: "https://picsum.photos/800/400?random=1",
-            description: "Master your writing skills"
-        },
-        {
-            id: 2,
-            title: "CEFR Listening Course Updated",
-            image: "https://picsum.photos/800/400?random=2",
-            description: "Improve your listening abilities"
-        },
-        {
-            id: 3,
-            title: "Speaking Practice Sessions",
-            image: "https://picsum.photos/800/400?random=3",
-            description: "Enhance your pronunciation"
-        },
-        {
-            id: 4,
-            title: "Reading Comprehension Guide",
-            image: "https://picsum.photos/800/400?random=4",
-            description: "Ace your reading tests"
-        }
-    ]
+    const [slides, setSlides] = useState([]);
 
     useEffect(() => {
         if (!autoPlay) return
@@ -39,7 +16,14 @@ export default function Main() {
             setCurrentSlide((prev) => (prev + 1) % slides.length)
         }, 5000)
 
+        api.get("/news/").then(res=>{
+            setSlides(res.data);
+        }).catch(err=>{
+            console.log(err);
+        })
         return () => clearInterval(timer)
+
+        
     }, [autoPlay, slides.length])
 
     const nextSlide = () => {
@@ -82,25 +66,28 @@ export default function Main() {
                                         : 'opacity-0 scale-95'
                                 }`}
                             >
-                                {/* Background Image */}
-                                <img
-                                    src={slide.image}
-                                    alt={slide.title}
-                                    className='w-full h-full object-cover'
-                                />
-
-                                {/* Gradient Overlay */}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                                {/* Gradient Background - Chiroyli */}
+                                <div className='w-full h-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 dark:from-blue-700 dark:via-purple-800 dark:to-pink-700' />
 
                                 {/* Content */}
-                                <div className="absolute inset-0 flex flex-col justify-end p-8 text-white">
+                                <div className="absolute inset-0 flex flex-col justify-between p-8 text-white">
+                                    {/* Top Section */}
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="text-sm font-semibold text-cyan-200 uppercase tracking-wider">📰 Featured News</p>
+                                        </div>
+                                        <div className="backdrop-blur-md bg-white/10 px-4 py-2 rounded-full border border-white/30">
+                                            <p className="text-sm font-semibold">{currentSlide + 1} / {slides.length}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom Section */}
                                     <div className="space-y-3 animate-fade-in">
-                                        <p className="text-sm font-semibold text-cyan-400 uppercase tracking-wider">Featured</p>
-                                        <h2 className="text-4xl font-bold leading-tight">{slide.title}</h2>
-                                        <p className="text-lg text-gray-200">{slide.description}</p>
-                                        <button className="mt-4 px-6 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg font-semibold hover:shadow-lg hover:shadow-blue-500/50 transition-all duration-300 w-fit">
-                                            Learn More
-                                        </button>
+                                        <h2 className="text-5xl font-bold leading-tight drop-shadow-lg">{slide.title}</h2>
+                                        <p className="text-lg text-blue-100 drop-shadow-md line-clamp-3">{slide.body}</p>
+                                        <Link to={`/news/${slide.slug}`} className="mt-6 px-8 py-3 bg-white text-purple-600 rounded-lg font-bold hover:shadow-lg hover:shadow-white/50 transition-all duration-300 w-fit hover:scale-105 transform">
+                                            Read more
+                                        </Link>
                                     </div>
                                 </div>
                             </div>
@@ -136,11 +123,6 @@ export default function Main() {
                             />
                         ))}
                     </div>
-
-                    {/* Slide Counter */}
-                    <div className="absolute top-6 right-6 z-20 bg-black/40 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-semibold">
-                        {currentSlide + 1} / {slides.length}
-                    </div>
                 </div>
 
                 {/* Info Cards Below */}
@@ -149,15 +131,15 @@ export default function Main() {
                         <div
                             key={slide.id}
                             onClick={() => goToSlide(index)}
-                            className={`p-4 rounded-lg cursor-pointer transition-all duration-300 ${
+                            className={`p-6 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 ${
                                 index === currentSlide
-                                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
-                                    : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white hover:shadow-md'
+                                    ? 'bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 text-white shadow-2xl'
+                                    : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white hover:shadow-lg'
                             }`}
                         >
-                            <h4 className="font-semibold text-sm">{slide.title}</h4>
-                            <p className={`text-xs mt-2 ${index === currentSlide ? 'text-blue-100' : 'text-gray-600 dark:text-gray-400'}`}>
-                                {slide.description}
+                            <h4 className="font-bold text-sm line-clamp-2">{slide.title}</h4>
+                            <p className={`text-xs mt-2 line-clamp-2 ${index === currentSlide ? 'text-blue-100' : 'text-gray-600 dark:text-gray-400'}`}>
+                                {slide.body}
                             </p>
                         </div>
                     ))}

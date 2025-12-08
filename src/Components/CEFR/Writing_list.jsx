@@ -293,6 +293,7 @@ export default function WritingList({ isPremium = false }) {
                 </div>
               </div>
               <button
+              style={{color:"purple"}}
                 onClick={() => navigate(!isPremium ? '/plans' : `/mock/cefr/writing/${selectedTask.id}?part=all`)}
                 className="px-4 py-2 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100 transition-all transform hover:scale-105 cursor-pointer"
               >
