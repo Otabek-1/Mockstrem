@@ -84,7 +84,7 @@ export default function Main() {
                                     {/* Bottom Section */}
                                     <div className="space-y-3 animate-fade-in">
                                         <h2 className="text-5xl font-bold leading-tight drop-shadow-lg">{slide.title}</h2>
-                                        <p className="text-lg text-blue-100 drop-shadow-md line-clamp-3">{slide.body}</p>
+                                        <div className="text-lg text-blue-100 drop-shadow-md line-clamp-3" dangerouslySetInnerHTML={{ __html: slide.body }}></div>
                                         <Link to={`/news/${slide.slug}`} className="mt-6 px-8 py-3 bg-white text-purple-600 rounded-lg font-bold hover:shadow-lg hover:shadow-white/50 transition-all duration-300 w-fit hover:scale-105 transform">
                                             Read more
                                         </Link>
@@ -138,9 +138,8 @@ export default function Main() {
                             }`}
                         >
                             <h4 className="font-bold text-sm line-clamp-2">{slide.title}</h4>
-                            <p className={`text-xs mt-2 line-clamp-2 ${index === currentSlide ? 'text-blue-100' : 'text-gray-600 dark:text-gray-400'}`}>
-                                {slide.body}
-                            </p>
+                            <div dangerouslySetInnerHTML={{ __html: slide.body }} className={`text-xs mt-2 line-clamp-2 ${index === currentSlide ? 'text-blue-100' : 'text-gray-600 dark:text-gray-400'}`}>
+                            </div>
                         </div>
                     ))}
                 </div>
