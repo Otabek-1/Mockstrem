@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { FaClock, FaCheck, FaPlus, FaMinus, FaMoon, FaSun } from 'react-icons/fa'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import api from '../../api'
 
 export default function WritingExam() {
@@ -9,28 +9,72 @@ export default function WritingExam() {
   const [answers, setAnswers] = useState({ t11: '', t12: '', t2: '' })
   const [submitted, setSubmitted] = useState(false)
   const [part, setPart] = useState(null)
-  const [isFullMock, setIsFullMock] = useState(false);
-  const [mockData, setMockData] = useState();
+  const [isFullMock, setIsFullMock] = useState(false)
+  const [mockData, setMockData] = useState(null)
   const [fontSize, setFontSize] = useState(100)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [leftPanelWidth, setLeftPanelWidth] = useState(50)
   const [isDragging, setIsDragging] = useState(false)
   const [expandedTask, setExpandedTask] = useState(null)
+  const [user, setUser] = useState(null)
   const containerRef = useRef(null)
+  const nav = useNavigate()
+  const { id } = useParams()
 
-  const { id } = useParams();
+  // BIRINCHI: User ma'lumotlarini olish
+  useEffect(() => {
+    api.get('/user/me').then(res => {
+      setUser(res.data)
+    }).catch(err => {
+      alert("Error! Reload page or contact to support.")
+      console.error(err)
+    })
+  }, [])
 
-  // Handle drag to resize panels
+  // IKKINCHI: User yuklangandan KEYIN exam ma'lumotlarini olish
+  useEffect(() => {
+    if (!user) return // User yuklanmasa hech narsa qilmaymiz
+
+    const params = new URLSearchParams(window.location.search)
+    const partParam = params.get('part')
+    
+    if (partParam === 'all' && user.premium_duration && new Date(user.premium_duration) > new Date()) {
+      setIsFullMock(true)
+      setPart('all')
+      setTimeLeft(3600) // 60 minutes
+    } else if (partParam === '1') {
+      setPart(1)
+      setTimeLeft(1200) // 20 minutes
+    } else if (partParam === '2') {
+      setPart(2)
+      setTimeLeft(1500) // 25 minutes
+    } else {
+      nav("/plans")
+      return
+    }
+
+    setExamStarted(true)
+
+    // Mock data olish
+    api.get(`/mock/writing/mock/${id}`).then(res => {
+      setMockData(res.data)
+    }).catch(err => {
+      alert("Error in getting mock. Reload page or contact to support.")
+      console.error(err)
+    })
+  }, [user, id, nav])
+
+  // Drag to resize panels
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isDragging) return
-      
+
       const container = containerRef.current
       if (!container) return
 
       const rect = container.getBoundingClientRect()
       const newWidth = ((e.clientX - rect.left) / rect.width) * 100
-      
+
       if (newWidth > 30 && newWidth < 70) {
         setLeftPanelWidth(newWidth)
       }
@@ -51,33 +95,7 @@ export default function WritingExam() {
     }
   }, [isDragging])
 
-  // Get query parameters
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const partParam = params.get('part')
-
-    if (partParam === 'all') {
-      setIsFullMock(true)
-      setPart('all')
-      setTimeLeft(3600) // 60 minutes
-    } else if (partParam === '1') {
-      setPart(1)
-      setTimeLeft(1200) // 20 minutes
-    } else if (partParam === '2') {
-      setPart(2)
-      setTimeLeft(1500) // 25 minutes
-    }
-
-    setExamStarted(true)
-
-    api.get(`/mock/writing/mock/${id}`).then(res => {
-      setMockData(res.data);
-    }).catch(err => {
-      alert("Error in getting mock. Reload page or contact to support.")
-      console.log(err);
-    })
-  }, [])
-
+  // Timer
   useEffect(() => {
     if (!examStarted || submitted || timeLeft === 0) return
 
@@ -92,7 +110,7 @@ export default function WritingExam() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [examStarted, submitted])
+  }, [examStarted, submitted, timeLeft])
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
@@ -107,15 +125,18 @@ export default function WritingExam() {
   }
 
   const handleSubmit = () => {
-    api.post(`/mock/writing/submit?token=${localStorage.getItem("access_token")}`, { mock_id: id, task1: `${answers.t11} ---TASK--- ${answers.t12}`, task2: answers.t2 }).then(res => {
+    api.post(`/mock/writing/submit?token=${localStorage.getItem("access_token")}`, { 
+      mock_id: id, 
+      task1: `${answers.t11} ---TASK--- ${answers.t12}`, 
+      task2: answers.t2 
+    }).then(res => {
       if (res.status) {
-        setSubmitted(true);
+        setSubmitted(true)
       }
     }).catch(err => {
-      alert("Error in submitting, before reload page, make sure you've copied your writings :)");
-      console.log(err);
+      alert("Error in submitting, before reload page, make sure you've copied your writings :)")
+      console.error(err)
     })
-
   }
 
   // Expanded textarea modal component
@@ -123,7 +144,6 @@ export default function WritingExam() {
     return (
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div className={`rounded-2xl shadow-2xl max-w-5xl w-full h-[90vh] flex flex-col transition-colors ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-          {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 flex items-center justify-between">
             <h2 className="text-2xl font-bold">{title}</h2>
             <button
@@ -134,7 +154,6 @@ export default function WritingExam() {
             </button>
           </div>
 
-          {/* Textarea */}
           <div className="flex-1 p-6 overflow-hidden flex flex-col">
             <textarea
               autoFocus
@@ -142,8 +161,7 @@ export default function WritingExam() {
               onChange={(e) => onSave(e.target.value)}
               className={`flex-1 p-4 border-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none resize-none font-serif text-lg transition-colors ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'border-gray-300'}`}
             />
-            
-            {/* Word count and close button */}
+
             <div className="mt-4 flex items-center justify-between">
               <span className={`text-lg font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Word count: {wordCount(value)}
@@ -212,7 +230,7 @@ export default function WritingExam() {
     )
   }
 
-  if (!mockData) {
+  if (!mockData || !user) {
     return (
       <div className={`min-h-screen flex items-center justify-center transition-colors ${isDarkMode ? 'bg-gray-900' : 'bg-gray-900'}`}>
         <div className="text-center">
@@ -282,7 +300,7 @@ export default function WritingExam() {
       <div className={`h-1.5 transition-colors ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'}`}>
         <div
           className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
-          style={{ width: `${Math.max(0, 100 - (timeLeft / (isFullMock ? 36 : 10)))}%` }}
+          style={{ width: `${Math.max(0, 100 - (timeLeft / (isFullMock ? 36 : (part === 1 ? 12 : 15))))}%` }}
         />
       </div>
 
@@ -290,7 +308,7 @@ export default function WritingExam() {
       <div className="flex-1 max-w-full mx-auto w-full px-4 py-8 overflow-hidden" ref={containerRef}>
         <div className="flex gap-4 h-full flex-col lg:flex-row">
           {/* Left Panel - Tasks */}
-          <div 
+          <div
             className={`overflow-y-auto transition-all duration-300`}
             style={{ flex: `0 0 ${window.innerWidth < 1024 ? '100%' : `${leftPanelWidth}%`}` }}
           >
@@ -366,7 +384,7 @@ export default function WritingExam() {
           )}
 
           {/* Right Panel - Writing Areas */}
-          <div 
+          <div
             className={`overflow-y-auto transition-all duration-300`}
             style={{ flex: `0 0 ${window.innerWidth < 1024 ? '100%' : `${100 - leftPanelWidth}%`}` }}
           >
@@ -387,13 +405,6 @@ export default function WritingExam() {
                           <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                             <strong>Words:</strong> {wordCount(answers.t11)}/50
                           </span>
-                          {/* <button
-                            onClick={() => setExpandedTask('t11')}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm font-semibold transition"
-                            title="Expand to full screen"
-                          >
-                            ⬆️ Expand
-                          </button> */}
                         </div>
                       </div>
                       <textarea
@@ -418,13 +429,6 @@ export default function WritingExam() {
                           <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                             <strong>Words:</strong> {wordCount(answers.t12)}/150
                           </span>
-                          {/* <button
-                            onClick={() => setExpandedTask('t12')}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm font-semibold transition"
-                            title="Expand to full screen"
-                          >
-                            ⬆️ Expand
-                          </button> */}
                         </div>
                       </div>
                       <textarea
@@ -459,13 +463,6 @@ export default function WritingExam() {
                           <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                             <strong>Words:</strong> {wordCount(answers.t2)}/200
                           </span>
-                          {/* <button
-                            onClick={() => setExpandedTask('t2')}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm font-semibold transition"
-                            title="Expand to full screen"
-                          >
-                            ⬆️ Expand
-                          </button> */}
                         </div>
                       </div>
                       <textarea
