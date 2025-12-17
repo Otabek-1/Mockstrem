@@ -239,8 +239,9 @@ export default function CERFSpeakingExam() {
         console.error('Recording error:', e);
       };
 
-      // Start recording - this will collect data until stopped
-      mediaRecorder.start();
+      // Start recording with timeslice to collect chunks every 100ms
+      // This ensures audio data is captured continuously
+      mediaRecorder.start(100);
       
     } catch (error) {
       console.error('Microphone error:', error);
@@ -278,6 +279,10 @@ export default function CERFSpeakingExam() {
         if (micTestStreamRef.current) {
           micTestStreamRef.current.getTracks().forEach(track => track.stop());
         }
+      };
+
+      // Start recording with timeslice to collect chunks every 100ms
+      mediaRecorder.start(100);
       };
 
       mediaRecorder.start();
