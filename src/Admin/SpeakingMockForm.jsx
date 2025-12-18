@@ -416,7 +416,7 @@ function Part3({ questions, onUpdate }) {
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                                 rows="4"
                                 value={(questions[0].for_points || []).join("\n")}
-                                onChange={(e) => onUpdate(0, "for_points", e.target.value.split("\n").filter(b => b.trim()))}
+                                onChange={(e) => onUpdate(0, "for_points", e.target.value.split("\n"))}
                                 placeholder="Many successful entrepreneurs never completed university&#10;Online courses provide alternatives"
                             />
                         </div>
@@ -426,7 +426,7 @@ function Part3({ questions, onUpdate }) {
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                                 rows="4"
                                 value={(questions[0].against_points || []).join("\n")}
-                                onChange={(e) => onUpdate(0, "against_points", e.target.value.split("\n").filter(b => b.trim()))}
+                                onChange={(e) => onUpdate(0, "against_points", e.target.value.split("\n"))}
                                 placeholder="A degree increases job opportunities&#10;Some professions require formal education"
                             />
                         </div>

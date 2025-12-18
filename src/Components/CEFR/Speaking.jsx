@@ -10,15 +10,15 @@ export default function CERFSpeakingExam() {
   const [selectedMockId, setSelectedMockId] = useState(null)
   const [mocks, setMocks] = useState([])
   const [mockData, setMockData] = useState(null)
-  
+
   // Timing states
   const [stage, setStage] = useState('idle')
   const [timeLeft, setTimeLeft] = useState(0)
   const [totalTime, setTotalTime] = useState(0)
-  
+
   // Recording states
   const [recordings, setRecordings] = useState({})
-  
+
   // Microphone states
   const [micTestRecording, setMicTestRecording] = useState(false)
   const [micTestAudio, setMicTestAudio] = useState(null)
@@ -29,7 +29,7 @@ export default function CERFSpeakingExam() {
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
-  
+
   // Refs
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
@@ -38,6 +38,31 @@ export default function CERFSpeakingExam() {
   const micTestStreamRef = useRef(null)
   const micTestAudioChunksRef = useRef([])
   const recordedBlobsRef = useRef({})
+
+  const enterFullscreen = () => {
+    const elem = document.documentElement
+
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen()
+    } else if (elem.webkitRequestFullscreen) {
+      elem.webkitRequestFullscreen()
+    } else if (elem.msRequestFullscreen) {
+      elem.msRequestFullscreen()
+    }
+  }
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    }
+  }
+
+  useEffect(() => {
+    if (screen === 'results') {
+      exitFullscreen()
+    }
+  }, [screen])
+
 
   // ===== FETCH MOCKS =====
   useEffect(() => {
@@ -166,7 +191,7 @@ export default function CERFSpeakingExam() {
         'audio/ogg;codecs=opus',
         'audio/mp4'
       ]
-      
+
       let mimeType = ''
       let mediaRecorder
 
@@ -191,20 +216,20 @@ export default function CERFSpeakingExam() {
       }
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { 
-          type: mimeType || 'audio/webm' 
+        const blob = new Blob(audioChunksRef.current, {
+          type: mimeType || 'audio/webm'
         })
-        
+
         // Save blob for submission
         recordedBlobsRef.current[`q${questionId}`] = blob
-        
+
         const localUrl = URL.createObjectURL(blob)
-        
+
         setRecordings(prev => ({
           ...prev,
           [`q${questionId}`]: localUrl
         }))
-        
+
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(t => t.stop())
           streamRef.current = null
@@ -212,7 +237,7 @@ export default function CERFSpeakingExam() {
       }
 
       mediaRecorder.start()
-      
+
     } catch (error) {
       console.error('Microphone error:', error)
       alert('Microphone access required! Please allow microphone permissions.')
@@ -269,10 +294,10 @@ export default function CERFSpeakingExam() {
   // ===== GET CURRENT QUESTION =====
   const getCurrentQuestion = () => {
     if (!mockData || !currentPart) return null
-    
+
     const questions = mockData[currentPart]
     if (!questions || !questions[currentQuestion]) return null
-    
+
     return questions[currentQuestion]
   }
 
@@ -301,7 +326,7 @@ export default function CERFSpeakingExam() {
               setTotalTime(q.speak_time)
             }
             playStartSound()
-            
+
             const q2 = getCurrentQuestion()
             if (q2) {
               startRecording(q2.id)
@@ -313,7 +338,7 @@ export default function CERFSpeakingExam() {
           }
           return 0
         }
-        
+
         return prev - 1
       })
     }, 1000)
@@ -351,9 +376,9 @@ export default function CERFSpeakingExam() {
     setStage('reading')
     setTimeLeft(5)
     setTotalTime(5)
-    
+
     await speakTextWithGTTS(q.question_text, 'en')
-    
+
     setStage('preparing')
     setTimeLeft(q.prep_time)
     setTotalTime(q.prep_time)
@@ -523,11 +548,10 @@ export default function CERFSpeakingExam() {
                 stopMicTestRecording()
               }
             }}
-            className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center text-4xl font-bold transition-all mb-4 ${
-              micTestRecording
-                ? 'bg-red-500 text-white scale-110'
-                : 'bg-emerald-500 text-white hover:bg-emerald-600'
-            }`}
+            className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center text-4xl font-bold transition-all mb-4 ${micTestRecording
+              ? 'bg-red-500 text-white scale-110'
+              : 'bg-emerald-500 text-white hover:bg-emerald-600'
+              }`}
           >
             {micTestRecording ? '⏹' : '🎙️'}
           </button>
@@ -550,6 +574,7 @@ export default function CERFSpeakingExam() {
 
           <button
             onClick={() => {
+              enterFullscreen()
               setMicPermissionGranted(true)
               setScreen('exam')
               setCurrentPart('1.1')
@@ -581,13 +606,12 @@ export default function CERFSpeakingExam() {
               {['1.1', '1.2', '2', '3'].map(part => (
                 <div
                   key={part}
-                  className={`px-4 py-2 rounded-full font-bold text-sm ${
-                    part === currentPart
-                      ? 'bg-emerald-500 text-white'
-                      : ['1.1', '1.2', '2', '3'].indexOf(part) < ['1.1', '1.2', '2', '3'].indexOf(currentPart)
+                  className={`px-4 py-2 rounded-full font-bold text-sm ${part === currentPart
+                    ? 'bg-emerald-500 text-white'
+                    : ['1.1', '1.2', '2', '3'].indexOf(part) < ['1.1', '1.2', '2', '3'].indexOf(currentPart)
                       ? 'bg-green-300 text-white'
                       : 'bg-yellow-300 text-slate-800'
-                  }`}
+                    }`}
                 >
                   {part}
                 </div>
@@ -605,11 +629,10 @@ export default function CERFSpeakingExam() {
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <div className={`text-sm font-bold ${
-              stage === 'reading' ? 'text-blue-600' :
+            <div className={`text-sm font-bold ${stage === 'reading' ? 'text-blue-600' :
               stage === 'preparing' ? 'text-yellow-600' :
-              stage === 'speaking' ? 'text-red-600' : ''
-            }`}>
+                stage === 'speaking' ? 'text-red-600' : ''
+              }`}>
               {stage === 'reading' && '📖 Question is being read'}
               {stage === 'preparing' && '⏱️ Prepare your answer'}
               {stage === 'speaking' && '🎤 SPEAKING (Recording)'}

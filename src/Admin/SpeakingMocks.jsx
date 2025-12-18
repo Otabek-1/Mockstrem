@@ -75,7 +75,6 @@ export default function SpeakingMocks() {
   };
 
   const handleSubmitReview = async (id) => {
-    // ✅ FIX: Dot (.) o'rniga underscore (_) ishlatilgandi
     if (!evaluation.scores["part1.1"] || !evaluation.scores["part1.2"] || !evaluation.scores["part2"] || !evaluation.scores["part3"]) {
       alert("Please fill all scores");
       return;
@@ -130,6 +129,26 @@ export default function SpeakingMocks() {
     return matchesQuery;
   });
 
+  // ✅ FIX: Audio URL'larni Supabase'dan olish
+  const getAudioUrls = (recordings) => {
+    if (!recordings) return {};
+    
+    // Supabase storage'dan kelgan URL'lar
+    if (recordings.audios) {
+      return recordings.audios; // {q1: url, q2: url, ...}
+    }
+    
+    // Backend storage'dan kelgan URL'lar (eski format)
+    if (recordings.folder) {
+      const urls = {};
+      ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8'].forEach(key => {
+        urls[key] = `http://127.0.0.1:8000/${recordings.folder}/${key}.webm`;
+      });
+      return urls;
+    }
+    
+    return {};
+  };
 
   return (
     <div className="p-6">
@@ -214,31 +233,39 @@ export default function SpeakingMocks() {
               {users.find(u => u.id === selected.user_id)?.username} – ID: {selected.id}
             </h2>
 
-            {/* AUDIO FILES PREVIEW */}
-            {selected?.recordings?.folder && (
+            {/* AUDIO FILES PREVIEW - SUPABASE VERSION */}
+            {selected?.recordings && (selected.recordings.audios || selected.recordings.folder) && (
               <div className="mb-6 p-4 bg-gray-50 rounded">
                 <h3 className="font-semibold mb-3">🎙️ Recorded Audio</h3>
-                {['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8'].map((key) => {
-                  const audioUrl = `http://127.0.0.1:8000/${selected.recordings.folder}/${key}.webm`;
-                  return (
-                    <div key={key} className="flex items-center gap-3 mb-3 p-2 bg-white rounded border">
-                      <span className="text-sm font-semibold text-gray-700 min-w-12">
-                        Q{key.replace('q', '')}
-                      </span>
-                      <audio controls className="flex-1 h-8">
-                        <source src={audioUrl} type="audio/webm" />
-                        Your browser does not support audio.
-                      </audio>
-                      <a
-                        href={audioUrl}
-                        download={`question_${key.replace('q', '')}.webm`}
-                        className="text-blue-600 hover:underline text-sm font-medium whitespace-nowrap"
-                      >
-                        ⬇️ Download
-                      </a>
-                    </div>
-                  );
-                })}
+                {(() => {
+                  const audioUrls = getAudioUrls(selected.recordings);
+                  const questions = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8'];
+                  
+                  return questions.map((key) => {
+                    const audioUrl = audioUrls[key];
+                    
+                    if (!audioUrl) return null; // Audio mavjud bo'lmasa o'tkazib yuborish
+                    
+                    return (
+                      <div key={key} className="flex items-center gap-3 mb-3 p-2 bg-white rounded border">
+                        <span className="text-sm font-semibold text-gray-700 min-w-12">
+                          Q{key.replace('q', '')}
+                        </span>
+                        <audio controls className="flex-1 h-8">
+                          <source src={audioUrl} type="audio/webm" />
+                          Your browser does not support audio.
+                        </audio>
+                        <a
+                          href={audioUrl}
+                          download={`question_${key.replace('q', '')}.webm`}
+                          className="text-blue-600 hover:underline text-sm font-medium whitespace-nowrap"
+                        >
+                          ⬇️ Download
+                        </a>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
 
