@@ -1,28 +1,36 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Mic, Play, Volume2, CheckCircle, Clock, AlertCircle, Download, Settings, BookOpen } from 'lucide-react'
+import { Mic, Play, Volume2, CheckCircle, Clock, AlertCircle, Download, Settings, BookOpen, Upload } from 'lucide-react'
+import api from '../../api'
 
 export default function CERFSpeakingExam() {
   // ===== STATES =====
-  const [screen, setScreen] = useState('rules') // rules, miccheck, exam, results
+  const [screen, setScreen] = useState('rules')
   const [currentPart, setCurrentPart] = useState(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  
+  const [mockData, setMockData] = useState(null)
+  const [selectedMockId, setSelectedMockId] = useState(null)
+  const [mocks, setMocks] = useState([])
+
   // Timing states
   const [stage, setStage] = useState('idle')
   const [timeLeft, setTimeLeft] = useState(0)
   const [totalTime, setTotalTime] = useState(0)
-  
+
   // Recording states
-  const [recordings, setRecordings] = useState({})
-  
+  const recordedBlobsRef = useRef({});
+  const [recordings, setRecordings] = useState({});
+  const [uploading, setUploading] = useState(false)
+
   // Microphone states
   const [micTestRecording, setMicTestRecording] = useState(false)
   const [micTestAudio, setMicTestAudio] = useState(null)
   const [micPermissionGranted, setMicPermissionGranted] = useState(false)
-  
+
   // UI states
   const [soundEnabled, setSoundEnabled] = useState(true)
-  
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
   // Refs
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
@@ -30,114 +38,57 @@ export default function CERFSpeakingExam() {
   const micTestRecorderRef = useRef(null)
   const micTestStreamRef = useRef(null)
   const micTestAudioChunksRef = useRef([])
-  const currentQuestionRef = useRef(0)
-  const currentPartRef = useRef(null)
 
-  // ===== QUESTION DATA =====
-  const questionsData = {
-    '1.1': [
-      {
-        id: 1,
-        question: "What kind of clothes do you like to wear?",
-        prep: 5,
-        speak: 30,
-        image: "https://images.unsplash.com/photo-1489749798305-4fea3ba63d60?w=500&h=300&fit=crop"
-      },
-      {
-        id: 2,
-        question: "Can you describe a meal you can cook?",
-        prep: 5,
-        speak: 30,
-        image: "https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=500&h=300&fit=crop"
-      },
-      {
-        id: 3,
-        question: "Tell me about a TV show you enjoy",
-        prep: 5,
-        speak: 30,
-        image: "https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=500&h=300&fit=crop"
+  // ===== FETCH MOCKS =====
+  useEffect(() => {
+    const fetchMocks = async () => {
+      try {
+        setLoading(true)
+        const response = await api.get('/mock/speaking/all')
+        setMocks(response.data)
+      } catch (err) {
+        setError('Failed to load mocks')
+        console.error(err)
+      } finally {
+        setLoading(false)
       }
-    ],
-    '1.2': [
-      {
-        id: 4,
-        question: "What do you see in these pictures?",
-        prep: 10,
-        speak: 45,
-        images: [
-          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=300&fit=crop",
-          "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=300&h=300&fit=crop"
-        ]
-      },
-      {
-        id: 5,
-        question: "What are the benefits of spending time in nature?",
-        prep: 5,
-        speak: 30,
-        images: [
-          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=300&fit=crop",
-          "https://images.unsplash.com/photo-1511379938547-c1f69b13d835?w=300&h=300&fit=crop"
-        ]
-      },
-      {
-        id: 6,
-        question: "Why do some people prefer living in a big city instead of the countryside?",
-        prep: 5,
-        speak: 30,
-        images: [
-          "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=300&h=300&fit=crop",
-          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=300&fit=crop"
-        ]
-      }
-    ],
-    '2': [
-      {
-        id: 7,
-        question: "Discuss: Curiosity in Learning",
-        bullets: [
-          "Share a time when your curiosity led you to discover something valuable",
-          "How has curiosity influenced your personal or professional growth?",
-          "In what ways does curiosity drive innovation and progress in society?"
-        ],
-        prep: 60,
-        speak: 120
-      }
-    ],
-    '3': [
-      {
-        id: 8,
-        question: "University Degrees Are No Longer Necessary for a Successful Career",
-        for: [
-          "Many successful entrepreneurs never completed university",
-          "Online courses and self-learning provide alternatives",
-          "Some industries prioritize skills over formal qualifications"
-        ],
-        against: [
-          "A degree often increases job opportunities and pay",
-          "Some professions require formal education",
-          "University offers important networking"
-        ],
-        prep: 60,
-        speak: 120
-      }
-    ]
-  }
+    }
+
+    if (screen === 'rules') {
+      fetchMocks()
+    }
+  }, [screen])
+
+  // ===== FETCH MOCK DATA =====
+  const loadMockData = async (mockId) => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/mock/speaking/mock/${mockId}`);
+      setMockData(response.data.questions.questions);
+      setSelectedMockId(mockId);
+    } catch (err) {
+      setError('Failed to load mock');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ===== SOUND EFFECTS =====
   const playBeep = (frequency = 440, duration = 100) => {
     if (!soundEnabled) return;
-    
+
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
+
       oscillator.type = 'sine';
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-      
+
       oscillator.start();
       setTimeout(() => {
         oscillator.stop();
@@ -164,37 +115,76 @@ export default function CERFSpeakingExam() {
     return `${mins}:${String(secs).padStart(2, '0')}`
   }
 
-  const speakText = async (text) => {
+  // ===== gTTS TEXT-TO-SPEECH =====
+  const speakTextWithGTTS = async (text, language = 'en') => {
     try {
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.rate = 0.9
-      return new Promise(resolve => {
-        utterance.onend = resolve
-        speechSynthesis.speak(utterance)
-      })
+      const encodedText = encodeURIComponent(text);
+      const audioUrl = `https://gtts.vercel.app/api/speak?text=${encodedText}&lang=${language}`;
+
+      const audio = new Audio(audioUrl);
+
+      return new Promise((resolve) => {
+        audio.onended = resolve;
+        audio.onerror = () => {
+          console.error('gTTS error, falling back to native TTS');
+          speakTextNative(text).then(resolve);
+        };
+        audio.play();
+      });
     } catch (e) {
-      console.error('TTS Error:', e)
+      console.error('gTTS Error:', e);
+      return speakTextNative(text);
     }
   }
 
-  // ===== RECORDING FUNCTIONS - FIXED LOGIC =====
+  const speakTextNative = async (text) => {
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      return new Promise(resolve => {
+        utterance.onend = resolve;
+        speechSynthesis.speak(utterance);
+      });
+    } catch (e) {
+      console.error('TTS Error:', e);
+    }
+  }
+
+  // ===== UPLOAD AUDIO TO S3 =====
+  const uploadAudioToS3 = async (blob, questionId) => {
+    try {
+      const formData = new FormData()
+      formData.append('file', blob, `q${questionId}.webm`)
+      formData.append('question_id', questionId)
+
+      const response = await api.post('/upload/audio', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      return response.data.url
+    } catch (err) {
+      console.error('Upload error:', err)
+      return null
+    }
+  }
+
+  // ===== RECORDING FUNCTIONS =====
   const startRecording = async (questionId) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       audioChunksRef.current = [];
 
-      // Try to use optimal MIME type
       const tryMimeTypes = [
         'audio/webm;codecs=opus',
         'audio/webm',
         'audio/ogg;codecs=opus',
         'audio/mp4'
       ];
-      
+
       let mimeType = '';
       let mediaRecorder;
-      
+
       for (const type of tryMimeTypes) {
         if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {
           mimeType = type;
@@ -202,8 +192,7 @@ export default function CERFSpeakingExam() {
           break;
         }
       }
-      
-      // Fallback if no optimal type found
+
       if (!mediaRecorder) {
         mediaRecorder = new MediaRecorder(stream);
       }
@@ -217,19 +206,20 @@ export default function CERFSpeakingExam() {
       };
 
       mediaRecorder.onstop = () => {
-        // Create blob from all collected chunks
-        const blob = new Blob(audioChunksRef.current, { 
-          type: mimeType || 'audio/webm' 
+        const blob = new Blob(audioChunksRef.current, {
+          type: mimeType || 'audio/webm'
         });
-        const url = URL.createObjectURL(blob);
-        
-        // Save recording with proper question ID
+
+        // ✅ Saqlash: faqat blob, URL emas
+        recordedBlobsRef.current[`q${questionId}`] = blob;
+
+        // Optional: preview uchun URL yaratish
+        const localUrl = URL.createObjectURL(blob);
         setRecordings(prev => ({
           ...prev,
-          [`q${questionId}`]: url
+          [`q${questionId}`]: localUrl
         }));
-        
-        // Clean up stream
+
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
         }
@@ -239,9 +229,8 @@ export default function CERFSpeakingExam() {
         console.error('Recording error:', e);
       };
 
-      // Start recording - this will collect data until stopped
       mediaRecorder.start();
-      
+
     } catch (error) {
       console.error('Microphone error:', error);
       alert('Microphone access required! Please allow microphone permissions.');
@@ -274,7 +263,7 @@ export default function CERFSpeakingExam() {
         const blob = new Blob(micTestAudioChunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(blob);
         setMicTestAudio(url);
-        
+
         if (micTestStreamRef.current) {
           micTestStreamRef.current.getTracks().forEach(track => track.stop());
         }
@@ -303,21 +292,20 @@ export default function CERFSpeakingExam() {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(interval);
-          
+
           if (stage === 'reading') {
             setStage('preparing');
-            const q = questionsData[currentPart][currentQuestion];
-            setTimeLeft(q.prep);
-            setTotalTime(q.prep);
+            const q = getCurrentQuestion();
+            setTimeLeft(q.prep_time);
+            setTotalTime(q.prep_time);
             playStartSound();
           } else if (stage === 'preparing') {
             setStage('speaking');
-            const q = questionsData[currentPart][currentQuestion];
-            setTimeLeft(q.speak);
-            setTotalTime(q.speak);
+            const q = getCurrentQuestion();
+            setTimeLeft(q.speak_time);
+            setTotalTime(q.speak_time);
             playStartSound();
-            
-            // Start recording with the actual question ID
+
             startRecording(q.id);
           } else if (stage === 'speaking') {
             stopRecording();
@@ -326,11 +314,7 @@ export default function CERFSpeakingExam() {
           }
           return 0;
         }
-        
-        if (prev <= 5 && stage === 'speaking') {
-          playBeep(440, 100);
-        }
-        
+
         return prev - 1;
       });
     }, 1000);
@@ -338,10 +322,24 @@ export default function CERFSpeakingExam() {
     return () => clearInterval(interval);
   }, [timeLeft, stage, currentPart, currentQuestion]);
 
+  // ===== GET CURRENT QUESTION =====
+  const getCurrentQuestion = () => {
+    if (!mockData || !currentPart || !mockData[currentPart]) return null;
+
+    const questions = mockData[currentPart];
+    if (currentQuestion < 0 || currentQuestion >= questions.length) return null;
+
+    return questions[currentQuestion];
+  };
+
   const moveToNext = () => {
+    if (!mockData) return;
+
     const parts = ['1.1', '1.2', '2', '3'];
     const currentIdx = parts.indexOf(currentPart);
-    const questionsInPart = questionsData[currentPart].length;
+    if (currentIdx === -1) return;
+
+    const questionsInPart = mockData[currentPart]?.length || 0;
 
     if (currentQuestion < questionsInPart - 1) {
       setCurrentQuestion(currentQuestion + 1);
@@ -352,31 +350,31 @@ export default function CERFSpeakingExam() {
       setCurrentQuestion(0);
       setStage('idle');
     } else {
-      setScreen('results');
+      submitExam();
     }
-  }
+  };
 
   const startQuestion = async () => {
-    const q = questionsData[currentPart][currentQuestion];
+    const q = getCurrentQuestion();
+    if (!q) return;
+
     setStage('reading');
     setTimeLeft(5);
     setTotalTime(5);
-    
-    await speakText(q.question);
-    
+
+    await speakTextWithGTTS(q.question_text, 'en');
+
     setStage('preparing');
-    setTimeLeft(q.prep);
-    setTotalTime(q.prep);
+    setTimeLeft(q.prep_time);
+    setTotalTime(q.prep_time);
   }
 
-  // Auto-start first question when entering exam screen
   useEffect(() => {
-    if (screen === 'exam' && stage === 'idle' && currentPart && currentQuestion >= 0) {
+    if (screen === 'exam' && stage === 'idle' && currentPart && currentQuestion >= 0 && mockData) {
       startQuestion();
     }
-  }, [screen, currentPart, currentQuestion]);
+  }, [screen, currentPart, currentQuestion, mockData]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (streamRef.current) {
@@ -388,7 +386,73 @@ export default function CERFSpeakingExam() {
     };
   }, []);
 
-  // ===== DOWNLOAD INDIVIDUAL RECORDINGS =====
+
+  // ===== DEV SHORTCUT: Ctrl+Alt+P ➜ next or submit =====
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+Alt+P yoki Cmd+Option+P
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.altKey &&
+        (e.key === 'p' || e.key === 'P')
+      ) {
+        e.preventDefault();
+        if (screen === 'exam' && mockData) {
+          if (stage === 'speaking') {
+            // Agar hozir recording davom etayotgan bo'lsa, to'xtatish
+            stopRecording();
+            playLongBeep();
+            setTimeout(() => moveToNext(), 100);
+          } else if (stage === 'idle' || stage === 'reading' || stage === 'preparing') {
+            // Darhol keyingisiga o'tish
+            moveToNext();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [screen, stage, currentPart, currentQuestion, mockData]);
+
+  // ===== SUBMIT EXAM =====
+  const submitExam = async () => {
+    try {
+      setUploading(true);
+
+      const formData = new FormData();
+      formData.append("mock_id", selectedMockId);
+      let total = 0;
+      ['1.1', '1.2', '2', '3'].forEach(part => {
+        mockData[part]?.forEach(q => {
+          total += (q.prep_time || 0) + (q.speak_time || 0);
+        });
+      });
+      formData.append("total_duration", total);
+
+      // ✅ Barcha blob’larni qo'shish
+      Object.entries(recordedBlobsRef.current).forEach(([key, blob]) => {
+        formData.append("audios", blob, `${key}.webm`);
+      });
+
+      const response = await api.post('/mock/speaking/submit', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setScreen('results');
+    } catch (err) {
+      setError('Failed to submit exam');
+      console.error(err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // ===== DOWNLOAD RECORDING =====
   const downloadRecording = (key, url) => {
     const link = document.createElement('a');
     link.href = url;
@@ -408,57 +472,46 @@ export default function CERFSpeakingExam() {
               <BookOpen className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-slate-800">CEFR Speaking Exam</h1>
-            <p className="text-slate-600 text-sm mt-2">Rules & Guidelines</p>
+            <p className="text-slate-600 text-sm mt-2">Select a Mock</p>
           </div>
 
-          <div className="space-y-4 mb-8">
-            <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">📋 Exam Rules</h3>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• 8 Questions across 3 parts</li>
-                <li>• Total time: ~15-20 minutes</li>
-                <li>• Microphone required</li>
-                <li>• All answers recorded automatically</li>
-                <li>• No breaks between questions</li>
-                <li>• Speak clearly into your microphone</li>
-              </ul>
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
             </div>
+          )}
 
-            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
-              <h3 className="font-semibold text-yellow-900 mb-2">⚠️ Important Notes</h3>
-              <ul className="text-sm text-yellow-800 space-y-1">
-                <li>• Ensure your microphone works before starting</li>
-                <li>• Test your equipment in quiet environment</li>
-                <li>• Do not pause during speaking time</li>
-                <li>• Your recordings will be saved for review</li>
-              </ul>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto"></div>
+              <p className="mt-2 text-slate-600">Loading mocks...</p>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="space-y-3 mb-8 max-h-96 overflow-y-auto">
+                {mocks.map((mock) => (
+                  <button
+                    key={mock.id}
+                    onClick={() => {
+                      loadMockData(mock.id);
+                    }}
+                    className="w-full bg-slate-100 hover:bg-emerald-100 p-4 rounded-lg text-left transition-all border-2 border-transparent hover:border-emerald-500"
+                  >
+                    <h3 className="font-bold text-slate-800">{mock.title}</h3>
+                    <p className="text-sm text-slate-600">8 Questions • ~20 minutes</p>
+                  </button>
+                ))}
+              </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => setScreen('miccheck')}
-              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-lg transition-all"
-            >
-              🔊 Test Microphone
-            </button>
-            <button
-              onClick={() => {
-                if (micPermissionGranted) {
-                  setScreen('exam');
-                  setCurrentPart('1.1');
-                  setCurrentQuestion(0);
-                  setStage('idle');
-                } else {
-                  alert('Please test your microphone first');
-                }
-              }}
-              disabled={!micPermissionGranted}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-slate-300 text-white font-bold py-3 rounded-lg transition-all"
-            >
-              🚀 Start Exam
-            </button>
-          </div>
+              <button
+                onClick={() => setScreen('miccheck')}
+                disabled={loading}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-300 text-white font-bold py-3 rounded-lg transition-all"
+              >
+                🔊 Test Microphone
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -486,11 +539,10 @@ export default function CERFSpeakingExam() {
                 stopMicTestRecording();
               }
             }}
-            className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center text-4xl font-bold transition-all mb-4 ${
-              micTestRecording
-                ? 'bg-red-500 text-white scale-110'
-                : 'bg-emerald-500 text-white hover:bg-emerald-600'
-            }`}
+            className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center text-4xl font-bold transition-all mb-4 ${micTestRecording
+              ? 'bg-red-500 text-white scale-110'
+              : 'bg-emerald-500 text-white hover:bg-emerald-600'
+              }`}
           >
             {micTestRecording ? '⏹' : '🎙️'}
           </button>
@@ -530,28 +582,26 @@ export default function CERFSpeakingExam() {
   }
 
   // ===== RENDER: EXAM SCREEN =====
-  if (screen === 'exam') {
-    const q = questionsData[currentPart]?.[currentQuestion];
+  if (screen === 'exam' && mockData) {
+    const q = getCurrentQuestion();
     if (!q) return null;
 
     const progressPercent = totalTime ? ((totalTime - timeLeft) / totalTime) * 100 : 0;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4">
-        {/* TOP BAR */}
         <div className="bg-white rounded-xl shadow-lg p-4 mb-4">
           <div className="flex justify-between items-center mb-4">
             <div className="flex gap-2">
               {['1.1', '1.2', '2', '3'].map(part => (
                 <div
                   key={part}
-                  className={`px-4 py-2 rounded-full font-bold text-sm ${
-                    part === currentPart
-                      ? 'bg-emerald-500 text-white'
-                      : ['1.1', '1.2', '2', '3'].indexOf(part) < ['1.1', '1.2', '2', '3'].indexOf(currentPart)
+                  className={`px-4 py-2 rounded-full font-bold text-sm ${part === currentPart
+                    ? 'bg-emerald-500 text-white'
+                    : ['1.1', '1.2', '2', '3'].indexOf(part) < ['1.1', '1.2', '2', '3'].indexOf(currentPart)
                       ? 'bg-green-300 text-white'
                       : 'bg-yellow-300 text-slate-800'
-                  }`}
+                    }`}
                 >
                   {part}
                 </div>
@@ -559,7 +609,6 @@ export default function CERFSpeakingExam() {
             </div>
           </div>
 
-          {/* TIMER */}
           <div className="text-center">
             <div className="text-4xl font-bold font-mono text-emerald-600 mb-2">
               {formatTime(timeLeft)}
@@ -570,11 +619,10 @@ export default function CERFSpeakingExam() {
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <div className={`text-sm font-bold ${
-              stage === 'reading' ? 'text-blue-600' :
+            <div className={`text-sm font-bold ${stage === 'reading' ? 'text-blue-600' :
               stage === 'preparing' ? 'text-yellow-600' :
-              stage === 'speaking' ? 'text-red-600' : ''
-            }`}>
+                stage === 'speaking' ? 'text-red-600' : ''
+              }`}>
               {stage === 'reading' && '📖 Question is being read'}
               {stage === 'preparing' && '⏱️ Prepare your answer'}
               {stage === 'speaking' && '🎤 SPEAKING (Recording)'}
@@ -583,7 +631,6 @@ export default function CERFSpeakingExam() {
           </div>
         </div>
 
-        {/* MAIN CONTENT */}
         <div className="flex items-center justify-center">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
             <h2 className="text-2xl font-bold text-slate-800 mb-4">
@@ -591,9 +638,8 @@ export default function CERFSpeakingExam() {
             </h2>
 
             <div className="mb-6">
-              <p className="text-xl font-semibold text-slate-700 mb-4">{q.question}</p>
+              <p className="text-xl font-semibold text-slate-700 mb-4">{q.question_text}</p>
 
-              {/* Show images only for Part 1.2 (multiple images) */}
               {currentPart === '1.2' && q.images && (
                 <div className="flex gap-4 mb-4">
                   {q.images.map((img, idx) => (
@@ -602,7 +648,10 @@ export default function CERFSpeakingExam() {
                 </div>
               )}
 
-              {/* Show bullet points only for Part 2 */}
+              {currentPart === '1.1' && q.image_url && (
+                <img src={q.image_url} alt="Question" className="w-full h-64 object-cover rounded-lg mb-4" />
+              )}
+
               {currentPart === '2' && q.bullets && (
                 <ul className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-4 space-y-2">
                   {q.bullets.map((b, idx) => (
@@ -611,13 +660,12 @@ export default function CERFSpeakingExam() {
                 </ul>
               )}
 
-              {/* Show FOR/AGAINST for Part 3 */}
-              {currentPart === '3' && q.for && (
+              {currentPart === '3' && q.for_points && (
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="bg-green-50 border-2 border-green-500 p-4 rounded-lg">
                     <h4 className="font-bold text-green-700 mb-2">FOR ✓</h4>
                     <ul className="text-sm text-slate-700 space-y-1">
-                      {q.for.map((item, idx) => (
+                      {q.for_points.map((item, idx) => (
                         <li key={idx}>• {item}</li>
                       ))}
                     </ul>
@@ -625,7 +673,7 @@ export default function CERFSpeakingExam() {
                   <div className="bg-red-50 border-2 border-red-500 p-4 rounded-lg">
                     <h4 className="font-bold text-red-700 mb-2">AGAINST ✗</h4>
                     <ul className="text-sm text-slate-700 space-y-1">
-                      {q.against.map((item, idx) => (
+                      {q.against_points.map((item, idx) => (
                         <li key={idx}>• {item}</li>
                       ))}
                     </ul>
@@ -647,33 +695,48 @@ export default function CERFSpeakingExam() {
           <CheckCircle className="w-20 h-20 text-emerald-500 mx-auto mb-4" />
           <h2 className="text-3xl font-bold text-slate-800 mb-2">Exam Completed!</h2>
           <p className="text-slate-600 mb-2">Thank you for taking the CEFR Speaking Exam</p>
-          <p className="text-slate-500 text-sm mb-8">Your performance has been recorded</p>
+          <p className="text-slate-500 text-sm mb-8">
+            {uploading ? 'Uploading your recordings...' : 'Your performance has been recorded'}
+          </p>
+
+          {uploading && (
+            <div className="bg-blue-50 border border-blue-400 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-3 justify-center">
+                <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                <span className="text-blue-700">Processing your submission...</span>
+              </div>
+            </div>
+          )}
 
           <div className="bg-emerald-50 border-2 border-emerald-300 rounded-lg p-6 mb-6">
             <h3 className="font-bold text-emerald-900 mb-4">📊 Your Recordings</h3>
             <div className="max-h-64 overflow-y-auto space-y-2">
-              {Object.entries(recordings).map(([key, url]) => (
-                <div key={key} className="bg-white p-3 rounded-lg flex items-center justify-between">
-                  <span className="font-semibold text-slate-700">Question {key.replace('q', '')}</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        const audio = new Audio(url);
-                        audio.play();
-                      }}
-                      className="bg-emerald-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
-                    >
-                      <Play className="w-3 h-3" /> Play
-                    </button>
-                    <button
-                      onClick={() => downloadRecording(key, url)}
-                      className="bg-blue-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
-                    >
-                      <Download className="w-3 h-3" /> Download
-                    </button>
+              {Object.entries(recordings).length > 0 ? (
+                Object.entries(recordings).map(([key, url]) => (
+                  <div key={key} className="bg-white p-3 rounded-lg flex items-center justify-between">
+                    <span className="font-semibold text-slate-700">Question {key.replace('q', '')}</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const audio = new Audio(url);
+                          audio.play();
+                        }}
+                        className="bg-emerald-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                      >
+                        <Play className="w-3 h-3" /> Play
+                      </button>
+                      <button
+                        onClick={() => downloadRecording(key, url)}
+                        className="bg-blue-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                      >
+                        <Download className="w-3 h-3" /> Download
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-slate-600">No recordings yet</p>
+              )}
             </div>
           </div>
 
@@ -682,22 +745,13 @@ export default function CERFSpeakingExam() {
               onClick={() => {
                 setScreen('rules');
                 setRecordings({});
+                setSelectedMockId(null);
+                setMockData(null);
               }}
-              className="flex-1 bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold py-3 rounded-lg transition-all"
+              disabled={uploading}
+              className="flex-1 bg-slate-300 hover:bg-slate-400 disabled:bg-slate-300 text-slate-800 font-bold py-3 rounded-lg transition-all"
             >
               Back to Mocks
-            </button>
-            <button
-              onClick={() => {
-                if (Object.keys(recordings).length > 0) {
-                  alert('Download individual recordings using the buttons above');
-                } else {
-                  alert('No recordings to download');
-                }
-              }}
-              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
-            >
-              <Download className="w-4 h-4" /> Download All
             </button>
           </div>
         </div>
