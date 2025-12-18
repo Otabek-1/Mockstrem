@@ -6,23 +6,23 @@ export default function CERFSpeakingExam() {
   const [screen, setScreen] = useState('rules') // rules, miccheck, exam, results
   const [currentPart, setCurrentPart] = useState(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  
+
   // Timing states
   const [stage, setStage] = useState('idle')
   const [timeLeft, setTimeLeft] = useState(0)
   const [totalTime, setTotalTime] = useState(0)
-  
+
   // Recording states
   const [recordings, setRecordings] = useState({})
-  
+
   // Microphone states
   const [micTestRecording, setMicTestRecording] = useState(false)
   const [micTestAudio, setMicTestAudio] = useState(null)
   const [micPermissionGranted, setMicPermissionGranted] = useState(false)
-  
+
   // UI states
   const [soundEnabled, setSoundEnabled] = useState(true)
-  
+
   // Refs
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
@@ -126,18 +126,18 @@ export default function CERFSpeakingExam() {
   // ===== SOUND EFFECTS =====
   const playBeep = (frequency = 440, duration = 100) => {
     if (!soundEnabled) return;
-    
+
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
+
       oscillator.type = 'sine';
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-      
+
       oscillator.start();
       setTimeout(() => {
         oscillator.stop();
@@ -177,82 +177,91 @@ export default function CERFSpeakingExam() {
     }
   }
 
-  // ===== RECORDING FUNCTIONS - FIXED LOGIC =====
-  const startRecording = async (questionId) => {
+  // ===== ABSOLUTELY SAFE RECORDING =====
+
+  const startRecording = async () => {
     try {
+      console.log("🎬 startRecording called");
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       audioChunksRef.current = [];
 
-      // Try to use optimal MIME type
-      const tryMimeTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/ogg;codecs=opus',
-        'audio/mp4'
-      ];
-      
-      let mimeType = '';
-      let mediaRecorder;
-      
-      for (const type of tryMimeTypes) {
-        if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {
-          mimeType = type;
-          mediaRecorder = new MediaRecorder(stream, { mimeType });
-          break;
-        }
-      }
-      
-      // Fallback if no optimal type found
-      if (!mediaRecorder) {
-        mediaRecorder = new MediaRecorder(stream);
-      }
-
+      const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
+      mediaRecorder.onstart = () => {
+        console.log("✅ MediaRecorder started");
+      };
+
       mediaRecorder.ondataavailable = (e) => {
+        console.log("📦 ondataavailable fired:", e.data?.size);
         if (e.data && e.data.size > 0) {
           audioChunksRef.current.push(e.data);
         }
       };
 
       mediaRecorder.onstop = () => {
-        // Create blob from all collected chunks
-        const blob = new Blob(audioChunksRef.current, { 
-          type: mimeType || 'audio/webm' 
+        console.log("🛑 Recording stopped");
+
+        if (audioChunksRef.current.length === 0) {
+          console.warn("❌ No audio chunks");
+          return;
+        }
+
+        const blob = new Blob(audioChunksRef.current, {
+          type: mediaRecorder.mimeType || "audio/webm"
         });
+
         const url = URL.createObjectURL(blob);
-        
-        // Save recording with proper question ID
+
+        // ✅ SAVE TO STATE (agar keyin kerak bo‘lsa)
         setRecordings(prev => ({
           ...prev,
           [`q${questionId}`]: url
         }));
-        
-        // Clean up stream
+
+        // // 🔥🔥🔥 AUTO DOWNLOAD (VAQTINCHALIK)
+        // const a = document.createElement("a");
+        // a.href = url;
+        // a.download = `question_.webm`; // nomi aniq bo‘lsin
+        // document.body.appendChild(a);
+        // a.click();
+        // document.body.removeChild(a);
+
+        // console.log("⬇️ Audio auto-downloaded:", a.download);
+
+        // Mic’ni o‘chir
         if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
         }
+
+        // Keyingi savolga o‘t
+        setTimeout(() => {
+          moveToNext();
+        }, 100);
       };
 
-      mediaRecorder.onerror = (e) => {
-        console.error('Recording error:', e);
-      };
 
-      // Start recording - this will collect data until stopped
-      mediaRecorder.start();
-      
-    } catch (error) {
-      console.error('Microphone error:', error);
-      alert('Microphone access required! Please allow microphone permissions.');
+      mediaRecorder.start(1000);
+      console.log("🎙️ Recording started");
+
+    } catch (err) {
+      console.error("❌ startRecording failed:", err);
     }
-  }
+  };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+    console.log("🧨 stopRecording called");
+    if (!mediaRecorderRef.current) {
+      console.warn("⚠️ No recorder");
+      return;
+    }
+    if (mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
     }
-  }
+  };
 
   // ===== MIC TEST FUNCTIONS =====
   const startMicTestRecording = async () => {
@@ -274,7 +283,7 @@ export default function CERFSpeakingExam() {
         const blob = new Blob(micTestAudioChunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(blob);
         setMicTestAudio(url);
-        
+
         if (micTestStreamRef.current) {
           micTestStreamRef.current.getTracks().forEach(track => track.stop());
         }
@@ -303,7 +312,7 @@ export default function CERFSpeakingExam() {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(interval);
-          
+
           if (stage === 'reading') {
             setStage('preparing');
             const q = questionsData[currentPart][currentQuestion];
@@ -316,7 +325,7 @@ export default function CERFSpeakingExam() {
             setTimeLeft(q.speak);
             setTotalTime(q.speak);
             playStartSound();
-            
+
             // Start recording with the actual question ID
             startRecording(q.id);
           } else if (stage === 'speaking') {
@@ -326,11 +335,11 @@ export default function CERFSpeakingExam() {
           }
           return 0;
         }
-        
+
         if (prev <= 5 && stage === 'speaking') {
           playBeep(440, 100);
         }
-        
+
         return prev - 1;
       });
     }, 1000);
@@ -361,9 +370,9 @@ export default function CERFSpeakingExam() {
     setStage('reading');
     setTimeLeft(5);
     setTotalTime(5);
-    
+
     await speakText(q.question);
-    
+
     setStage('preparing');
     setTimeLeft(q.prep);
     setTotalTime(q.prep);
@@ -486,11 +495,10 @@ export default function CERFSpeakingExam() {
                 stopMicTestRecording();
               }
             }}
-            className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center text-4xl font-bold transition-all mb-4 ${
-              micTestRecording
+            className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center text-4xl font-bold transition-all mb-4 ${micTestRecording
                 ? 'bg-red-500 text-white scale-110'
                 : 'bg-emerald-500 text-white hover:bg-emerald-600'
-            }`}
+              }`}
           >
             {micTestRecording ? '⏹' : '🎙️'}
           </button>
@@ -545,13 +553,12 @@ export default function CERFSpeakingExam() {
               {['1.1', '1.2', '2', '3'].map(part => (
                 <div
                   key={part}
-                  className={`px-4 py-2 rounded-full font-bold text-sm ${
-                    part === currentPart
+                  className={`px-4 py-2 rounded-full font-bold text-sm ${part === currentPart
                       ? 'bg-emerald-500 text-white'
                       : ['1.1', '1.2', '2', '3'].indexOf(part) < ['1.1', '1.2', '2', '3'].indexOf(currentPart)
-                      ? 'bg-green-300 text-white'
-                      : 'bg-yellow-300 text-slate-800'
-                  }`}
+                        ? 'bg-green-300 text-white'
+                        : 'bg-yellow-300 text-slate-800'
+                    }`}
                 >
                   {part}
                 </div>
@@ -570,11 +577,10 @@ export default function CERFSpeakingExam() {
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <div className={`text-sm font-bold ${
-              stage === 'reading' ? 'text-blue-600' :
-              stage === 'preparing' ? 'text-yellow-600' :
-              stage === 'speaking' ? 'text-red-600' : ''
-            }`}>
+            <div className={`text-sm font-bold ${stage === 'reading' ? 'text-blue-600' :
+                stage === 'preparing' ? 'text-yellow-600' :
+                  stage === 'speaking' ? 'text-red-600' : ''
+              }`}>
               {stage === 'reading' && '📖 Question is being read'}
               {stage === 'preparing' && '⏱️ Prepare your answer'}
               {stage === 'speaking' && '🎤 SPEAKING (Recording)'}
