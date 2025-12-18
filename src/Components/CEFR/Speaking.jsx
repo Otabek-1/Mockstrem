@@ -433,6 +433,7 @@ export default function CERFSpeakingExam() {
 
       console.log('✅ Exam submitted successfully:', response.data)
       setScreen('results')
+      setUploading(false)
     } catch (err) {
       const errorMsg = err.response?.data?.detail || err.response?.data?.message || err.message
       setError('Failed to submit exam: ' + errorMsg)
