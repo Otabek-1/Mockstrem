@@ -134,6 +134,7 @@ export default function Dashboard() {
       const id = data.body.split(" ")[2].split("")[1];
       nav(`/mock/result/${id}`);
     }
+    
   }
 
   if (!user) {

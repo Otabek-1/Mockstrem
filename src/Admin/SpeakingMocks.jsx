@@ -75,7 +75,8 @@ export default function SpeakingMocks() {
   };
 
   const handleSubmitReview = async (id) => {
-    if (!evaluation.scores.part1_1 || !evaluation.scores.part1_2 || !evaluation.scores.part2 || !evaluation.scores.part3) {
+    // ✅ FIX: Dot (.) o'rniga underscore (_) ishlatilgandi
+    if (!evaluation.scores["part1.1"] || !evaluation.scores["part1.2"] || !evaluation.scores["part2"] || !evaluation.scores["part3"]) {
       alert("Please fill all scores");
       return;
     }
@@ -98,7 +99,7 @@ export default function SpeakingMocks() {
       if (user) {
         api.post("/notifications/", {
           title: "Speaking mock results",
-          body: `Speaking mock #${selected.id} is ready. Check your results.`,
+          body: `Speaking mock #${selected.id} is ready. Check your ${user.email} notifications in gmail to see your results.`,
           user_id: user.id
         }).catch(err => console.log(err));
       }
@@ -216,24 +217,24 @@ export default function SpeakingMocks() {
             {/* AUDIO FILES PREVIEW */}
             {selected?.recordings?.folder && (
               <div className="mb-6 p-4 bg-gray-50 rounded">
-                <h3 className="font-semibold mb-3">Recorded Audio</h3>
+                <h3 className="font-semibold mb-3">🎙️ Recorded Audio</h3>
                 {['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8'].map((key) => {
-                  const audioUrl = `http://127.0.0.1:8000/uploads/${selected.recordings.folder}/${key}.webm`;
+                  const audioUrl = `http://127.0.0.1:8000/${selected.recordings.folder}/${key}.webm`;
                   return (
-                    <div key={key} className="flex items-center gap-3 mb-2">
-                      <span className="text-sm font-mono bg-gray-200 px-2 py-1 rounded">
-                        {key}
+                    <div key={key} className="flex items-center gap-3 mb-3 p-2 bg-white rounded border">
+                      <span className="text-sm font-semibold text-gray-700 min-w-12">
+                        Q{key.replace('q', '')}
                       </span>
-                      <audio controls className="w-full">
+                      <audio controls className="flex-1 h-8">
                         <source src={audioUrl} type="audio/webm" />
                         Your browser does not support audio.
                       </audio>
                       <a
                         href={audioUrl}
-                        download={`${key}.webm`}
-                        className="text-blue-600 hover:underline text-sm"
+                        download={`question_${key.replace('q', '')}.webm`}
+                        className="text-blue-600 hover:underline text-sm font-medium whitespace-nowrap"
                       >
-                        Download
+                        ⬇️ Download
                       </a>
                     </div>
                   );
@@ -242,62 +243,76 @@ export default function SpeakingMocks() {
             )}
 
             {/* PARTS EVALUATION */}
-            {["part1.1", "part1.2", "part2", "part3"].map((part, idx) => (
-              <section key={part} className="mb-6 p-4 border rounded">
-                <h3 className="font-semibold mb-3">Part {part.replace("part", "")}</h3>
+            {["part1.1", "part1.2", "part2", "part3"].map((part) => (
+              <section key={part} className="mb-6 p-4 border rounded bg-gray-50">
+                <h3 className="font-semibold mb-4">Part {part.replace("part", "")}</h3>
 
-                <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Score (0-10)
+                  </label>
                   <input
                     type="number"
                     min="0"
                     max="10"
-                    placeholder="Score (0–10)"
+                    placeholder="Enter score"
                     value={evaluation.scores[part] || ""}
                     onChange={(e) => updateScore(part, e.target.value)}
-                    className="px-3 py-2 border rounded"
+                    className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-rose-500"
                   />
                 </div>
 
-                <textarea
-                  placeholder={`Feedback for ${part}...`}
-                  value={evaluation.feedbacks[part]}
-                  onChange={(e) => setEvaluation({
-                    ...evaluation,
-                    feedbacks: { ...evaluation.feedbacks, [part]: e.target.value }
-                  })}
-                  className="w-full px-3 py-2 border rounded text-sm"
-                  rows="3"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Feedback
+                  </label>
+                  <textarea
+                    placeholder={`Write feedback for part ${part.replace("part", "")}...`}
+                    value={evaluation.feedbacks[part]}
+                    onChange={(e) => setEvaluation({
+                      ...evaluation,
+                      feedbacks: { ...evaluation.feedbacks, [part]: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    rows="3"
+                  />
+                </div>
               </section>
             ))}
 
             {/* BAND DISPLAY */}
-            <div className="mb-4 p-3 bg-gray-50 rounded border">
-              <strong>Overall Band: </strong> {evaluation.band || "–"}
+            <div className="mb-4 p-4 bg-blue-50 rounded border-l-4 border-blue-500">
+              <div className="flex justify-between items-center">
+                <strong className="text-gray-700">Overall Band:</strong>
+                <span className="text-2xl font-bold text-blue-600">
+                  {evaluation.band || "—"}
+                </span>
+              </div>
             </div>
 
             {/* EMAIL CHECKBOX */}
-            <label className="flex items-center gap-2 mb-4">
+            <label className="flex items-center gap-2 mb-6 p-3 bg-gray-50 rounded">
               <input
                 type="checkbox"
                 checked={evaluation.send_email}
                 onChange={(e) => setEvaluation({ ...evaluation, send_email: e.target.checked })}
+                className="w-4 h-4 rounded"
               />
-              Send result to email
+              <span className="text-sm font-medium text-gray-700">Send result to email</span>
             </label>
 
             {/* ACTIONS */}
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-3 border-t pt-4">
               <button
                 onClick={() => setSelected(null)}
-                className="px-4 py-2 border rounded"
+                className="px-4 py-2 border rounded hover:bg-gray-50 transition"
               >
                 Close
               </button>
               <button
                 onClick={() => handleSubmitReview(selected.id)}
                 disabled={isSubmitting}
-                className="px-4 py-2 bg-rose-600 text-white rounded disabled:opacity-50"
+                className="px-4 py-2 bg-rose-600 text-white rounded hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 {isSubmitting ? "Submitting..." : "Submit Review"}
               </button>
