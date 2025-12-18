@@ -60,7 +60,7 @@ export default function SpeakingMocks() {
     const v = Number(value);
     const newScores = { ...evaluation.scores, [field]: v };
     const total = newScores["part1.1"] + newScores["part1.2"] + newScores["part2"] + newScores["part3"];
-    
+
     let band = "";
     if (total <= 10) band = "B1";
     else if (total <= 20) band = "B2";
@@ -92,7 +92,7 @@ export default function SpeakingMocks() {
       alert("Review submitted successfully!");
       setSelected(null);
       fetchResults();
-      
+
       // Send notification
       const user = users.find(u => u.id === selected.user_id);
       if (user) {
@@ -114,7 +114,7 @@ export default function SpeakingMocks() {
     const user = users.find(u => u.id === r.user_id);
     if (!user) return false;
 
-    const matchesQuery = query === "" || 
+    const matchesQuery = query === "" ||
       user.id.toString().includes(query) ||
       user.username.toLowerCase().includes(query.toLowerCase());
 
@@ -128,6 +128,7 @@ export default function SpeakingMocks() {
 
     return matchesQuery;
   });
+
 
   return (
     <div className="p-6">
@@ -176,9 +177,8 @@ export default function SpeakingMocks() {
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="px-4 py-4 font-medium">{user.username}</td>
                   <td className="px-4 py-4 text-sm">
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
-                      isPremium ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-700"
-                    }`}>
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${isPremium ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-700"
+                      }`}>
                       {isPremium ? "Premium" : "Standard"}
                     </span>
                     {r.evaluation && (
@@ -212,6 +212,34 @@ export default function SpeakingMocks() {
             <h2 className="text-lg font-semibold mb-4">
               {users.find(u => u.id === selected.user_id)?.username} – ID: {selected.id}
             </h2>
+
+            {/* AUDIO FILES PREVIEW */}
+            {selected?.recordings?.folder && (
+              <div className="mb-6 p-4 bg-gray-50 rounded">
+                <h3 className="font-semibold mb-3">Recorded Audio</h3>
+                {['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8'].map((key) => {
+                  const audioUrl = `http://127.0.0.1:8000/uploads/${selected.recordings.folder}/${key}.webm`;
+                  return (
+                    <div key={key} className="flex items-center gap-3 mb-2">
+                      <span className="text-sm font-mono bg-gray-200 px-2 py-1 rounded">
+                        {key}
+                      </span>
+                      <audio controls className="w-full">
+                        <source src={audioUrl} type="audio/webm" />
+                        Your browser does not support audio.
+                      </audio>
+                      <a
+                        href={audioUrl}
+                        download={`${key}.webm`}
+                        className="text-blue-600 hover:underline text-sm"
+                      >
+                        Download
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* PARTS EVALUATION */}
             {["part1.1", "part1.2", "part2", "part3"].map((part, idx) => (
