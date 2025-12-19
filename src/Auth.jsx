@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import api from "./api";
 import { useNavigate } from "react-router-dom";
 
@@ -106,6 +106,19 @@ const handleSubmit = async (e) => {
     setIsForgot(false);
     setStep(1);
   };
+
+  useEffect(()=>{
+    const access_token = localStorage.getItem("access_token")
+    if(access_token){
+      api.get("/user/me").then(res=>{
+        if(res.status === 200){
+          nav("/dashboard")
+        }
+      }).catch(err=>{
+        console.log(err);
+      })
+    }
+  },[])
 
   // ============================================
   // UI
