@@ -201,7 +201,7 @@ export default function Dashboard() {
 
               {/* Tooltip Popup */}
               {!sidebarOpen && (
-                <div className="absolute left-28 top-1/2 transform -translate-y-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                <div className="absolute z-[999] left-28 top-1/2 transform -translate-y-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
                   <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-2xl whitespace-nowrap relative">
                     {item.name}
                     <div className="absolute right-full top-1/2 transform -translate-y-1/2 w-2 h-2 bg-gradient-to-r from-blue-600 to-purple-600 rotate-45 -mr-1"></div>
@@ -288,7 +288,7 @@ export default function Dashboard() {
 
       {/* Mobile menu toggle */}
       <button
-        className="md:hidden fixed top-6 left-6 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
+        className="md:hidden z-[9999] fixed top-6 left-6 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
         onClick={() => setSidebarOpen(!sidebarOpen)}
       >
         <MdMenu size={24} className="text-gray-700 dark:text-gray-200" />
