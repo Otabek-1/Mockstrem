@@ -81,7 +81,7 @@ export default function CERFSpeakingExam() {
         setMocks(response.data)
       } catch (err) {
         setError('Failed to load mocks')
-        console.error(err)
+        // console.error(err)
       } finally {
         setLoading(false)
       }
@@ -113,7 +113,7 @@ export default function CERFSpeakingExam() {
         .forEach(q => {
           payload[`q${q.id}`] = q.question_text
         })
-      console.log(payload);
+      // console.log(payload);
 
       // 3️⃣ TTS ZIP OLAMIZ
       const zipRes = await api.post('/tts/audio', payload, {
@@ -136,7 +136,7 @@ export default function CERFSpeakingExam() {
       setScreen('miccheck')
 
     } catch (err) {
-      console.error(err)
+      // console.error(err)
       setError('Failed to load mock or TTS')
       setScreen('rules')
     } finally {
@@ -166,7 +166,7 @@ export default function CERFSpeakingExam() {
         oscillator.stop()
       }, duration)
     } catch (e) {
-      console.log('Sound effect not supported:', e)
+      // console.log('Sound effect not supported:', e)
     }
   }
 
@@ -198,13 +198,13 @@ export default function CERFSpeakingExam() {
       return new Promise((resolve) => {
         audio.onended = resolve
         audio.onerror = () => {
-          console.error('gTTS error, falling back to native TTS')
+          // console.error('gTTS error, falling back to native TTS')
           speakTextNative(text).then(resolve)
         }
         audio.play()
       })
     } catch (e) {
-      console.error('gTTS Error:', e)
+      // console.error('gTTS Error:', e)
       return speakTextNative(text)
     }
   }
@@ -218,7 +218,7 @@ export default function CERFSpeakingExam() {
         speechSynthesis.speak(utterance)
       })
     } catch (e) {
-      console.error('TTS Error:', e)
+      // console.error('TTS Error:', e)
     }
   }
 
@@ -283,7 +283,7 @@ export default function CERFSpeakingExam() {
       mediaRecorder.start()
 
     } catch (error) {
-      console.error('Microphone error:', error)
+      // console.error('Microphone error:', error)
       alert('Microphone access required! Please allow microphone permissions.')
     }
   }
@@ -323,7 +323,7 @@ export default function CERFSpeakingExam() {
       mediaRecorder.start()
       setMicTestRecording(true)
     } catch (error) {
-      console.error('Mic test error:', error)
+      // console.error('Mic test error:', error)
       alert('Microphone access required for testing!')
     }
   }
@@ -500,7 +500,7 @@ export default function CERFSpeakingExam() {
         formData.append('audios', blob, `${key}.webm`)
       })
 
-      console.log('📤 Submitting exam with', Object.keys(recordedBlobsRef.current).length, 'audios')
+      // console.log('📤 Submitting exam with', Object.keys(recordedBlobsRef.current).length, 'audios')
 
       const response = await api.post('/mock/speaking/submit', formData, {
         headers: {
@@ -508,13 +508,13 @@ export default function CERFSpeakingExam() {
         }
       })
 
-      console.log('✅ Exam submitted successfully:', response.data)
+      // console.log('✅ Exam submitted successfully:', response.data)
       setScreen('results')
       setUploading(false)
     } catch (err) {
       const errorMsg = err.response?.data?.detail || err.response?.data?.message || err.message
       setError('Failed to submit exam: ' + errorMsg)
-      console.error('Submit error:', err)
+      // console.error('Submit error:', err)
       setUploading(false)
     }
   }

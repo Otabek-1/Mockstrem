@@ -276,12 +276,12 @@ export default function SpeakingMocks() {
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Score (0-10)
+                    {part == "part3"? "Score (0-6)":"Score (0-5)"}
                   </label>
                   <input
                     type="number"
                     min="0"
-                    max="10"
+                    max={part == "part3"? "6" : "5"}
                     placeholder="Enter score"
                     value={evaluation.scores[part] || ""}
                     onChange={(e) => updateScore(part, e.target.value)}
