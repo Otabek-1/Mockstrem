@@ -112,7 +112,8 @@ export default function CERFSpeakingExam() {
         .forEach(q => {
           payload[`q${q.id}`] = q.question_text
         })
-
+      console.log(payload);
+      
       // 3️⃣ TTS ZIP OLAMIZ
       const zipRes = await api.post('/tts/audio', payload, {
         responseType: 'blob'

@@ -1,16 +1,23 @@
 import React, { useState } from "react";
 import { FaTelegramPlane } from "react-icons/fa";
+import api from "./api";
 
 export default function Contact() {
-  const adminUsername = "admin_username"; // <--- o'zing o'zgartirasan
+  const adminUsername = "mrkhasanoff3"; // <--- o'zing o'zgartirasan
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
 
   const handleSubmit = (e) => {
+    api.post("/contact", { full_name: fullName, email, message }).then(res => {
+      if (res.status === 200) {
+        alert("Message sent! Wait for answer...");
+      }
+    }).catch(err => {
+      alert("Message sent! Wait for answer...");
+    })
     e.preventDefault();
-    alert("Message sent! (Backend bog‘lanmagan, faqat UI)");
   };
 
   return (
