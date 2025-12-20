@@ -651,11 +651,19 @@ export default function CERFSpeakingExam() {
               <p className="text-xl font-semibold text-slate-700 mb-4">{q.question_text}</p>
 
               {currentPart === '1.2' && q.images && q.images.length > 0 && (
-                <div className="flex gap-4 mb-4">
+                <div className="flex flex-col md:flex-row gap-4">
                   {q.images.map((img, idx) => (
-                    img && <img key={idx} src={img} alt={`Image ${idx + 1}`} className="w-1/2 h-40 object-cover rounded-lg" />
+                    img && (
+                      <img
+                        key={idx}
+                        src={img}
+                        alt={`image-${idx}`}
+                        className="w-full justify-center md:w-1/2 rounded-lg object-contain"
+                      />
+                    )
                   ))}
                 </div>
+
               )}
 
               {currentPart === '1.1' && q.image_url && (
