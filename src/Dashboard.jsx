@@ -135,7 +135,7 @@ export default function Dashboard() {
       const id = data.body.split(" ")[2].split("")[1];
       nav(`/mock/result/${id}`);
     }
-    
+
   }
 
   if (!user) {
@@ -269,7 +269,7 @@ export default function Dashboard() {
         </div>
 
         {/* Logout */}
-        <div className="p-3 border-t border-gray-200 dark:border-gray-700 relative group/logout-btn">
+        <div onClick={() => { localStorage.removeItem("access_token"); localStorage.removeItem("refresh_token"); nav("/auth") }} className="p-3 border-t border-gray-200 dark:border-gray-700 relative group/logout-btn">
           <div className="flex items-center gap-4 px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 dark:hover:from-gray-700 dark:hover:to-gray-600 group/logout text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400">
             <FaSignOutAlt size={20} className="group-hover/logout:scale-110 transition-transform duration-200" />
           </div>
@@ -465,7 +465,7 @@ export default function Dashboard() {
                     )}
 
                     {/* Logout */}
-                    <div className="px-4 py-3 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer flex items-center gap-3 group border-t border-gray-100 dark:border-gray-700">
+                    <div onClick={() => { localStorage.removeItem("access_token"); localStorage.removeItem("refresh_token"); nav("/auth") }} className="px-4 py-3 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer flex items-center gap-3 group border-t border-gray-100 dark:border-gray-700">
                       <FaSignOutAlt size={18} className="text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform" />
                       <div>
                         <p className="font-semibold text-red-700 dark:text-red-300 text-sm">🚪 Log Out</p>
@@ -486,8 +486,8 @@ export default function Dashboard() {
 
           {active === "cefr_writing" && <Writing_list isPremium={isPremium} />}
           {active === "cefr_listening" && <div>CEFR Listening</div>}
-          {active === "cefr_reading" && <Reading_list isPremium={isPremium}/>}
-          {active === "cefr_speaking" && <Speaking_list isPremium={isPremium}/>}
+          {active === "cefr_reading" && <Reading_list isPremium={isPremium} />}
+          {active === "cefr_speaking" && <Speaking_list isPremium={isPremium} />}
 
           {active === "ielts_writing" && <div>IELTS Writing</div>}
           {active === "ielts_listening" && <div>IELTS Listening</div>}
