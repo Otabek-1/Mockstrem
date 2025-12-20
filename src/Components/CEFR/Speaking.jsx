@@ -5,7 +5,7 @@ import JSZip from 'jszip'
 import { useParams } from 'react-router-dom'
 
 export default function CERFSpeakingExam() {
-  const {id} = useParams("id")
+  const { id } = useParams("id")
   // ===== STATES =====
   const [audioCache, setAudioCache] = useState({})
   const [ttsLoading, setTtsLoading] = useState(false)
@@ -16,7 +16,8 @@ export default function CERFSpeakingExam() {
   const [selectedMockId, setSelectedMockId] = useState(null)
   const [mocks, setMocks] = useState([])
   const [mockData, setMockData] = useState(null)
-  
+
+
   // Timing states
   const [stage, setStage] = useState('idle')
   const [timeLeft, setTimeLeft] = useState(0)
@@ -113,7 +114,7 @@ export default function CERFSpeakingExam() {
           payload[`q${q.id}`] = q.question_text
         })
       console.log(payload);
-      
+
       // 3️⃣ TTS ZIP OLAMIZ
       const zipRes = await api.post('/tts/audio', payload, {
         responseType: 'blob'
@@ -573,7 +574,7 @@ export default function CERFSpeakingExam() {
             <>
               <div className="space-y-3 mb-8 max-h-96 overflow-y-auto">
                 {mocks.length > 0 ? (
-                  mocks.filter(mock=>mock.id == id).map((mock) => (
+                  mocks.filter(mock => mock.id == id).map((mock) => (
                     <button
                       key={mock.id}
                       onClick={() => loadMockData(mock.id)}
@@ -776,17 +777,22 @@ export default function CERFSpeakingExam() {
   // ===== RENDER: RESULTS SCREEN =====
   if (screen === 'results') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full text-center">
-          <CheckCircle className="w-20 h-20 text-emerald-500 mx-auto mb-4" />
-          <h2 className="text-3xl font-bold text-slate-800 mb-2">Exam Completed!</h2>
-          <p className="text-slate-600 mb-2">Thank you for taking the CEFR Speaking Exam</p>
-          <p className="text-slate-500 text-sm mb-8">
-            {uploading ? 'Uploading your recordings...' : 'Your performance has been recorded'}
-          </p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 py-8">
+        <div className="max-w-6xl mx-auto">
 
+          {/* Header */}
+          <div className="text-center mb-8">
+            <CheckCircle className="w-20 h-20 text-emerald-500 mx-auto mb-4" />
+            <h2 className="text-4xl font-bold text-white mb-2">Exam Completed!</h2>
+            <p className="text-slate-300 mb-2">Thank you for taking the CEFR Speaking Exam</p>
+            <p className="text-slate-400 text-sm">
+              {uploading ? 'Uploading your recordings...' : 'Your performance has been recorded'}
+            </p>
+          </div>
+
+          {/* Uploading Indicator */}
           {uploading && (
-            <div className="bg-blue-50 border border-blue-400 rounded-lg p-4 mb-6">
+            <div className="bg-blue-50 border border-blue-400 rounded-lg p-4 mb-6 max-w-2xl mx-auto">
               <div className="flex items-center gap-3 justify-center">
                 <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
                 <span className="text-blue-700">Processing your submission...</span>
@@ -794,39 +800,183 @@ export default function CERFSpeakingExam() {
             </div>
           )}
 
-          <div className="bg-emerald-50 border-2 border-emerald-300 rounded-lg p-6 mb-6">
-            <h3 className="font-bold text-emerald-900 mb-4">📊 Your Recordings</h3>
-            <div className="max-h-64 overflow-y-auto space-y-2">
-              {Object.entries(recordings).length > 0 ? (
-                Object.entries(recordings).map(([key, url]) => (
-                  <div key={key} className="bg-white p-3 rounded-lg flex items-center justify-between">
-                    <span className="font-semibold text-slate-700">Question {key.replace('q', '')}</span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          const audio = new Audio(url)
-                          audio.play()
-                        }}
-                        className="bg-emerald-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
-                      >
-                        <Play className="w-3 h-3" /> Play
-                      </button>
-                      <button
-                        onClick={() => downloadRecording(key, url)}
-                        className="bg-blue-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
-                      >
-                        <Download className="w-3 h-3" /> Download
-                      </button>
+          {/* Recordings Grid - 8 Audio Items */}
+          <div className="bg-white rounded-2xl shadow-2xl p-8 mb-8">
+            <h3 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+              <Volume2 className="w-6 h-6 text-emerald-500" />
+              Your Recordings (8 Questions)
+            </h3>
+
+            {Object.entries(recordings).length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Part 1.1 - Questions 1-2 */}
+                <div className="col-span-1">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 h-full">
+                    <h4 className="font-bold text-blue-900 mb-3 text-sm">Part 1.1</h4>
+                    <div className="space-y-3">
+                      {[1, 2].map(qNum => {
+                        const key = `q${qNum}`;
+                        const url = recordings[key];
+                        return (
+                          <div key={key} className="bg-white rounded-lg p-3 shadow-sm">
+                            <p className="text-xs font-semibold text-slate-600 mb-2">Q{qNum}</p>
+                            {url ? (
+                              <audio controls className="w-full h-8 rounded">
+                                <source src={url} type="audio/webm" />
+                              </audio>
+                            ) : (
+                              <div className="bg-slate-200 h-8 rounded flex items-center justify-center">
+                                <span className="text-xs text-slate-500">No recording</span>
+                              </div>
+                            )}
+                            {url && (
+                              <button
+                                onClick={() => downloadRecording(key, url)}
+                                className="mt-2 w-full bg-blue-500 hover:bg-blue-600 text-white text-xs py-1 rounded flex items-center justify-center gap-1 transition"
+                              >
+                                <Download className="w-3 h-3" /> Download
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                ))
-              ) : (
-                <p className="text-slate-600">No recordings yet</p>
-              )}
+                </div>
+
+                {/* Part 1.2 - Questions 3-4 */}
+                <div className="col-span-1">
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 h-full">
+                    <h4 className="font-bold text-purple-900 mb-3 text-sm">Part 1.2</h4>
+                    <div className="space-y-3">
+                      {[3, 4].map(qNum => {
+                        const key = `q${qNum}`;
+                        const url = recordings[key];
+                        return (
+                          <div key={key} className="bg-white rounded-lg p-3 shadow-sm">
+                            <p className="text-xs font-semibold text-slate-600 mb-2">Q{qNum}</p>
+                            {url ? (
+                              <audio controls className="w-full h-8 rounded">
+                                <source src={url} type="audio/webm" />
+                              </audio>
+                            ) : (
+                              <div className="bg-slate-200 h-8 rounded flex items-center justify-center">
+                                <span className="text-xs text-slate-500">No recording</span>
+                              </div>
+                            )}
+                            {url && (
+                              <button
+                                onClick={() => downloadRecording(key, url)}
+                                className="mt-2 w-full bg-purple-500 hover:bg-purple-600 text-white text-xs py-1 rounded flex items-center justify-center gap-1 transition"
+                              >
+                                <Download className="w-3 h-3" /> Download
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Part 2 - Questions 5-6 */}
+                <div className="col-span-1">
+                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 h-full">
+                    <h4 className="font-bold text-orange-900 mb-3 text-sm">Part 2</h4>
+                    <div className="space-y-3">
+                      {[5, 6].map(qNum => {
+                        const key = `q${qNum}`;
+                        const url = recordings[key];
+                        return (
+                          <div key={key} className="bg-white rounded-lg p-3 shadow-sm">
+                            <p className="text-xs font-semibold text-slate-600 mb-2">Q{qNum}</p>
+                            {url ? (
+                              <audio controls className="w-full h-8 rounded">
+                                <source src={url} type="audio/webm" />
+                              </audio>
+                            ) : (
+                              <div className="bg-slate-200 h-8 rounded flex items-center justify-center">
+                                <span className="text-xs text-slate-500">No recording</span>
+                              </div>
+                            )}
+                            {url && (
+                              <button
+                                onClick={() => downloadRecording(key, url)}
+                                className="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-white text-xs py-1 rounded flex items-center justify-center gap-1 transition"
+                              >
+                                <Download className="w-3 h-3" /> Download
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Part 3 - Questions 7-8 */}
+                <div className="col-span-1">
+                  <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 h-full">
+                    <h4 className="font-bold text-emerald-900 mb-3 text-sm">Part 3</h4>
+                    <div className="space-y-3">
+                      {[7, 8].map(qNum => {
+                        const key = `q${qNum}`;
+                        const url = recordings[key];
+                        return (
+                          <div key={key} className="bg-white rounded-lg p-3 shadow-sm">
+                            <p className="text-xs font-semibold text-slate-600 mb-2">Q{qNum}</p>
+                            {url ? (
+                              <audio controls className="w-full h-8 rounded">
+                                <source src={url} type="audio/webm" />
+                              </audio>
+                            ) : (
+                              <div className="bg-slate-200 h-8 rounded flex items-center justify-center">
+                                <span className="text-xs text-slate-500">No recording</span>
+                              </div>
+                            )}
+                            {url && (
+                              <button
+                                onClick={() => downloadRecording(key, url)}
+                                className="mt-2 w-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs py-1 rounded flex items-center justify-center gap-1 transition"
+                              >
+                                <Download className="w-3 h-3" /> Download
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-100 rounded-lg p-8 text-center">
+                <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                <p className="text-slate-600">No recordings found</p>
+              </div>
+            )}
+
+            {/* Summary Stats */}
+            <div className="mt-8 grid grid-cols-3 gap-4 pt-8 border-t">
+              <div className="text-center">
+                <p className="text-slate-600 text-sm mb-1">Total Questions</p>
+                <p className="text-3xl font-bold text-slate-800">8</p>
+              </div>
+              <div className="text-center">
+                <p className="text-slate-600 text-sm mb-1">Recorded</p>
+                <p className="text-3xl font-bold text-emerald-600">{Object.keys(recordings).length}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-slate-600 text-sm mb-1">Completion</p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {Object.keys(recordings).length > 0 ? Math.round((Object.keys(recordings).length / 8) * 100) : 0}%
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-3">
+          {/* Action Buttons */}
+          <div className="flex gap-3 justify-center max-w-2xl mx-auto">
             <button
               onClick={() => {
                 setScreen('rules')
@@ -836,15 +986,22 @@ export default function CERFSpeakingExam() {
                 recordedBlobsRef.current = {}
               }}
               disabled={uploading}
-              className="flex-1 bg-slate-300 hover:bg-slate-400 disabled:bg-slate-300 text-slate-800 font-bold py-3 rounded-lg transition-all"
+              className="flex-1 bg-slate-500 hover:bg-slate-600 disabled:bg-slate-400 text-white font-bold py-3 rounded-lg transition-all"
             >
               Back to Mocks
+            </button>
+            <button
+              onClick={() => window.location.href = '/dashboard'}
+              disabled={uploading}
+              className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-400 text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+            >
+              <CheckCircle className="w-5 h-5" />
+              Go to Dashboard
             </button>
           </div>
         </div>
       </div>
     )
   }
-
   return null
 }
