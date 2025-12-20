@@ -154,10 +154,10 @@ export default function ReadingList({ isPremium = false }) {
   }
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-start gap-5 p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="w-full min-h-screen flex flex-col items-start gap-5 p-6 bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/50">
       <h3 className="text-4xl font-bold text-gray-800 dark:text-white">CEFR reading tasks</h3>
 
-      <div className="list w-full dark:bg-slate-700 bg-slate-300 rounded-lg p-5 flex flex-col gap-5">
+      <div className="list w-full dark:bg-slate-700 bg-slate-200 rounded-lg p-5 flex flex-col gap-5">
         {/* Toolbar */}
         <div className="extras w-full flex items-center gap-4 flex-wrap">
           <button
@@ -174,7 +174,7 @@ export default function ReadingList({ isPremium = false }) {
               onClick={() => setFilterOpen(!filterOpen)}
               className={`flex items-center gap-3 px-4 py-2 shadow-lg rounded-full font-semibold transition-all duration-200 cursor-pointer ${
                 filterOpen
-                  ? "bg-gradient-to-r from-yellow-500 to-yellow-600 text-white scale-105"
+                  ? "bg-gradient-to-r from-yellow-500 to-yellow-600 text-white scale-105 dark:text-white"
                   : "bg-gray-200/50 dark:bg-gray-700 text-gray-800 dark:text-white hover:brightness-90"
               }`}
             >

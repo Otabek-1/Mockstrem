@@ -31,10 +31,10 @@ export default function SpeakingList({ isPremium = false }) {
   }, []);
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-start gap-5 p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="w-full min-h-screen flex flex-col items-start gap-5 p-6 bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/50">
       <h3 className="text-4xl font-bold text-gray-800 dark:text-white">CEFR Speaking Mocks</h3>
 
-      <div className="w-full bg-slate-300 dark:bg-slate-700 rounded-lg p-5 flex flex-col gap-5">
+      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-lg p-5 flex flex-col gap-5">
         {loading && (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>

@@ -10,6 +10,7 @@ import api from "./api";
 import { User } from "lucide-react";
 import Reading_list from "./Components/CEFR/Reading_list";
 import Speaking_list from "./Components/CEFR/Speaking_list";
+import Background from "./Background";
 
 // Vaqtni "X minutes ago" formatiga o'tkazish
 const formatTimeAgo = (dateString) => {
@@ -145,8 +146,9 @@ export default function Dashboard() {
 
   return (
     <div className={`flex h-screen transition-colors duration-300 ${theme === "dark" ? "bg-gray-950" : "bg-gradient-to-br from-gray-50 to-gray-100"}`}>
+      <Background />
       {/* Sidebar */}
-      <div className={`fixed z-[999] md:static h-screen ${sidebarOpen ? "w-72" : "w-0 md:w-24"} transition-all duration-300 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 shadow-2xl flex flex-col justify-between overflow-hidden md:overflow-visible border-r border-gray-200 dark:border-gray-700`}>
+      <div className={`fixed z-[9999] md:static h-screen ${sidebarOpen ? "w-72" : "w-0 md:w-24"} transition-all duration-300 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 shadow-2xl flex flex-col justify-between overflow-hidden md:overflow-visible border-r border-gray-200 dark:border-gray-700`}>
         {/* Logo Section */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -161,7 +163,7 @@ export default function Dashboard() {
         </div>
 
         {/* Menu Items */}
-        <div className="flex flex-col pt-4 px-3 flex-1 gap-2">
+        <div className="flex z-[9999] flex-col pt-4 px-3 flex-1 gap-2">
           {menuItems.map((item, idx) => (
             <div key={idx} className="relative group">
               <div
@@ -238,7 +240,7 @@ export default function Dashboard() {
 
               {/* Dropdown - Sidebar Closed (Popup Menu) */}
               {item.dropdown && item.open && !sidebarOpen && (
-                <div className="absolute left-28 top-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="absolute z-[9999] left-28 top-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                   <div className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 animate-in fade-in">
                     {item.name === "Settings" ? (
                       <div
@@ -295,7 +297,7 @@ export default function Dashboard() {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header */}
-        <div className="bg-white dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700 px-8 py-4 flex items-center justify-between">
+        <div className="bg-white z-[999] dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700 px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
             <div className="relative hidden md:block">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={16} />
@@ -478,7 +480,7 @@ export default function Dashboard() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-auto p-8 w-full h-screen">
+        <div className="flex-1 overflow-auto p-8 w-full h-screen z-[999]">
 
           {active === "home" && <Main />}
 
