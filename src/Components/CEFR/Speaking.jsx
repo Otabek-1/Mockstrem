@@ -1,16 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Mic, Play, Volume2, CheckCircle, Clock, AlertCircle, Download, Settings, BookOpen, Upload } from 'lucide-react'
 import api from '../../api'
+import JSZip from 'jszip'
+import { useParams } from 'react-router-dom'
 
 export default function CERFSpeakingExam() {
+  const {id} = useParams("id")
   // ===== STATES =====
+  const [audioCache, setAudioCache] = useState({})
+  const [ttsLoading, setTtsLoading] = useState(false)
+
   const [screen, setScreen] = useState('rules')
   const [currentPart, setCurrentPart] = useState(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedMockId, setSelectedMockId] = useState(null)
   const [mocks, setMocks] = useState([])
   const [mockData, setMockData] = useState(null)
-
+  
   // Timing states
   const [stage, setStage] = useState('idle')
   const [timeLeft, setTimeLeft] = useState(0)
@@ -88,19 +94,55 @@ export default function CERFSpeakingExam() {
   // ===== FETCH MOCK DATA =====
   const loadMockData = async (mockId) => {
     try {
-      setLoading(true)
       setError('')
-      const response = await api.get(`/mock/speaking/mock/${mockId}`)
-      setMockData(response.data.questions.questions)
+      setLoading(true)
+      setTtsLoading(true)
+      setScreen('loading')
+
+      // 1️⃣ MOCK DATA
+      const res = await api.get(`/mock/speaking/mock/${mockId}`)
+      const questions = res.data.questions.questions
+      setMockData(questions)
       setSelectedMockId(mockId)
+
+      // 2️⃣ FAQAT TEXTLARNI AJRATIB OLAMIZ
+      const payload = {}
+      Object.values(questions)
+        .flat()
+        .forEach(q => {
+          payload[`q${q.id}`] = q.question_text
+        })
+
+      // 3️⃣ TTS ZIP OLAMIZ
+      const zipRes = await api.post('/tts/audio', payload, {
+        responseType: 'blob'
+      })
+
+      // 4️⃣ ZIPNI O‘QISH
+      const zip = await JSZip.loadAsync(zipRes.data)
+      const audioMap = {}
+
+      for (const filename of Object.keys(zip.files)) {
+        const blob = await zip.files[filename].async('blob')
+        const key = filename.replace('.mp3', '')
+        audioMap[key] = URL.createObjectURL(blob)
+      }
+
+      setAudioCache(audioMap)
+
+      // 5️⃣ MIC CHECK
       setScreen('miccheck')
+
     } catch (err) {
-      setError('Failed to load mock')
       console.error(err)
+      setError('Failed to load mock or TTS')
+      setScreen('rules')
     } finally {
       setLoading(false)
+      setTtsLoading(false)
     }
   }
+
 
   // ===== SOUND EFFECTS =====
   const playBeep = (frequency = 440, duration = 100) => {
@@ -377,12 +419,20 @@ export default function CERFSpeakingExam() {
     setTimeLeft(5)
     setTotalTime(5)
 
-    await speakTextWithGTTS(q.question_text, 'en')
+    const audioUrl = audioCache[`q${q.id}`]
+    if (audioUrl) {
+      const audio = new Audio(audioUrl)
+      await new Promise(resolve => {
+        audio.onended = resolve
+        audio.play()
+      })
+    }
 
     setStage('preparing')
     setTimeLeft(q.prep_time)
     setTotalTime(q.prep_time)
   }
+
 
   useEffect(() => {
     if (screen === 'exam' && stage === 'idle' && currentPart && mockData) {
@@ -477,6 +527,23 @@ export default function CERFSpeakingExam() {
     document.body.removeChild(link)
   }
 
+  if (screen === 'loading') {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-2xl text-center w-80">
+          <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">
+            Preparing your exam
+          </h2>
+          <p className="text-slate-600 text-sm">
+            Generating audio questions…
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+
   // ===== RENDER: RULES SCREEN =====
   if (screen === 'rules') {
     return (
@@ -505,7 +572,7 @@ export default function CERFSpeakingExam() {
             <>
               <div className="space-y-3 mb-8 max-h-96 overflow-y-auto">
                 {mocks.length > 0 ? (
-                  mocks.map((mock) => (
+                  mocks.filter(mock=>mock.id == id).map((mock) => (
                     <button
                       key={mock.id}
                       onClick={() => loadMockData(mock.id)}
