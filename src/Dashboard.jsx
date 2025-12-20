@@ -297,7 +297,7 @@ export default function Dashboard() {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header */}
-        <div className="bg-white z-[999] dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700 px-8 py-4 flex items-center justify-between">
+        <div className="bg-white z-[99999] dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700 px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
             <div className="relative hidden md:block">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={16} />
@@ -308,8 +308,8 @@ export default function Dashboard() {
               />
             </div>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="relative">
+          <div className="flex items-center gap-6 ">
+            <div className="relative ">
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
                 className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
@@ -322,7 +322,7 @@ export default function Dashboard() {
 
               {/* Notifications Dropdown */}
               {notificationsOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 animate-in fade-in slide-in-from-top-2 duration-200 max-h-96 overflow-hidden flex flex-col">
+                <div className="absolute  right-0 top-full mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 animate-in fade-in slide-in-from-top-2 duration-200 max-h-96 overflow-hidden flex flex-col">
                   {/* Header */}
                   <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600">
                     <div className="flex items-center justify-between">
@@ -337,7 +337,7 @@ export default function Dashboard() {
                   </div>
 
                   {/* Notifications List */}
-                  <div className="overflow-y-auto flex-1">
+                  <div className="overflow-y-auto flex-1 ">
                     {notifications.length > 0 ? (
                       notifications.map((notif) => (
                         <div
