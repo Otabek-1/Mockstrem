@@ -47,7 +47,7 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const nav = useNavigate();
-  const [isAdmin, setIsAdmin] = useState(true); // Change to false for non-admin users
+  const [isAdmin, setIsAdmin] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
@@ -61,7 +61,6 @@ export default function Dashboard() {
     const storedTheme = "light";
     setTheme(storedTheme);
 
-    // USER MA'LUMOTINI OLIB KELISH
     const fetchUser = async () => {
       try {
         const res = await api.get("/user/me");
@@ -70,11 +69,9 @@ export default function Dashboard() {
         setUser(data);
         setIsAdmin(data.role === "admin");
 
-        // Check premium status: if premium_duration exists and is in future
         const isPremiumUser = data.premium_duration && new Date(data.premium_duration) > new Date();
         setIsPremium(isPremiumUser);
 
-        // USER ID OLINGANDAN SO'NG NOTIFICATIONS FETCH QIL
         await fetchNotifications(data.id);
       } catch (error) {
         console.error("Error fetching user:", error);
@@ -92,9 +89,7 @@ export default function Dashboard() {
     };
 
     fetchUser();
-
   }, []);
-
 
   const menuItems = [
     { name: "Home", icon: <FaHome size={20} />, premium: false },
@@ -125,30 +120,25 @@ export default function Dashboard() {
   ];
 
   const goto = (data) => {
-
     if (!data.is_read) {
-      api.put(`/notifications/${data.id}`, { title: data.title, body: data.body, is_read: true }).then(res => {
-      }).catch(err => {
-      })
+      api.put(`/notifications/${data.id}`, { title: data.title, body: data.body, is_read: true }).catch(err => {});
     }
     if (data.title == "Writing mock results") {
       const id = data.body.split(" ")[2].split("")[1];
       nav(`/mock/result/${id}`);
     }
-
-  }
+  };
 
   if (!user) {
-    return (
-      <div>Loading...</div>
-    )
+    return <div>Loading...</div>;
   }
 
   return (
     <div className={`flex h-screen transition-colors duration-300 ${theme === "dark" ? "bg-gray-950" : "bg-gradient-to-br from-gray-50 to-gray-100"}`}>
       <Background />
-      {/* Sidebar */}
-      <div className={`fixed z-20 md:static h-screen ${sidebarOpen ? "w-72" : "w-0 md:w-24"} transition-all duration-300 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 shadow-2xl flex flex-col justify-between overflow-hidden md:overflow-visible border-r border-gray-200 dark:border-gray-700`}>
+
+      {/* Sidebar - z-50 mobil uchun, z-30 desktop uchun */}
+      <div className={`fixed z-50 md:z-30 md:static h-screen ${sidebarOpen ? "w-72" : "w-0 md:w-24"} transition-all duration-300 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 shadow-2xl flex flex-col justify-between overflow-hidden md:overflow-visible border-r border-gray-200 dark:border-gray-700`}>
         {/* Logo Section */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -163,7 +153,7 @@ export default function Dashboard() {
         </div>
 
         {/* Menu Items */}
-        <div className="flex z-[9999] flex-col pt-4 px-3 flex-1 gap-2">
+        <div className="flex flex-col pt-4 px-3 flex-1 gap-2">
           {menuItems.map((item, idx) => (
             <div key={idx} className="relative group">
               <div
@@ -172,7 +162,6 @@ export default function Dashboard() {
                   : "hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600"
                   }`}
                 onClick={() => {
-                  // Check premium requirement
                   if (item.premium && !isPremium) {
                     alert("This feature requires a Premium subscription. Please upgrade to access it.");
                     return;
@@ -180,7 +169,6 @@ export default function Dashboard() {
                   if (item.setOpen) item.setOpen(!item.open);
                   setHoveredMenu(item.name);
 
-                  // Faqat "Home" bosilganda active = "home"
                   if (item.name === "Home") {
                     setActive("home");
                   }
@@ -199,9 +187,9 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Tooltip Popup */}
+              {/* Tooltip Popup - z-40 */}
               {!sidebarOpen && (
-                <div className="absolute z-[999] left-28 top-1/2 transform -translate-y-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                <div className="absolute z-40 left-28 top-1/2 transform -translate-y-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
                   <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-2xl whitespace-nowrap relative">
                     {item.name}
                     <div className="absolute right-full top-1/2 transform -translate-y-1/2 w-2 h-2 bg-gradient-to-r from-blue-600 to-purple-600 rotate-45 -mr-1"></div>
@@ -221,14 +209,13 @@ export default function Dashboard() {
                       <span className="font-medium">{theme === "light" ? "Dark Mode" : "Light Mode"}</span>
                     </div>
                   ) : (
-
                     item.dropdown.map((sub, i) => (
                       <div
                         key={i}
                         className="py-3 px-6 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-colors duration-200 cursor-pointer font-medium text-sm whitespace-nowrap border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                         onClick={() => {
                           setActive(`${item.name.toLowerCase()}_${sub.toLowerCase()}`);
-                          item.setOpen(false); // optional: popupni yopish uchun
+                          item.setOpen(false);
                         }}
                       >
                         {sub}
@@ -238,9 +225,9 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* Dropdown - Sidebar Closed (Popup Menu) */}
+              {/* Dropdown - Sidebar Closed (Popup Menu) - z-40 */}
               {item.dropdown && item.open && !sidebarOpen && (
-                <div className="absolute z-[9999] left-28 top-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="absolute z-40 left-28 top-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                   <div className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 animate-in fade-in">
                     {item.name === "Settings" ? (
                       <div
@@ -269,14 +256,28 @@ export default function Dashboard() {
         </div>
 
         {/* Logout */}
-        <div onClick={() => { localStorage.removeItem("access_token"); localStorage.removeItem("refresh_token"); nav("/auth") }} className="p-3 border-t border-gray-200 dark:border-gray-700 relative group/logout-btn">
+        <div
+          onClick={() => {
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
+            nav("/auth");
+          }}
+          className="p-3 border-t border-gray-200 dark:border-gray-700 relative group/logout-btn"
+        >
           <div className="flex items-center gap-4 px-4 py-3 cursor-pointer rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 dark:hover:from-gray-700 dark:hover:to-gray-600 group/logout text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400">
             <FaSignOutAlt size={20} className="group-hover/logout:scale-110 transition-transform duration-200" />
           </div>
 
-          {/* Logout Tooltip */}
+          {/* Logout Tooltip - z-40 */}
           {!sidebarOpen && (
-            <div onClick={() => { localStorage.removeItem("acces_token"); nav("/auth") }} className="absolute left-28 bottom-1/2 transform translate-y-1/2 opacity-0 invisible group-hover/logout-btn:opacity-100 group-hover/logout-btn:visible transition-all duration-200 z-50 pointer-events-none">
+            <div
+              onClick={() => {
+                localStorage.removeItem("access_token");
+                localStorage.removeItem("refresh_token");
+                nav("/auth");
+              }}
+              className="absolute left-28 bottom-1/2 transform translate-y-1/2 opacity-0 invisible group-hover/logout-btn:opacity-100 group-hover/logout-btn:visible transition-all duration-200 z-40 pointer-events-none"
+            >
               <div className="bg-gradient-to-r from-red-600 to-pink-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-2xl whitespace-nowrap relative">
                 Log Out
                 <div className="absolute right-full top-1/2 transform -translate-y-1/2 w-2 h-2 bg-gradient-to-r from-red-600 to-pink-600 rotate-45 -mr-1"></div>
@@ -286,18 +287,18 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Mobile menu toggle */}
+      {/* Mobile menu toggle - z-50 */}
       <button
-        className="md:hidden z-[9999] fixed top-6 left-6 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
+        className="md:hidden fixed top-6 left-6 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
         onClick={() => setSidebarOpen(!sidebarOpen)}
       >
         <MdMenu size={24} className="text-gray-700 dark:text-gray-200" />
       </button>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Header */}
-        <div className="bg-white z-30 dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700 px-8 py-4 flex items-center justify-between">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Top Header - z-40 */}
+        <div className="bg-white z-40 dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700 px-8 py-4 flex items-center justify-between relative">
           <div className="flex items-center gap-4 flex-1">
             <div className="relative hidden md:block">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={16} />
@@ -308,8 +309,9 @@ export default function Dashboard() {
               />
             </div>
           </div>
-          <div className="flex items-center gap-6 ">
-            <div className="relative ">
+          <div className="flex items-center gap-6">
+            {/* Notifications */}
+            <div className="relative">
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
                 className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
@@ -320,9 +322,9 @@ export default function Dashboard() {
                 )}
               </button>
 
-              {/* Notifications Dropdown */}
+              {/* Notifications Dropdown - z-50 */}
               {notificationsOpen && (
-                <div className="absolute  right-0 top-full z-40 mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 animate-in fade-in slide-in-from-top-2 duration-200 max-h-96 overflow-hidden flex flex-col">
+                <div className="absolute right-0 top-full z-50 mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200 max-h-96 overflow-hidden flex flex-col">
                   {/* Header */}
                   <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600">
                     <div className="flex items-center justify-between">
@@ -337,13 +339,13 @@ export default function Dashboard() {
                   </div>
 
                   {/* Notifications List */}
-                  <div className="overflow-y-auto flex-1 ">
+                  <div className="overflow-y-auto flex-1">
                     {notifications.length > 0 ? (
                       notifications.map((notif) => (
                         <div
                           onClick={() => goto(notif)}
                           key={notif.id}
-                          className={`p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${!notif.read ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                          className={`p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${!notif.is_read ? "bg-blue-50 dark:bg-blue-900/20" : ""
                             }`}
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -383,14 +385,8 @@ export default function Dashboard() {
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-2 rounded-lg transition-all duration-200"
               >
-                {/* <img
-                  src="https://i.pravatar.cc/150?u=${user?.id}"
-                  alt="User"
-                  className="w-12 h-12 rounded-full border-2 border-blue-500"
-                /> */}
                 <User className="rounded-full border-2 text-xl w-10 h-10 p-1 border-blue-500 text-blue-500" />
                 <div className="hidden sm:block">
-
                   <p className="font-bold text-gray-900 dark:text-white">
                     {user?.username}
                   </p>
@@ -400,17 +396,12 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Profile Dropdown Menu */}
+              {/* Profile Dropdown Menu - z-50 */}
               {profileOpen && (
-                <div className="absolute right-0 top-full z-40 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 top-full z-50 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200">
                   {/* Header */}
                   <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600">
                     <div className="flex items-center gap-3">
-                      {/* <img
-                        src="https://i.pravatar.cc/150?img=1"
-                        alt="User"
-                        className="w-12 h-12 rounded-full border-2 border-blue-500"
-                      /> */}
                       <User className="rounded-full border-2 text-xl w-10 h-10 p-1 border-blue-500 text-blue-500" />
 
                       <div>
@@ -428,8 +419,7 @@ export default function Dashboard() {
                       <div onClick={() => {
                         setActive("profile");
                         setProfileOpen(false);
-                      }}
-                      >
+                      }}>
                         <p className="font-semibold text-gray-800 dark:text-white text-sm">👤 Profile</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">View and edit your profile</p>
                       </div>
@@ -465,7 +455,11 @@ export default function Dashboard() {
                     )}
 
                     {/* Logout */}
-                    <div onClick={() => { localStorage.removeItem("access_token"); localStorage.removeItem("refresh_token"); nav("/auth") }} className="px-4 py-3 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer flex items-center gap-3 group border-t border-gray-100 dark:border-gray-700">
+                    <div onClick={() => {
+                      localStorage.removeItem("access_token");
+                      localStorage.removeItem("refresh_token");
+                      nav("/auth");
+                    }} className="px-4 py-3 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer flex items-center gap-3 group border-t border-gray-100 dark:border-gray-700">
                       <FaSignOutAlt size={18} className="text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform" />
                       <div>
                         <p className="font-semibold text-red-700 dark:text-red-300 text-sm">🚪 Log Out</p>
@@ -479,9 +473,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-auto p-8 w-full h-screen z-10">
-
+        {/* Main Content Area - z-10 */}
+        <div className="flex-1 overflow-auto p-8 w-full z-10">
           {active === "home" && <Main />}
 
           {active === "cefr_writing" && <Writing_list isPremium={isPremium} />}
@@ -495,15 +488,13 @@ export default function Dashboard() {
           {active === "ielts_speaking" && <div>IELTS Speaking</div>}
 
           {active === "profile" && <Profile />}
-
         </div>
-
       </div>
 
-      {/* Click outside to close profile dropdown and notifications */}
+      {/* Click outside to close profile dropdown and notifications - z-30 */}
       {(profileOpen || notificationsOpen) && (
         <div
-          className="fixed inset-0 z-39"
+          className="fixed inset-0 z-30 bg-black/5"
           onClick={() => {
             setProfileOpen(false);
             setNotificationsOpen(false);

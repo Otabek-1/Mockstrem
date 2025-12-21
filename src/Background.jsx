@@ -211,7 +211,7 @@ export default function Background() {
   )
 
   return (
-    <div className="absolute w-full h-full overflow-hidden bg-gradient-to-b from-blue-900 to-blue-400">
+    <div className="absolute z-[0] w-full h-full overflow-hidden bg-gradient-to-b from-blue-900 to-blue-400">
       <canvas
         ref={canvasRef}
         className="absolute inset-0"
