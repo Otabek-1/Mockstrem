@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import api from '../../api'
 
 const Part1 = ({ data, answers, setAnswers }) => {
@@ -612,12 +612,20 @@ const ResultPage = ({ mockData, answers, correctAnswers }) => {
 }
 
 export default function Listening() {
+    const { id } = useParams()
     const [params] = useSearchParams()
-    const mockId = params.get("id")
+
+    const mockId = id
     const part = params.get("part")
-    const [currentPart ,setCurrentPart] = useState(part);
-    const queryPart = part;
-    
+    const queryPart = params.get("part")
+    const initialPart =
+        queryPart === "all" ? 1 : Number(queryPart)
+
+    const [currentPart, setCurrentPart] = useState(initialPart)
+
+    const [audioList, setAudioList] = useState([])
+
+
     const [showBreak, setShowBreak] = useState(false)
     const [mockData, setMockData] = useState(null)
     const [correctAnswers, setCorrectAnswers] = useState(null)
@@ -632,13 +640,24 @@ export default function Listening() {
     })
     const [showResults, setShowResults] = useState(false)
 
+    const [showStartModal, setShowStartModal] = useState(true)
+    const [currentIndex, setCurrentIndex] = useState(0)
+
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const mockRes = await api.get(`/cefr/listening/${mockId}`)
-                console.log(mockRes);
-                
+                console.log(mockRes.data);
+
                 setMockData(mockRes.data)
+                setAudioList([
+                    mockRes.data.audio_part_1,
+                    mockRes.data.audio_part_2,
+                    mockRes.data.audio_part_3,
+                    mockRes.data.audio_part_4,
+                    mockRes.data.audio_part_5,
+                    mockRes.data.audio_part_6,
+                ].filter(Boolean))
 
                 const answersRes = await api.get(`/cefr/listening/answer/${mockId}`)
                 setCorrectAnswers(answersRes.data)
@@ -650,8 +669,36 @@ export default function Listening() {
         }
         if (mockId) {
             fetchData()
+
         }
     }, [mockId])
+
+
+
+
+    const audioRef = useRef(null)
+    const startMock = () => {
+        setShowStartModal(false)
+
+        // kichik timeout — DOM update bo‘lishi uchun
+        setTimeout(() => {
+            audioRef.current?.play()
+        }, 100)
+    }
+    const handleEnded = () => {
+        if (currentIndex < audioList.length - 1) {
+            setCurrentIndex(prev => prev + 1)
+        }
+    }
+    useEffect(() => {
+        if (!showStartModal && audioRef.current) {
+            audioRef.current.load()
+            audioRef.current.play()
+        }
+    }, [currentIndex])
+
+
+
 
     useEffect(() => {
         if (queryPart !== "all") return
@@ -716,15 +763,40 @@ export default function Listening() {
         <div className='w-full min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 flex flex-col items-center p-5 gap-5'>
             {/* Header */}
             <div className="w-full max-w-5xl fixed top-0 left-0 right-0 h-max bg-gradient-to-r from-green-500 to-cyan-500 rounded-b-xl flex p-4 items-center justify-between text-white text-2xl font-bold z-50 mx-auto">
-                <div>
-                    {mockData && mockData[`audio_part_${currentPart}`] && (
-                        <audio
-                            src={mockData[`audio_part_${currentPart}`]}
-                            autoPlay
-                            controls
-                            className="absolute -bottom-16 left-4"
-                        />
-                    )}
+                <div>{showStartModal && (
+                    <>
+                        {/* Blur */}
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
+
+                        {/* Modal */}
+                        <div className="fixed inset-0 z-50 flex items-center justify-center">
+                            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm text-center shadow-xl">
+                                <h2 className="text-xl font-bold mb-2">
+                                    Ready to start listening?
+                                </h2>
+                                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                                    Audio will start immediately after you click the button.
+                                </p>
+
+                                <button
+                                    onClick={startMock}
+                                    className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+                                >
+                                    ▶ Start mock
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                    <audio
+                        ref={audioRef}
+                        src={audioList[currentIndex]}
+                        onEnded={handleEnded}
+                        preload="auto"
+                    />
+
+
                     <span>CEFR Listening Test</span>
                 </div>
                 <div className="flex items-center gap-4">
@@ -733,6 +805,7 @@ export default function Listening() {
                         <button
                             onClick={handleNextPart}
                             className="px-6 py-2 bg-white text-green-600 font-bold rounded-lg hover:bg-gray-100 transition-all"
+                            style={{color:"black"}}
                         >
                             {currentPart === 6 ? 'Finish' : 'Next Part'}
                         </button>
