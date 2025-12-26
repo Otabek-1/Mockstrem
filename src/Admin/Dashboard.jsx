@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import Main_admin from "./Main";
 import CEFR_reading from "./CEFR_reading";
 import CEFR_Speaking from "./CEFR_speaking";
+import CEFR_Listening from "./CEFR_Listening";
 
 export default function Dashboard_admin() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -133,6 +134,7 @@ export default function Dashboard_admin() {
         {activeMenu === "cefr_writing" && <CEFR_Writing />}
         {activeMenu === "cefr_reading" && <CEFR_reading />}
         {activeMenu === "cefr_speaking" && <CEFR_Speaking />}
+        {activeMenu === "cefr_listening" && <CEFR_Listening />}
         {activeMenu === "Users" && <Users />}
         {activeMenu === "Dashboard" && <Main_admin />}
       </div>

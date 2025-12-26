@@ -11,6 +11,7 @@ import { User } from "lucide-react";
 import Reading_list from "./Components/CEFR/Reading_list";
 import Speaking_list from "./Components/CEFR/Speaking_list";
 import Background from "./Background";
+import Listening_list from "./Components/CEFR/Listening_list";
 
 // Vaqtni "X minutes ago" formatiga o'tkazish
 const formatTimeAgo = (dateString) => {
@@ -478,7 +479,7 @@ export default function Dashboard() {
           {active === "home" && <Main />}
 
           {active === "cefr_writing" && <Writing_list isPremium={isPremium} />}
-          {active === "cefr_listening" && <div>CEFR Listening</div>}
+          {active === "cefr_listening" && <Listening_list isPremium={isPremium}/>}
           {active === "cefr_reading" && <Reading_list isPremium={isPremium} />}
           {active === "cefr_speaking" && <Speaking_list isPremium={isPremium} />}
 

@@ -20,6 +20,8 @@ import CEFR_Speaking from './Admin/CEFR_speaking.jsx'
 import SpeakingMockForm from './Admin/SpeakingMockForm.jsx'
 import SpeakingMocks from './Admin/SpeakingMocks.jsx'
 import SpeakingMockResult from './Components/SpeakingMockResult.jsx'
+import Listening from './Components/CEFR/Listening.jsx'
+import ListeningMockForm from './Admin/ListeningMockForm.jsx'
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
@@ -42,6 +44,8 @@ createRoot(document.getElementById('root')).render(
       <Route path="/mock/cefr/speaking/form" element={<SpeakingMockForm />} />
       <Route path="/mock/cefr/speaking/check-list" element={<SpeakingMocks />} />
       <Route path='/mock/result/speaking/:resultId' element={<SpeakingMockResult />}/>
+      <Route path='/mock/cefr/listening/:id' element={<Listening />}/>
+      <Route path='/mock/cefr/listening/form' element={<ListeningMockForm />}/>
       <Route path='/news/:slug' element={<News />} />
     </Routes>
   </BrowserRouter>
