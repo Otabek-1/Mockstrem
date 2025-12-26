@@ -188,11 +188,11 @@ export default function ListeningList({ isPremium = false }) {
                     Part {selectedPart}
                   </h3>
 
-                  <audio
+                  {/* <audio
                     controls
                     className="w-full"
                     src={selectedMock[`audio_part_${selectedPart}`]}
-                  />
+                  /> */}
                 </div>
 
                 <button
