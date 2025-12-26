@@ -640,7 +640,7 @@ export default function Listening() {
                 
                 setMockData(mockRes.data)
 
-                const answersRes = await api.get(`/answer/${mockId}`)
+                const answersRes = await api.get(`/cefr/listening/answer/${mockId}`)
                 setCorrectAnswers(answersRes.data)
                 setLoading(false)
             } catch (err) {
