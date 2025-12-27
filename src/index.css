@@ -125,3 +125,7 @@ body{
 .disclaimer-rules li{
   list-style-type: disc;
 }
+
+.permission-box::-webkit-scrollbar{
+  width: 0;
+}
