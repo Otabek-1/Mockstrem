@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import api from '../../api'
 
+
 const Part1 = ({ data, answers, setAnswers }) => {
     const handleAnswerChange = (questionNum, optionIdx) => {
         setAnswers(prev => ({
@@ -22,14 +23,14 @@ const Part1 = ({ data, answers, setAnswers }) => {
                 </span>
 
                 <div className="space-y-8">
-                    {data.map((q, idx) => {
+                    {data?.map((q, idx) => {
                         const questionNum = idx + 1
                         return (
                             <div key={idx} className="bg-gray-50 p-6 rounded-lg border border-gray-200">
                                 <span className='text-xl font-bold text-slate-800 block mb-5'>{questionNum}.</span>
 
                                 <div className="flex flex-col gap-4 ml-6">
-                                    {q.map((opt, optIdx) => (
+                                    {q?.map((opt, optIdx) => (
                                         <label key={optIdx} className="flex items-center gap-4 cursor-pointer p-3 rounded hover:bg-white transition-colors">
                                             <input
                                                 type="radio"
@@ -87,12 +88,12 @@ const Part2 = ({ data, answers, setAnswers }) => {
                 </div>
 
                 <div className="space-y-6">
-                    {data.map((q, idx) => (
+                    {data?.map((q, idx) => (
                         <div key={idx} className="bg-gray-50 p-6 rounded-lg border border-gray-200">
                             <div className="flex items-baseline gap-2 flex-wrap">
                                 <span className='text-xl font-bold text-slate-800'>{9 + idx}.</span>
-                                <span className='text-lg font-semibold text-slate-800'>{q.label}:</span>
-                                <span className='text-lg text-slate-800'>{q.before}</span>
+                                <span className='text-lg font-semibold text-slate-800'>{q?.label}:</span>
+                                <span className='text-lg text-slate-800'>{q?.before}</span>
                                 <input
                                     type="text"
                                     className="border-b-2 border-green-500 focus:outline-none focus:border-green-700 px-2 py-1 min-w-[100px] bg-transparent text-slate-800 font-medium"
@@ -100,7 +101,7 @@ const Part2 = ({ data, answers, setAnswers }) => {
                                     onChange={(e) => handleInputChange(idx, e.target.value)}
                                     maxLength="20"
                                 />
-                                {q.after && <span className='text-lg text-slate-800'>{q.after}</span>}
+                                {q?.after && <span className='text-lg text-slate-800'>{q.after}</span>}
                             </div>
                         </div>
                     ))}
@@ -201,7 +202,7 @@ const Part3 = ({ data, answers, setAnswers }) => {
                     <div className="flex gap-32 relative z-10">
                         <div className="flex flex-col gap-6">
                             <span className='text-lg font-bold text-slate-800 mb-2'>Speakers:</span>
-                            {data.speakers.map((speaker, idx) => (
+                            {data?.speakers?.map((speaker, idx) => (
                                 <div
                                     key={idx}
                                     ref={el => speakerRefs.current[idx] = el}
@@ -214,7 +215,7 @@ const Part3 = ({ data, answers, setAnswers }) => {
 
                         <div className="flex flex-col gap-6">
                             <span className='text-lg font-bold text-slate-800 mb-2'>Topics:</span>
-                            {data.options.map((option, idx) => (
+                            {data?.options?.map((option, idx) => (
                                 <div
                                     key={idx}
                                     className="flex items-center gap-3"
@@ -239,7 +240,7 @@ const Part3 = ({ data, answers, setAnswers }) => {
                     <div className="mt-8 p-4 bg-gray-50 rounded-lg">
                         <span className='text-sm text-slate-600 block mb-3'>Select topic for each speaker:</span>
                         <div className="flex flex-wrap gap-3">
-                            {data.speakers.map((speaker, speakerIdx) => (
+                            {data?.speakers?.map((speaker, speakerIdx) => (
                                 <div key={speakerIdx} className="flex gap-2 items-center bg-white p-2 rounded border border-gray-300">
                                     <span className='font-semibold text-slate-700 text-sm'>{speaker}:</span>
                                     <select
@@ -248,7 +249,7 @@ const Part3 = ({ data, answers, setAnswers }) => {
                                         className='px-2 py-1 border border-green-400 rounded text-sm focus:outline-none focus:border-green-600'
                                     >
                                         <option value="">Select</option>
-                                        {data.options.map((_, optIdx) => (
+                                        {data?.options?.map((_, optIdx) => (
                                             <option key={optIdx} value={optIdx}>
                                                 {String.fromCharCode(65 + optIdx)}
                                             </option>
@@ -286,14 +287,14 @@ const Part4 = ({ data, answers, setAnswers }) => {
                 <div className="mt-8 flex flex-col items-center gap-4">
                     <div className="w-full max-w-2xl flex justify-center">
                         <img
-                            src={data.mapUrl}
+                            src={data?.mapUrl}
                             alt="Map"
                             className="w-full h-auto rounded-lg border-2 border-gray-300 shadow-lg"
                         />
                     </div>
 
                     <div className="flex gap-3 flex-wrap justify-center mt-4">
-                        {data.mapLabels.map(label => (
+                        {data?.mapLabels?.map(label => (
                             <div key={label} className="px-3 py-1 bg-blue-100 rounded-full border-2 border-blue-400">
                                 <span className="font-bold text-blue-700">{label}</span>
                             </div>
@@ -305,18 +306,18 @@ const Part4 = ({ data, answers, setAnswers }) => {
                     <span className='text-lg font-semibold text-slate-800 block mb-6'>Answer the questions:</span>
 
                     <div className="flex flex-col gap-6">
-                        {data.questions.map((q, idx) => (
+                        {data?.questions?.map((q, idx) => (
                             <div key={idx} className="flex items-center gap-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                <span className='text-xl font-bold text-slate-800 min-w-[60px]'>{q.num}.</span>
+                                <span className='text-xl font-bold text-slate-800 min-w-[60px]'>{q?.num}.</span>
                                 <div className="flex items-center gap-4 flex-1">
-                                    <span className='text-lg text-slate-700'>{q.place}</span>
+                                    <span className='text-lg text-slate-700'>{q?.place}</span>
                                     <select
                                         value={answers.part_4?.[idx] || ''}
                                         onChange={(e) => handleInputChange(idx, e.target.value)}
                                         className='px-4 py-2 border-2 border-green-400 rounded-lg focus:outline-none focus:border-green-600 bg-white text-slate-800 font-medium'
                                     >
                                         <option value="">Select location</option>
-                                        {data.mapLabels.map(label => (
+                                        {data?.mapLabels?.map(label => (
                                             <option key={label} value={label}>
                                                 {label}
                                             </option>
@@ -359,22 +360,22 @@ const Part5 = ({ data, answers, setAnswers }) => {
                 </span>
 
                 <div className="flex flex-col gap-12">
-                    {data.map((extract, extractIdx) => (
+                    {data?.map((extract, extractIdx) => (
                         <div key={extractIdx} className="border-l-4 border-green-500 pl-6">
                             <div className="inline-block bg-green-200 px-4 py-2 rounded-full mb-6">
-                                <span className='font-bold text-green-700 text-lg'>{extract.name}</span>
+                                <span className='font-bold text-green-700 text-lg'>{extract?.name}</span>
                             </div>
 
                             <div className="flex flex-col gap-8">
-                                {extract.questions.map((q, questionIdx) => (
+                                {extract?.questions?.map((q, questionIdx) => (
                                     <div key={questionIdx} className="bg-gray-50 p-5 rounded-lg">
                                         <div className="mb-5">
                                             <span className='text-lg font-bold text-slate-800'>{24 + extractIdx * 2 + questionIdx}. </span>
-                                            <span className='text-lg text-slate-800'>{q.text}</span>
+                                            <span className='text-lg text-slate-800'>{q?.text}</span>
                                         </div>
 
                                         <div className="flex flex-col gap-3 ml-8">
-                                            {q.options.map((option, optIdx) => (
+                                            {q?.options?.map((option, optIdx) => (
                                                 <label key={optIdx} className="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-white transition-colors">
                                                     <input
                                                         type="radio"
@@ -430,15 +431,15 @@ const Part6 = ({ data, answers, setAnswers }) => {
                 </span>
 
                 <div className="bg-green-100 border-l-4 border-green-500 p-5 rounded mb-10">
-                    <h3 className='text-3xl font-semibold text-green-700 italic'>{data.title}</h3>
+                    <h3 className='text-3xl font-semibold text-green-700 italic'>{data?.title}</h3>
                 </div>
 
                 <div className="space-y-6">
-                    {data.questions.map((q, idx) => (
+                    {data?.questions?.map((q, idx) => (
                         <div key={idx} className="bg-gray-50 p-6 rounded-lg border border-gray-200">
                             <div className="flex items-baseline gap-2 flex-wrap">
-                                <span className='text-lg font-bold text-slate-800'>{q.num}.</span>
-                                <span className='text-base text-slate-800'>{q.before}</span>
+                                <span className='text-lg font-bold text-slate-800'>{q?.num}.</span>
+                                <span className='text-base text-slate-800'>{q?.before}</span>
                                 <input
                                     type="text"
                                     value={answers.part_6?.[idx] || ''}
@@ -446,7 +447,7 @@ const Part6 = ({ data, answers, setAnswers }) => {
                                     maxLength="20"
                                     className='border-b-2 border-green-500 focus:outline-none focus:border-green-700 px-2 py-1 min-w-[100px] bg-transparent text-slate-800 font-medium'
                                 />
-                                <span className='text-base text-slate-800'>{q.after}</span>
+                                <span className='text-base text-slate-800'>{q?.after}</span>
                             </div>
                         </div>
                     ))}
@@ -476,7 +477,7 @@ const ResultPage = ({ mockData, answers, correctAnswers }) => {
             const correctAnswer = correctAnswers.part_1[idx]
             if (userAnswer === correctAnswer) part1Correct++
         })
-        partResults.part_1 = { correct: part1Correct, total: 8, wrong: [] }
+        partResults.part_1 = { correct: part1Correct, total: 8 }
         totalCorrect += part1Correct
         totalQuestions += 8
 
@@ -487,7 +488,7 @@ const ResultPage = ({ mockData, answers, correctAnswers }) => {
             const correctAnswer = correctAnswers.part_2[parseInt(key)]?.toLowerCase()
             if (userAnswer === correctAnswer) part2Correct++
         })
-        partResults.part_2 = { correct: part2Correct, total: 6, wrong: [] }
+        partResults.part_2 = { correct: part2Correct, total: 6 }
         totalCorrect += part2Correct
         totalQuestions += 6
 
@@ -498,7 +499,7 @@ const ResultPage = ({ mockData, answers, correctAnswers }) => {
             const correctAnswer = correctAnswers.part_3[parseInt(key)]
             if (userAnswer === correctAnswer) part3Correct++
         })
-        partResults.part_3 = { correct: part3Correct, total: 4, wrong: [] }
+        partResults.part_3 = { correct: part3Correct, total: 4 }
         totalCorrect += part3Correct
         totalQuestions += 4
 
@@ -509,7 +510,7 @@ const ResultPage = ({ mockData, answers, correctAnswers }) => {
             const correctAnswer = correctAnswers.part_4[parseInt(key)]
             if (userAnswer === correctAnswer) part4Correct++
         })
-        partResults.part_4 = { correct: part4Correct, total: 5, wrong: [] }
+        partResults.part_4 = { correct: part4Correct, total: 5 }
         totalCorrect += part4Correct
         totalQuestions += 5
 
@@ -517,11 +518,11 @@ const ResultPage = ({ mockData, answers, correctAnswers }) => {
         let part5Correct = 0
         Object.keys(answers.part_5 || {}).forEach(key => {
             const userAnswer = String.fromCharCode(65 + answers.part_5[key])
-            const qIdx = parseInt(key.split('-')[0] * 2 + parseInt(key.split('-')[1]))
+            const qIdx = parseInt(key.split('-')[0]) * 2 + parseInt(key.split('-')[1])
             const correctAnswer = correctAnswers.part_5[qIdx]
             if (userAnswer === correctAnswer) part5Correct++
         })
-        partResults.part_5 = { correct: part5Correct, total: 6, wrong: [] }
+        partResults.part_5 = { correct: part5Correct, total: 6 }
         totalCorrect += part5Correct
         totalQuestions += 6
 
@@ -532,7 +533,7 @@ const ResultPage = ({ mockData, answers, correctAnswers }) => {
             const correctAnswer = correctAnswers.part_6[parseInt(key)]?.toLowerCase()
             if (userAnswer === correctAnswer) part6Correct++
         })
-        partResults.part_6 = { correct: part6Correct, total: 6, wrong: [] }
+        partResults.part_6 = { correct: part6Correct, total: 6 }
         totalCorrect += part6Correct
         totalQuestions += 6
 
@@ -547,7 +548,7 @@ const ResultPage = ({ mockData, answers, correctAnswers }) => {
             <div className="w-full max-w-5xl mt-24">
                 <div className="bg-white rounded-xl p-12 shadow-2xl">
                     <h1 className='text-4xl font-bold text-center text-slate-800 mb-2'>Test Results</h1>
-                    <p className='text-center text-slate-600 mb-12 text-lg'>{mockData.title}</p>
+                    <p className='text-center text-slate-600 mb-12 text-lg'>{mockData?.title}</p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-8 text-white text-center shadow-lg">
@@ -616,17 +617,12 @@ export default function Listening() {
     const [params] = useSearchParams()
 
     const mockId = id
-    const part = params.get("part")
     const queryPart = params.get("part")
-    const initialPart =
-        queryPart === "all" ? 1 : Number(queryPart)
+    const initialPart = queryPart === "all" ? 1 : Number(queryPart)
 
+    // ✅ State declarations
     const [currentPart, setCurrentPart] = useState(initialPart)
-
     const [audioList, setAudioList] = useState([])
-
-
-    const [showBreak, setShowBreak] = useState(false)
     const [mockData, setMockData] = useState(null)
     const [correctAnswers, setCorrectAnswers] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -639,27 +635,54 @@ export default function Listening() {
         part_6: {}
     })
     const [showResults, setShowResults] = useState(false)
-
     const [showStartModal, setShowStartModal] = useState(true)
-    const [currentIndex, setCurrentIndex] = useState(0)
+    const [currentAudioIndex, setCurrentAudioIndex] = useState(0)
+    const [showBreak, setShowBreak] = useState(false)
+    const [breakTimer, setBreakTimer] = useState(10)
+    const [shouldPlay, setShouldPlay] = useState(false) // ✅ NEW: Audio play qilishni control qilish
 
+    // ✅ Refs
+    const audioRef = useRef(null)
+    const breakIntervalRef = useRef(null)
+
+    // ✅ FETCH DATA
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const mockRes = await api.get(`/cefr/listening/${mockId}`)
-                console.log(mockRes.data);
+                const mockRes = await api.get(`/cefr/listening/${Number(mockId)}`)
 
-                setMockData(mockRes.data)
-                setAudioList([
-                    mockRes.data.audio_part_1,
-                    mockRes.data.audio_part_2,
-                    mockRes.data.audio_part_3,
-                    mockRes.data.audio_part_4,
-                    mockRes.data.audio_part_5,
-                    mockRes.data.audio_part_6,
-                ].filter(Boolean))
+                console.log('Raw API Response:', mockRes.data)
+                console.log('Mock ID:', mockId)
+
+                const apiData = mockRes.data
+
+                let processedData = apiData
+                if (apiData.part_1 && !apiData.data) {
+                    processedData = {
+                        ...apiData,
+                        data: apiData
+                    }
+                } else if (apiData.data) {
+                    processedData = apiData
+                }
+
+                setMockData(processedData)
+
+                const audioUrls = [
+                    processedData.audio_part_1,
+                    processedData.audio_part_2,
+                    processedData.audio_part_3,
+                    processedData.audio_part_4,
+                    processedData.audio_part_5,
+                    processedData.audio_part_6,
+                ].filter(url => url && url.length > 0)
+
+                console.log('Audio URLs:', audioUrls)
+                setAudioList(audioUrls)
 
                 const answersRes = await api.get(`/cefr/listening/answer/${mockId}`)
+                console.log('Correct Answers:', answersRes.data)
+
                 setCorrectAnswers(answersRes.data)
                 setLoading(false)
             } catch (err) {
@@ -667,63 +690,99 @@ export default function Listening() {
                 setLoading(false)
             }
         }
+
         if (mockId) {
             fetchData()
-
         }
     }, [mockId])
 
+    // ✅ AUDIO LOAD VA PLAY
+    useEffect(() => {
+        if (audioRef.current && audioList[currentAudioIndex]) {
+            audioRef.current.src = audioList[currentAudioIndex]
+            audioRef.current.load()
+            
+            // Agar shouldPlay true bo'lsa, audioni play qil
+            if (shouldPlay && !showStartModal) {
+                setTimeout(() => {
+                    audioRef.current?.play().catch(err => {
+                        console.log('Audio play xatosi:', err)
+                    })
+                }, 100)
+            }
+        }
+    }, [currentAudioIndex, audioList, shouldPlay, showStartModal])
 
-
-
-    const audioRef = useRef(null)
+    // ✅ START MOCK
     const startMock = () => {
         setShowStartModal(false)
-
-        // kichik timeout — DOM update bo‘lishi uchun
-        setTimeout(() => {
-            audioRef.current?.play()
-        }, 100)
+        setShouldPlay(true) // ✅ Audio play qilishni faol qil
     }
-    const handleEnded = () => {
-        if (currentIndex < audioList.length - 1) {
-            setCurrentIndex(prev => prev + 1)
-        }
-    }
-    useEffect(() => {
-        if (!showStartModal && audioRef.current) {
-            audioRef.current.load()
-            audioRef.current.play()
-        }
-    }, [currentIndex])
 
-
-
-
-    useEffect(() => {
-        if (queryPart !== "all") return
-
-        if (showBreak) {
-            const timer = setTimeout(() => {
-                if (currentPart < 6) {
-                    setCurrentPart(currentPart + 1)
-                    setShowBreak(false)
-                } else {
-                    setShowResults(true)
-                }
-            }, 10000)
-            return () => clearTimeout(timer)
-        }
-    }, [showBreak, currentPart, queryPart])
-
-    const handleNextPart = () => {
-        if (queryPart === "all" && currentPart < 6) {
+    // ✅ AUDIO ENDED HANDLER
+    const handleAudioEnded = () => {
+        if (queryPart === "all" && currentAudioIndex < audioList.length - 1) {
             setShowBreak(true)
-        } else if (currentPart === 6) {
+            setBreakTimer(10)
+            setShouldPlay(false)
+
+            const interval = setInterval(() => {
+                setBreakTimer(prev => {
+                    if (prev <= 1) {
+                        clearInterval(interval)
+                        setShowBreak(false)
+                        setCurrentAudioIndex(currentAudioIndex + 1)
+                        setCurrentPart(currentPart + 1)
+                        setShouldPlay(true) // ✅ Keyingi audioni play qil
+                        return 0
+                    }
+                    return prev - 1
+                })
+            }, 1000)
+            breakIntervalRef.current = interval
+        } else if (queryPart !== "all") {
+            setShowResults(true)
+        } else if (queryPart === "all" && currentAudioIndex === audioList.length - 1) {
             setShowResults(true)
         }
     }
 
+    // ✅ CLEANUP
+    useEffect(() => {
+        return () => {
+            if (breakIntervalRef.current) {
+                clearInterval(breakIntervalRef.current)
+            }
+        }
+    }, [])
+
+    // ✅ NEXT PART HANDLER
+    const handleNextPart = () => {
+        if (currentAudioIndex < audioList.length - 1) {
+            setShowBreak(true)
+            setBreakTimer(10)
+            setShouldPlay(false)
+
+            const interval = setInterval(() => {
+                setBreakTimer(prev => {
+                    if (prev <= 1) {
+                        clearInterval(interval)
+                        setShowBreak(false)
+                        setCurrentAudioIndex(currentAudioIndex + 1)
+                        setCurrentPart(currentPart + 1)
+                        setShouldPlay(true)
+                        return 0
+                    }
+                    return prev - 1
+                })
+            }, 1000)
+            breakIntervalRef.current = interval
+        } else {
+            setShowResults(true)
+        }
+    }
+
+    // ✅ LOADING STATE
     if (loading || !mockData || !correctAnswers) {
         return (
             <div className='w-full min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center'>
@@ -735,12 +794,24 @@ export default function Listening() {
         )
     }
 
+    // ✅ RESULTS PAGE
     if (showResults) {
         return <ResultPage mockData={mockData} answers={answers} correctAnswers={correctAnswers} />
     }
 
+    // ✅ RENDER PART
     const renderCurrentPart = () => {
-        const data = mockData.data
+        const data = mockData?.data
+
+        if (!data) {
+            return (
+                <div className="bg-white rounded-xl p-8 text-center">
+                    <p className='text-red-500 text-lg font-semibold'>Data struktura xatosi</p>
+                    <p className='text-gray-600 mt-2'>mockData.data topilmadi</p>
+                </div>
+            )
+        }
+
         switch (currentPart) {
             case 1:
                 return <Part1 data={data.part_1} answers={answers} setAnswers={setAnswers} />
@@ -761,51 +832,45 @@ export default function Listening() {
 
     return (
         <div className='w-full min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 flex flex-col items-center p-5 gap-5'>
-            {/* Header */}
-            <div className="w-full max-w-5xl fixed top-0 left-0 right-0 h-max bg-gradient-to-r from-green-500 to-cyan-500 rounded-b-xl flex p-4 items-center justify-between text-white text-2xl font-bold z-50 mx-auto">
-                <div>{showStartModal && (
-                    <>
-                        {/* Blur */}
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
-
-                        {/* Modal */}
-                        <div className="fixed inset-0 z-50 flex items-center justify-center">
-                            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm text-center shadow-xl">
-                                <h2 className="text-xl font-bold mb-2">
-                                    Ready to start listening?
-                                </h2>
-                                <p className="text-gray-600 dark:text-gray-400 mb-6">
-                                    Audio will start immediately after you click the button.
-                                </p>
-
-                                <button
-                                    onClick={startMock}
-                                    className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
-                                >
-                                    ▶ Start mock
-                                </button>
-                            </div>
+            {/* START MODAL */}
+            {showStartModal && (
+                <>
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" />
+                    <div className="fixed inset-0 z-50 flex items-center justify-center">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm text-center shadow-xl">
+                            <h2 className="text-xl font-bold text-slate-800 mb-2">
+                                Ready to start listening?
+                            </h2>
+                            <p className="text-gray-600 dark:text-gray-400 mb-6">
+                                Audio will start immediately after you click the button.
+                            </p>
+                            <button
+                                onClick={startMock}
+                                className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+                            >
+                                ▶ Start mock
+                            </button>
                         </div>
-                    </>
-                )}
+                    </div>
+                </>
+            )}
 
-                    <audio
-                        ref={audioRef}
-                        src={audioList[currentIndex]}
-                        onEnded={handleEnded}
-                        preload="auto"
-                    />
+            {/* AUDIO ELEMENT */}
+            <audio
+                ref={audioRef}
+                onEnded={handleAudioEnded}
+                preload="auto"
+            />
 
-
-                    <span>CEFR Listening Test</span>
-                </div>
+            {/* HEADER */}
+            <div className="w-full max-w-5xl fixed top-0 left-0 right-0 bg-gradient-to-r from-green-500 to-cyan-500 rounded-b-xl flex p-4 items-center justify-between text-white text-2xl font-bold z-30">
+                <span>CEFR Listening Test</span>
                 <div className="flex items-center gap-4">
                     <span>Part {currentPart}/6</span>
-                    {queryPart === "all" && currentPart <= 6 && (
+                    {queryPart === "all" && currentPart < 6 && (
                         <button
                             onClick={handleNextPart}
                             className="px-6 py-2 bg-white text-green-600 font-bold rounded-lg hover:bg-gray-100 transition-all"
-                            style={{color:"black"}}
                         >
                             {currentPart === 6 ? 'Finish' : 'Next Part'}
                         </button>
@@ -813,33 +878,18 @@ export default function Listening() {
                 </div>
             </div>
 
-            {/* Content */}
+            {/* CONTENT */}
             <div className="w-full max-w-5xl mt-24 mb-10">
                 {showBreak ? (
                     <div className="bg-white rounded-xl p-12 flex flex-col items-center justify-center gap-6 shadow-2xl">
                         <h2 className='text-4xl font-bold text-slate-800'>Break Time</h2>
-                        <div className='text-6xl font-bold text-green-500' id="timer">10</div>
-                        <p className='text-xl text-slate-600'>Next part starts in a moment...</p>
+                        <div className='text-6xl font-bold text-green-500'>{breakTimer}</div>
+                        <p className='text-xl text-slate-600'>Part {currentPart + 1} starts in a moment...</p>
                     </div>
                 ) : (
                     renderCurrentPart()
                 )}
             </div>
-
-            {/* Timer Script */}
-            {showBreak && (
-                <script dangerouslySetInnerHTML={{
-                    __html: `
-                        let count = 10;
-                        const timer = setInterval(() => {
-                            count--;
-                            const timerEl = document.getElementById('timer');
-                            if (timerEl) timerEl.textContent = count;
-                            if (count <= 0) clearInterval(timer);
-                        }, 1000);
-                    `
-                }} />
-            )}
         </div>
     )
 }
