@@ -1,100 +1,110 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaTrash } from 'react-icons/fa';
-import { useSearchParams } from 'react-router-dom';
-import api from '../api';
+
+const API_BASE_URL = 'https://english-server-p7y6.onrender.com'; // O'zingizning API URL ini kiriting
 
 export default function ReadingMockForm() {
-  const [searchParams] = useSearchParams();
-  const isEdit = searchParams.get('edit') === 'true';
-  const mockId = searchParams.get('id');
+  const [searchParams, setSearchParams] = useState({});
+  const isEdit = searchParams.edit === 'true';
+  const mockId = searchParams.id;
 
   const [formData, setFormData] = useState({
     title: '',
     part1: {
-      task: 'Read the text. Fill in each gap with ONE word.',
+      task: 'Read the text. Fill in each gap with ONE word or number.',
       text: ''
     },
     part2: {
-      task: 'Read the texts and the statements. Match them.',
-      statements: [''],
-      questions: ['']
+      task: 'Read the statements and texts. Match them.',
+      statements: Array(10).fill(''),
+      texts: Array(7).fill('')
     },
     part3: {
       task: 'Read the text and choose the correct heading for each paragraph.',
-      headings: [''],
-      paragraphs: ['']
+      text: '',
+      headings: Array(8).fill(''),
+      paragraphs: Array(6).fill('')
     },
     part4: {
-      task: 'Read the following text for questions.',
+      task: 'Read the text and answer the questions.',
       text: '',
-      questions: [{ question: '', options: ['', '', '', ''] }]
+      multipleChoice: Array(4).fill(null).map(() => ({ question: '', options: ['', '', '', ''] })),
+      trueFalse: Array(5).fill(null).map(() => ({ statement: '' }))
     },
     part5: {
-      task: 'Read the following text.',
-      text: '',
-      filling: '',
-      multipleChoice: [{ question: '', options: ['', '', '', ''] }],
-      trueFalse: [{ statement: '' }]
+      task: 'Read the text and complete the exercise.',
+      mainText: '',
+      miniText: '',
+      multipleChoice: Array(2).fill(null).map(() => ({ question: '', options: ['', '', '', ''] }))
     }
   });
 
   const [answers, setAnswers] = useState({
-    part1: [''],
-    part2: [''],
-    part3: [''],
-    part4: [''],
-    part5Multiple: [''],
-    part5TrueFalse: ['']
+    part1: Array(6).fill(''),
+    part2: Array(10).fill(''),
+    part3: Array(6).fill(''),
+    part4MC: Array(4).fill(''),
+    part4TF: Array(5).fill(''),
+    part5Mini: Array(5).fill(''),
+    part5MC: Array(2).fill('')
   });
 
   const [loading, setLoading] = useState(false);
   const [showAnswersSection, setShowAnswersSection] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [answerId, setAnswerId] = useState(null);
+  const [error, setError] = useState('');
 
-  // Load data if editing
   useEffect(() => {
-    if (isEdit && mockId) {
-      loadMockData();
-    }
-  }, [isEdit, mockId]);
+    const params = new URLSearchParams(window.location.search);
+    setSearchParams({
+      edit: params.get('edit'),
+      id: params.get('id')
+    });
 
-  const loadMockData = async () => {
+    if (params.get('edit') === 'true' && params.get('id')) {
+      loadMockData(params.get('id'));
+    }
+  }, []);
+
+  const loadMockData = async (id) => {
     setLoadingData(true);
+    setError('');
     try {
       // Load mock questions
-      const mockResponse = await api.get(`/mock/reading/mock/${mockId}`);
-      if (mockResponse.data) {
-        setFormData(mockResponse.data.mock);
+      const mockResponse = await fetch(`${API_BASE_URL}/mock/reading/mock/${id}`);
+      if (!mockResponse.ok) throw new Error('Failed to load mock');
+      const mockData = await mockResponse.json();
+      if (mockData.mock) {
+        setFormData(mockData.mock);
       }
 
       // Load answers
-      const answersResponse = await api.get(`/mock/reading/answer/${mockId}`);
-      if (answersResponse.data.answers) {
-        const answerData = answersResponse.data.answers;
-        setAnswerId(answerData.id || answerData._id);
-        
-        setAnswers({
-          part1: answerData.part1 || [''],
-          part2: answerData.part2 || [''],
-          part3: answerData.part3 || [''],
-          part4: answerData.part4 || [''],
-          part5Multiple: answerData.part5?.slice(0, answerData.part5?.length / 2) || [''],
-          part5TrueFalse: answerData.part5?.slice(answerData.part5?.length / 2) || ['']
-        });
-        setShowAnswersSection(true);
+      const answersResponse = await fetch(`${API_BASE_URL}/mock/reading/answer/${id}`);
+      if (answersResponse.ok) {
+        const answerData = await answersResponse.json();
+        if (answerData.answers) {
+          setAnswerId(answerData.answers.id);
+          setAnswers({
+            part1: answerData.answers.part1 || Array(6).fill(''),
+            part2: answerData.answers.part2 || Array(10).fill(''),
+            part3: answerData.answers.part3 || Array(6).fill(''),
+            part4MC: answerData.answers.part4MC || Array(4).fill(''),
+            part4TF: answerData.answers.part4TF || Array(5).fill(''),
+            part5Mini: answerData.answers.part5Mini || Array(5).fill(''),
+            part5MC: answerData.answers.part5MC || Array(2).fill('')
+          });
+          setShowAnswersSection(true);
+        }
       }
-  
-    
     } catch (error) {
       console.error('Error loading data:', error);
-      alert('Error loading mock data');
+      setError('Error loading mock data: ' + error.message);
     } finally {
       setLoadingData(false);
     }
   };
 
-  // Part 1 handlers
+  // Part 1 Handlers
   const handlePart1TextChange = (e) => {
     setFormData({
       ...formData,
@@ -102,7 +112,7 @@ export default function ReadingMockForm() {
     });
   };
 
-  // Part 2 handlers
+  // Part 2 Handlers
   const handlePart2StatementChange = (index, value) => {
     const newStatements = [...formData.part2.statements];
     newStatements[index] = value;
@@ -112,46 +122,23 @@ export default function ReadingMockForm() {
     });
   };
 
-  const handlePart2QuestionChange = (index, value) => {
-    const newQuestions = [...formData.part2.questions];
-    newQuestions[index] = value;
+  const handlePart2TextChange = (index, value) => {
+    const newTexts = [...formData.part2.texts];
+    newTexts[index] = value;
     setFormData({
       ...formData,
-      part2: { ...formData.part2, questions: newQuestions }
+      part2: { ...formData.part2, texts: newTexts }
     });
   };
 
-  const addPart2Statement = () => {
+  // Part 3 Handlers
+  const handlePart3TextChange = (e) => {
     setFormData({
       ...formData,
-      part2: { ...formData.part2, statements: [...formData.part2.statements, ''] }
+      part3: { ...formData.part3, text: e.target.value }
     });
   };
 
-  const removePart2Statement = (index) => {
-    const newStatements = formData.part2.statements.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      part2: { ...formData.part2, statements: newStatements }
-    });
-  };
-
-  const addPart2Question = () => {
-    setFormData({
-      ...formData,
-      part2: { ...formData.part2, questions: [...formData.part2.questions, ''] }
-    });
-  };
-
-  const removePart2Question = (index) => {
-    const newQuestions = formData.part2.questions.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      part2: { ...formData.part2, questions: newQuestions }
-    });
-  };
-
-  // Part 3 handlers
   const handlePart3HeadingChange = (index, value) => {
     const newHeadings = [...formData.part3.headings];
     newHeadings[index] = value;
@@ -170,37 +157,7 @@ export default function ReadingMockForm() {
     });
   };
 
-  const addPart3Heading = () => {
-    setFormData({
-      ...formData,
-      part3: { ...formData.part3, headings: [...formData.part3.headings, ''] }
-    });
-  };
-
-  const removePart3Heading = (index) => {
-    const newHeadings = formData.part3.headings.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      part3: { ...formData.part3, headings: newHeadings }
-    });
-  };
-
-  const addPart3Paragraph = () => {
-    setFormData({
-      ...formData,
-      part3: { ...formData.part3, paragraphs: [...formData.part3.paragraphs, ''] }
-    });
-  };
-
-  const removePart3Paragraph = (index) => {
-    const newParagraphs = formData.part3.paragraphs.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      part3: { ...formData.part3, paragraphs: newParagraphs }
-    });
-  };
-
-  // Part 4 handlers
+  // Part 4 Handlers
   const handlePart4TextChange = (e) => {
     setFormData({
       ...formData,
@@ -208,60 +165,51 @@ export default function ReadingMockForm() {
     });
   };
 
-  const handlePart4QuestionChange = (index, value) => {
-    const newQuestions = [...formData.part4.questions];
-    newQuestions[index].question = value;
+  const handlePart4MCQuestionChange = (index, value) => {
+    const newQuestions = [...formData.part4.multipleChoice];
+    newQuestions[index] = { ...newQuestions[index], question: value };
     setFormData({
       ...formData,
-      part4: { ...formData.part4, questions: newQuestions }
+      part4: { ...formData.part4, multipleChoice: newQuestions }
     });
   };
 
-  const handlePart4OptionChange = (qIndex, oIndex, value) => {
-    const newQuestions = [...formData.part4.questions];
+  const handlePart4MCOptionChange = (qIndex, oIndex, value) => {
+    const newQuestions = [...formData.part4.multipleChoice];
     newQuestions[qIndex].options[oIndex] = value;
     setFormData({
       ...formData,
-      part4: { ...formData.part4, questions: newQuestions }
+      part4: { ...formData.part4, multipleChoice: newQuestions }
     });
   };
 
-  const addPart4Question = () => {
+  const handlePart4TFStatementChange = (index, value) => {
+    const newStatements = [...formData.part4.trueFalse];
+    newStatements[index] = { ...newStatements[index], statement: value };
     setFormData({
       ...formData,
-      part4: {
-        ...formData.part4,
-        questions: [...formData.part4.questions, { question: '', options: ['', '', '', ''] }]
-      }
+      part4: { ...formData.part4, trueFalse: newStatements }
     });
   };
 
-  const removePart4Question = (index) => {
-    const newQuestions = formData.part4.questions.filter((_, i) => i !== index);
+  // Part 5 Handlers
+  const handlePart5MainTextChange = (e) => {
     setFormData({
       ...formData,
-      part4: { ...formData.part4, questions: newQuestions }
+      part5: { ...formData.part5, mainText: e.target.value }
     });
   };
 
-  // Part 5 handlers
-  const handlePart5TextChange = (e) => {
+  const handlePart5MiniTextChange = (e) => {
     setFormData({
       ...formData,
-      part5: { ...formData.part5, text: e.target.value }
-    });
-  };
-
-  const handlePart5FillingChange = (e) => {
-    setFormData({
-      ...formData,
-      part5: { ...formData.part5, filling: e.target.value }
+      part5: { ...formData.part5, miniText: e.target.value }
     });
   };
 
   const handlePart5MCQuestionChange = (index, value) => {
     const newQuestions = [...formData.part5.multipleChoice];
-    newQuestions[index].question = value;
+    newQuestions[index] = { ...newQuestions[index], question: value };
     setFormData({
       ...formData,
       part5: { ...formData.part5, multipleChoice: newQuestions }
@@ -277,298 +225,243 @@ export default function ReadingMockForm() {
     });
   };
 
-  const addPart5MCQuestion = () => {
-    setFormData({
-      ...formData,
-      part5: {
-        ...formData.part5,
-        multipleChoice: [...formData.part5.multipleChoice, { question: '', options: ['', '', '', ''] }]
-      }
-    });
-  };
-
-  const removePart5MCQuestion = (index) => {
-    const newQuestions = formData.part5.multipleChoice.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      part5: { ...formData.part5, multipleChoice: newQuestions }
-    });
-  };
-
-  const handlePart5TFStatementChange = (index, value) => {
-    const newStatements = [...formData.part5.trueFalse];
-    newStatements[index].statement = value;
-    setFormData({
-      ...formData,
-      part5: { ...formData.part5, trueFalse: newStatements }
-    });
-  };
-
-  const addPart5TFStatement = () => {
-    setFormData({
-      ...formData,
-      part5: {
-        ...formData.part5,
-        trueFalse: [...formData.part5.trueFalse, { statement: '' }]
-      }
-    });
-  };
-
-  const removePart5TFStatement = (index) => {
-    const newStatements = formData.part5.trueFalse.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      part5: { ...formData.part5, trueFalse: newStatements }
-    });
-  };
-
-  // Answer handlers
+  // Answer Handlers
   const handleAnswerChange = (part, index, value) => {
     const newAnswers = { ...answers };
     newAnswers[part][index] = value;
     setAnswers(newAnswers);
   };
-
-  const addAnswer = (part) => {
-    const newAnswers = { ...answers };
-    newAnswers[part] = [...newAnswers[part], ''];
-    setAnswers(newAnswers);
-  };
-
-  const removeAnswer = (part, index) => {
-    const newAnswers = { ...answers };
-    newAnswers[part] = newAnswers[part].filter((_, i) => i !== index);
-    setAnswers(newAnswers);
-  };
-
+  // Function qo'shildi
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('access_token')
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    }
+  }
   const handleSubmit = async () => {
     setLoading(true);
+    setError('');
     try {
-      if (isEdit && mockId) {
-        // Update mock questions
-        await api.put(`/mock/reading/${mockId}`, formData);
+      const answerData = {
+        part1: answers.part1.filter(a => a.trim() !== ''),
+        part2: answers.part2.filter(a => a.trim() !== ''),
+        part3: answers.part3.filter(a => a.trim() !== ''),
+        part4: [
+          ...answers.part4MC.filter(a => a.trim() !== ''),
+          ...answers.part4TF.filter(a => a.trim() !== '')
+        ],
+        part5: [
+          ...answers.part5Mini.filter(a => a.trim() !== ''),
+          ...answers.part5MC.filter(a => a.trim() !== '')
+        ]
+      };
 
-        // Update answers
-        const answerData = {
-          part1: answers.part1.filter(a => a.trim() !== ''),
-          part2: answers.part2.filter(a => a.trim() !== ''),
-          part3: answers.part3.filter(a => a.trim() !== ''),
-          part4: answers.part4.filter(a => a.trim() !== ''),
-          part5: [
-            ...answers.part5Multiple.filter(a => a.trim() !== ''),
-            ...answers.part5TrueFalse.filter(a => a.trim() !== '')
-          ]
-        };
+      if (isEdit && mockId) {
+        // Update existing mock
+        const updateResponse = await fetch(`${API_BASE_URL}/mock/reading/${mockId}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(formData)
+        });
+
+        if (!updateResponse.ok) throw new Error('Failed to update mock');
 
         if (answerId) {
-          await api.put(`/mock/reading/answer/${answerId}`, answerData);
+          const updateAnswerResponse = await fetch(`${API_BASE_URL}/mock/reading/answer/${answerId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(answerData)
+          });
+
+          if (!updateAnswerResponse.ok) throw new Error('Failed to update answers');
         }
 
         alert('Reading mock updated successfully!');
       } else {
         // Create new mock
-        const questionResponse = await api.post('/mock/reading/', formData);
-        
-        if (questionResponse.status !== 200 && questionResponse.status !== 201) {
-          alert(`Error: Server returned status ${questionResponse.status}`);
-          setLoading(false);
-          return;
-        }
+        const createResponse = await fetch(`${API_BASE_URL}/mock/reading/`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(formData)
+        });
 
-        const questionId = questionResponse.data.mock_id;
-        console.log(questionId)
-        if (!questionId) {
-          alert('Error: Could not get question ID from server');
-          setLoading(false);
-          return;
-        }
+        if (!createResponse.ok) throw new Error('Failed to create mock');
+        const responseData = await createResponse.json();
+        const questionId = responseData.mock_id;
 
-        // Post answers
-        const answerData = {
-          question_id: questionId,
-          part1: answers.part1.filter(a => a.trim() !== ''),
-          part2: answers.part2.filter(a => a.trim() !== ''),
-          part3: answers.part3.filter(a => a.trim() !== ''),
-          part4: answers.part4.filter(a => a.trim() !== ''),
-          part5: [
-            ...answers.part5Multiple.filter(a => a.trim() !== ''),
-            ...answers.part5TrueFalse.filter(a => a.trim() !== '')
-          ]
-        };
+        if (!questionId) throw new Error('Could not get question ID from server');
 
-        await api.post('/mock/reading/answer', answerData);
+        // Create answers
+        const createAnswerResponse = await fetch(`${API_BASE_URL}/mock/reading/answer`, {
+          method: 'POST',
+          headers:getAuthHeaders(),
+          body: JSON.stringify({
+            question_id: questionId,
+            ...answerData
+          })
+        });
+
+        if (!createAnswerResponse.ok) throw new Error('Failed to create answers');
 
         alert('Reading mock created successfully!');
       }
-      
+
       // Reset form
-      setFormData({
-        title: '',
-        part1: { task: 'Read the text. Fill in each gap with ONE word.', text: '' },
-        part2: { task: 'Read the texts and the statements. Match them.', statements: [''], questions: [''] },
-        part3: { task: 'Read the text and choose the correct heading for each paragraph.', headings: [''], paragraphs: [''] },
-        part4: { task: 'Read the following text for questions.', text: '', questions: [{ question: '', options: ['', '', '', ''] }] },
-        part5: { task: 'Read the following text.', text: '', filling: '', multipleChoice: [{ question: '', options: ['', '', '', ''] }], trueFalse: [{ statement: '' }] }
-      });
-      setAnswers({
-        part1: [''],
-        part2: [''],
-        part3: [''],
-        part4: [''],
-        part5Multiple: [''],
-        part5TrueFalse: ['']
-      });
       setShowAnswersSection(false);
     } catch (error) {
       console.error('Error:', error);
-      alert(`Error: ${error.response?.data?.message || error.message || 'Unknown error'}`);
+      setError(`Error: ${error.message}`);
+      alert(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   if (loadingData) {
-    return <div className="p-6 text-center">Loading...</div>;
+    return <div className="p-6 text-center text-lg">Loading...</div>;
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">{isEdit ? 'Edit Reading Mock' : 'Create Reading Mock'}</h1>
+    <div className="p-6 max-w-5xl mx-auto bg-gray-100 dark:bg-gray-900 min-h-screen">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">
+        {isEdit ? 'Edit CEFR Reading Mock' : 'Create CEFR Reading Mock'}
+      </h1>
 
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-        
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+
         {/* Title */}
         <div className="mb-6">
-          <label className="block text-lg font-semibold mb-2">Title</label>
+          <label className="block text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300">Title</label>
           <input
             type="text"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700"
+            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
             placeholder="Enter title"
           />
         </div>
 
         {/* Part 1 */}
-        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded">
-          <h2 className="text-xl font-bold mb-4">Part 1: Fill in the Gaps</h2>
+        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded border-l-4 border-blue-500">
+          <h2 className="text-xl font-bold mb-2 text-gray-800 dark:text-white">Part 1: Fill in the Gaps (6 gaps)</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Mark gaps as (1), (2), (3), (4), (5), (6)</p>
           <textarea
             value={formData.part1.text}
             onChange={handlePart1TextChange}
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-32"
-            placeholder="Enter text with gaps marked as (1), (2), etc."
+            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-40 text-gray-900 dark:text-white"
+            placeholder="Enter text with gaps marked as (1), (2), (3), (4), (5), (6)"
           />
         </div>
 
         {/* Part 2 */}
-        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded">
-          <h2 className="text-xl font-bold mb-4">Part 2: Matching</h2>
-          
-          <div className="mb-4">
-            <label className="block font-semibold mb-2">Statements:</label>
-            {formData.part2.statements.map((statement, index) => (
-              <div key={index} className="flex gap-2 mb-2">
+        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded border-l-4 border-green-500">
+          <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">Part 2: Matching (10 statements & 7 texts)</h2>
+
+          <div className="mb-6">
+            <label className="block font-semibold mb-3 text-lg text-gray-700 dark:text-gray-300">Statements (10):</label>
+            <div className="grid grid-cols-1 gap-3">
+              {formData.part2.statements.map((statement, index) => (
                 <input
+                  key={index}
                   type="text"
                   value={statement}
                   onChange={(e) => handlePart2StatementChange(index, e.target.value)}
-                  className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600"
+                  className="p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-white"
                   placeholder={`Statement ${index + 1}`}
                 />
-                <button onClick={() => removePart2Statement(index)} className="p-2 bg-red-600 text-white rounded">
-                  <FaTrash />
-                </button>
-              </div>
-            ))}
-            <button onClick={addPart2Statement} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded flex items-center gap-2">
-              <FaPlus /> Add
-            </button>
+              ))}
+            </div>
           </div>
 
           <div>
-            <label className="block font-semibold mb-2">Questions/Texts:</label>
-            {formData.part2.questions.map((question, index) => (
-              <div key={index} className="flex gap-2 mb-2">
+            <label className="block font-semibold mb-3 text-lg text-gray-700 dark:text-gray-300">Texts (7):</label>
+            <div className="grid grid-cols-1 gap-3">
+              {formData.part2.texts.map((text, index) => (
                 <textarea
-                  value={question}
-                  onChange={(e) => handlePart2QuestionChange(index, e.target.value)}
-                  className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-20"
-                  placeholder={`Question ${index + 1}`}
+                  key={index}
+                  value={text}
+                  onChange={(e) => handlePart2TextChange(index, e.target.value)}
+                  className="p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-20 text-gray-900 dark:text-white"
+                  placeholder={`Text ${index + 1}`}
                 />
-                <button onClick={() => removePart2Question(index)} className="p-2 bg-red-600 text-white rounded h-fit">
-                  <FaTrash />
-                </button>
-              </div>
-            ))}
-            <button onClick={addPart2Question} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded flex items-center gap-2">
-              <FaPlus /> Add
-            </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Part 3 */}
-        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded">
-          <h2 className="text-xl font-bold mb-4">Part 3: Headings & Paragraphs</h2>
-          
-          <div className="mb-4">
-            <label className="block font-semibold mb-2">Headings:</label>
-            {formData.part3.headings.map((heading, index) => (
-              <div key={index} className="flex gap-2 mb-2">
+        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded border-l-4 border-purple-500">
+          <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">Part 3: Headings & Paragraphs (8 headings, 6 paragraphs)</h2>
+
+          <div className="mb-6">
+            <label className="block font-semibold mb-2 text-lg text-gray-700 dark:text-gray-300">Main Text:</label>
+            <textarea
+              value={formData.part3.text}
+              onChange={handlePart3TextChange}
+              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-32 text-gray-900 dark:text-white"
+              placeholder="Enter the main text that contains paragraphs"
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block font-semibold mb-3 text-lg text-gray-700 dark:text-gray-300">Headings (8):</label>
+            <div className="grid grid-cols-1 gap-2">
+              {formData.part3.headings.map((heading, index) => (
                 <input
+                  key={index}
                   type="text"
                   value={heading}
                   onChange={(e) => handlePart3HeadingChange(index, e.target.value)}
-                  className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600"
+                  className="p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-white"
                   placeholder={`Heading ${index + 1}`}
                 />
-                <button onClick={() => removePart3Heading(index)} className="p-2 bg-red-600 text-white rounded">
-                  <FaTrash />
-                </button>
-              </div>
-            ))}
-            <button onClick={addPart3Heading} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded flex items-center gap-2">
-              <FaPlus /> Add
-            </button>
+              ))}
+            </div>
           </div>
 
           <div>
-            <label className="block font-semibold mb-2">Paragraphs:</label>
-            {formData.part3.paragraphs.map((paragraph, index) => (
-              <div key={index} className="flex gap-2 mb-2">
+            <label className="block font-semibold mb-3 text-lg text-gray-700 dark:text-gray-300">Paragraphs (6):</label>
+            <div className="grid grid-cols-1 gap-3">
+              {formData.part3.paragraphs.map((paragraph, index) => (
                 <textarea
+                  key={index}
                   value={paragraph}
                   onChange={(e) => handlePart3ParagraphChange(index, e.target.value)}
-                  className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-20"
+                  className="p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-20 text-gray-900 dark:text-white"
                   placeholder={`Paragraph ${index + 1}`}
                 />
-                <button onClick={() => removePart3Paragraph(index)} className="p-2 bg-red-600 text-white rounded h-fit">
-                  <FaTrash />
-                </button>
-              </div>
-            ))}
-            <button onClick={addPart3Paragraph} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded flex items-center gap-2">
-              <FaPlus /> Add
-            </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Part 4 */}
-        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded">
-          <h2 className="text-xl font-bold mb-4">Part 4: Multiple Choice</h2>
+        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded border-l-4 border-orange-500">
+          <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">Part 4: Multiple Choice & True/False/Not Given (4 MC + 5 TF/NG)</h2>
+
           <textarea
             value={formData.part4.text}
             onChange={handlePart4TextChange}
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-32 mb-4"
-            placeholder="Enter text"
+            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-32 mb-6 text-gray-900 dark:text-white"
+            placeholder="Enter the main text for Part 4"
           />
-          
-          {formData.part4.questions.map((q, qIndex) => (
+
+          <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Multiple Choice Questions (4):</h3>
+          {formData.part4.multipleChoice.map((q, qIndex) => (
             <div key={qIndex} className="mb-4 p-3 bg-white dark:bg-gray-800 rounded">
+              <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-300">Question {qIndex + 1}:</label>
               <input
                 type="text"
                 value={q.question}
-                onChange={(e) => handlePart4QuestionChange(qIndex, e.target.value)}
-                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 mb-2"
+                onChange={(e) => handlePart4MCQuestionChange(qIndex, e.target.value)}
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 mb-3 text-gray-900 dark:text-white"
                 placeholder="Question"
               />
               {q.options.map((option, oIndex) => (
@@ -576,47 +469,62 @@ export default function ReadingMockForm() {
                   key={oIndex}
                   type="text"
                   value={option}
-                  onChange={(e) => handlePart4OptionChange(qIndex, oIndex, e.target.value)}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 mb-2"
+                  onChange={(e) => handlePart4MCOptionChange(qIndex, oIndex, e.target.value)}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 mb-2 text-gray-900 dark:text-white"
                   placeholder={`Option ${String.fromCharCode(65 + oIndex)}`}
                 />
               ))}
-              <button onClick={() => removePart4Question(qIndex)} className="w-full p-2 bg-red-600 text-white rounded">
-                Delete Question
-              </button>
             </div>
           ))}
-          <button onClick={addPart4Question} className="w-full px-3 py-2 bg-blue-600 text-white rounded flex items-center justify-center gap-2">
-            <FaPlus /> Add Question
-          </button>
+
+          <h3 className="text-lg font-semibold mb-4 mt-6 text-gray-800 dark:text-white">True/False/Not Given Statements (5):</h3>
+          {formData.part4.trueFalse.map((tf, index) => (
+            <div key={index} className="mb-3 p-3 bg-white dark:bg-gray-800 rounded">
+              <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-300">Statement {index + 1}:</label>
+              <input
+                type="text"
+                value={tf.statement}
+                onChange={(e) => handlePart4TFStatementChange(index, e.target.value)}
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Statement"
+              />
+            </div>
+          ))}
         </div>
 
         {/* Part 5 */}
-        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded">
-          <h2 className="text-xl font-bold mb-4">Part 5: Multiple Choice & True/False</h2>
-          
-          <textarea
-            value={formData.part5.text}
-            onChange={handlePart5TextChange}
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-32 mb-4"
-            placeholder="Enter text"
-          />
+        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded border-l-4 border-red-500">
+          <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">Part 5: Text Completion & MC (1 mini text with 5 gaps + 2 MC)</h2>
 
-          <textarea
-            value={formData.part5.filling}
-            onChange={handlePart5FillingChange}
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-20 mb-4"
-            placeholder="Enter filling exercise with gaps"
-          />
+          <div className="mb-6">
+            <label className="block font-semibold mb-2 text-lg text-gray-700 dark:text-gray-300">Main Text:</label>
+            <textarea
+              value={formData.part5.mainText}
+              onChange={handlePart5MainTextChange}
+              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-32 text-gray-900 dark:text-white"
+              placeholder="Enter the main text"
+            />
+          </div>
 
-          <h3 className="text-lg font-semibold mb-3">Multiple Choice Questions:</h3>
+          <div className="mb-6">
+            <label className="block font-semibold mb-2 text-lg text-gray-700 dark:text-gray-300">Mini Text with Gaps (5 gaps marked as (1), (2), (3), (4), (5)):</label>
+            <textarea
+              value={formData.part5.miniText}
+              onChange={handlePart5MiniTextChange}
+              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 h-32 text-gray-900 dark:text-white"
+              placeholder="Enter mini text with gaps marked as (1), (2), (3), (4), (5)"
+            />
+          </div>
+
+          <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Multiple Choice Questions (2):</h3>
           {formData.part5.multipleChoice.map((q, qIndex) => (
             <div key={qIndex} className="mb-4 p-3 bg-white dark:bg-gray-800 rounded">
+              <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-300">Question {qIndex + 1}:</label>
               <input
                 type="text"
                 value={q.question}
                 onChange={(e) => handlePart5MCQuestionChange(qIndex, e.target.value)}
-                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 mb-2"
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 mb-3 text-gray-900 dark:text-white"
                 placeholder="Question"
               />
               {q.options.map((option, oIndex) => (
@@ -625,181 +533,131 @@ export default function ReadingMockForm() {
                   type="text"
                   value={option}
                   onChange={(e) => handlePart5MCOptionChange(qIndex, oIndex, e.target.value)}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 mb-2"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 mb-2 text-gray-900 dark:text-white"
                   placeholder={`Option ${String.fromCharCode(65 + oIndex)}`}
                 />
               ))}
-              <button onClick={() => removePart5MCQuestion(qIndex)} className="w-full p-2 bg-red-600 text-white rounded">
-                Delete
-              </button>
             </div>
           ))}
-          <button onClick={addPart5MCQuestion} className="w-full px-3 py-2 bg-blue-600 text-white rounded flex items-center justify-center gap-2 mb-4">
-            <FaPlus /> Add Question
-          </button>
-
-          <h3 className="text-lg font-semibold mb-3">True/False Statements:</h3>
-          {formData.part5.trueFalse.map((tf, index) => (
-            <div key={index} className="flex gap-2 mb-2">
-              <input
-                type="text"
-                value={tf.statement}
-                onChange={(e) => handlePart5TFStatementChange(index, e.target.value)}
-                className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
-                placeholder="Statement"
-              />
-              <button onClick={() => removePart5TFStatement(index)} className="p-2 bg-red-600 text-white rounded">
-                <FaTrash />
-              </button>
-            </div>
-          ))}
-          <button onClick={addPart5TFStatement} className="w-full px-3 py-2 bg-blue-600 text-white rounded flex items-center justify-center gap-2">
-            <FaPlus /> Add Statement
-          </button>
         </div>
 
         {/* Answers Section */}
         <button
           onClick={() => setShowAnswersSection(!showAnswersSection)}
-          className="w-full p-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 mb-4"
+          className="w-full p-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 mb-4 transition"
         >
           {showAnswersSection ? 'Hide Answers' : 'Add Answers'}
         </button>
 
         {showAnswersSection && (
           <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-900 rounded border-2 border-blue-400">
-            <h2 className="text-2xl font-bold mb-6">Answer Key</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Answer Key</h2>
 
             {/* Part 1 Answers */}
-            <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded">
-              <h3 className="text-lg font-semibold mb-3">Part 1:</h3>
+            <div className="mb-6 p-3 bg-white dark:bg-gray-800 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">Part 1 Answers (6):</h3>
               {answers.part1.map((ans, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={ans}
-                    onChange={(e) => handleAnswerChange('part1', index, e.target.value)}
-                    className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded"
-                    placeholder={`Answer ${index + 1}`}
-                  />
-                  <button onClick={() => removeAnswer('part1', index)} className="p-2 bg-red-600 text-white rounded">
-                    <FaTrash />
-                  </button>
-                </div>
+                <input
+                  key={index}
+                  type="text"
+                  value={ans}
+                  onChange={(e) => handleAnswerChange('part1', index, e.target.value)}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mb-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  placeholder={`Gap ${index + 1} Answer`}
+                />
               ))}
-              <button onClick={() => addAnswer('part1')} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded">
-                <FaPlus /> Add
-              </button>
             </div>
 
             {/* Part 2 Answers */}
-            <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded">
-              <h3 className="text-lg font-semibold mb-3">Part 2:</h3>
+            <div className="mb-6 p-3 bg-white dark:bg-gray-800 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">Part 2 Answers (10):</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Kiritish: Statement qaysi text raqami bilan match bo'lsa, shu raqamni yozing (masalan: 1, 2, 3, 4, 5, 6, 7)</p>
               {answers.part2.map((ans, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={ans}
-                    onChange={(e) => handleAnswerChange('part2', index, e.target.value)}
-                    className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded"
-                    placeholder={`Answer ${index + 1}`}
-                  />
-                  <button onClick={() => removeAnswer('part2', index)} className="p-2 bg-red-600 text-white rounded">
-                    <FaTrash />
-                  </button>
-                </div>
+                <input
+                  key={index}
+                  type="text"
+                  value={ans}
+                  onChange={(e) => handleAnswerChange('part2', index, e.target.value)}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mb-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  placeholder={`Statement ${index + 1} text #`}
+                />
               ))}
-              <button onClick={() => addAnswer('part2')} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded">
-                <FaPlus /> Add
-              </button>
             </div>
 
             {/* Part 3 Answers */}
-            <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded">
-              <h3 className="text-lg font-semibold mb-3">Part 3:</h3>
+            <div className="mb-6 p-3 bg-white dark:bg-gray-800 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">Part 3 Answers (6):</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Kiritish: Paragraph qaysi heading raqami bilan match bo'lsa, shu raqamni yozing (masalan: 1, 2, 3, 4, 5, 6, 7, 8)</p>
               {answers.part3.map((ans, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={ans}
-                    onChange={(e) => handleAnswerChange('part3', index, e.target.value)}
-                    className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded"
-                    placeholder={`Answer ${index + 1}`}
-                  />
-                  <button onClick={() => removeAnswer('part3', index)} className="p-2 bg-red-600 text-white rounded">
-                    <FaTrash />
-                  </button>
-                </div>
+                <input
+                  key={index}
+                  type="text"
+                  value={ans}
+                  onChange={(e) => handleAnswerChange('part3', index, e.target.value)}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mb-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  placeholder={`Paragraph ${index + 1} heading #`}
+                />
               ))}
-              <button onClick={() => addAnswer('part3')} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded">
-                <FaPlus /> Add
-              </button>
             </div>
 
-            {/* Part 4 Answers */}
-            <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded">
-              <h3 className="text-lg font-semibold mb-3">Part 4:</h3>
-              {answers.part4.map((ans, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={ans}
-                    onChange={(e) => handleAnswerChange('part4', index, e.target.value)}
-                    className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded"
-                    placeholder={`Answer ${index + 1}`}
-                  />
-                  <button onClick={() => removeAnswer('part4', index)} className="p-2 bg-red-600 text-white rounded">
-                    <FaTrash />
-                  </button>
-                </div>
+            {/* Part 4 MC Answers */}
+            <div className="mb-6 p-3 bg-white dark:bg-gray-800 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">Part 4 - Multiple Choice Answers (4):</h3>
+              {answers.part4MC.map((ans, index) => (
+                <input
+                  key={index}
+                  type="text"
+                  value={ans}
+                  onChange={(e) => handleAnswerChange('part4MC', index, e.target.value)}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mb-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  placeholder={`Question ${index + 1} Answer (A/B/C/D)`}
+                />
               ))}
-              <button onClick={() => addAnswer('part4')} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded">
-                <FaPlus /> Add
-              </button>
             </div>
 
-            {/* Part 5 Multiple Choice */}
-            <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded">
-              <h3 className="text-lg font-semibold mb-3">Part 5 - Multiple Choice:</h3>
-              {answers.part5Multiple.map((ans, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={ans}
-                    onChange={(e) => handleAnswerChange('part5Multiple', index, e.target.value)}
-                    className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded"
-                    placeholder={`Answer ${index + 1}`}
-                  />
-                  <button onClick={() => removeAnswer('part5Multiple', index)} className="p-2 bg-red-600 text-white rounded">
-                    <FaTrash />
-                  </button>
-                </div>
+            {/* Part 4 TF Answers */}
+            <div className="mb-6 p-3 bg-white dark:bg-gray-800 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">Part 4 - True/False/Not Given Answers (5):</h3>
+              {answers.part4TF.map((ans, index) => (
+                <input
+                  key={index}
+                  type="text"
+                  value={ans}
+                  onChange={(e) => handleAnswerChange('part4TF', index, e.target.value)}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mb-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  placeholder={`Statement ${index + 1} Answer (T/F/NG)`}
+                />
               ))}
-              <button onClick={() => addAnswer('part5Multiple')} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded">
-                <FaPlus /> Add
-              </button>
             </div>
 
-            {/* Part 5 True/False */}
-            <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded">
-              <h3 className="text-lg font-semibold mb-3">Part 5 - True/False:</h3>
-              {answers.part5TrueFalse.map((ans, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={ans}
-                    onChange={(e) => handleAnswerChange('part5TrueFalse', index, e.target.value)}
-                    className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded"
-                    placeholder={`Answer ${index + 1}`}
-                  />
-                  <button onClick={() => removeAnswer('part5TrueFalse', index)} className="p-2 bg-red-600 text-white rounded">
-                    <FaTrash />
-                  </button>
-                </div>
+            {/* Part 5 Mini Text Answers */}
+            <div className="mb-6 p-3 bg-white dark:bg-gray-800 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">Part 5 - Mini Text Answers (5):</h3>
+              {answers.part5Mini.map((ans, index) => (
+                <input
+                  key={index}
+                  type="text"
+                  value={ans}
+                  onChange={(e) => handleAnswerChange('part5Mini', index, e.target.value)}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mb-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  placeholder={`Gap ${index + 1} Answer`}
+                />
               ))}
-              <button onClick={() => addAnswer('part5TrueFalse')} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded">
-                <FaPlus /> Add
-              </button>
+            </div>
+
+            {/* Part 5 MC Answers */}
+            <div className="mb-6 p-3 bg-white dark:bg-gray-800 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">Part 5 - Multiple Choice Answers (2):</h3>
+              {answers.part5MC.map((ans, index) => (
+                <input
+                  key={index}
+                  type="text"
+                  value={ans}
+                  onChange={(e) => handleAnswerChange('part5MC', index, e.target.value)}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mb-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  placeholder={`Question ${index + 1} Answer (A/B/C/D)`}
+                />
+              ))}
             </div>
           </div>
         )}
@@ -808,7 +666,7 @@ export default function ReadingMockForm() {
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="w-full p-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-500"
+          className="w-full p-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-500 transition"
         >
           {loading ? 'Saving...' : (isEdit ? 'Update Mock' : 'Create Mock')}
         </button>

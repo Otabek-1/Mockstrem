@@ -1,174 +1,116 @@
 import React, { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp, Highlighter, Send, BookOpen } from 'lucide-react'
-import { useParams, useSearchParams } from 'react-router-dom'
-import api from '../../api'
+import { useParams } from 'react-router-dom'
+
+const API_BASE_URL = 'https://english-server-p7y6.onrender.com' // O'zingizning API URL
 
 export default function ReadingExamInterface() {
-    const { id } = useParams()
-    const [searchParams] = useSearchParams()
-    const partParam = searchParams.get('part')
-
-    const [mockData, setMockData] = useState(null)
-    const [currentPart, setCurrentPart] = useState(partParam === 'all' ? 1 : parseInt(partParam) || 1)
-    const [isFullMock, setIsFullMock] = useState(partParam === 'all')
+    const { id } = useParams();
+    const [mockId, setMockId] = useState(1) // URL dan olish mumkin
+    const [currentPart, setCurrentPart] = useState(1)
     const [fontSize, setFontSize] = useState(16)
     const [isDark, setIsDark] = useState(false)
     const [answers, setAnswers] = useState({})
     const [submitted, setSubmitted] = useState(false)
     const [results, setResults] = useState(null)
-    const [highlights, setHighlights] = useState([])
+    const [mockData, setMockData] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [correctAnswers, setCorrectAnswers] = useState(null)
-
-    const handleHighlightClick = () => {
-        const selection = window.getSelection()
-        if (!selection.toString()) return
-
-        const range = selection.getRangeAt(0)
-        const span = document.createElement('span')
-        span.style.backgroundColor = 'rgb(253, 230, 138)'
-        span.style.padding = '2px 4px'
-
-        try {
-            range.surroundContents(span)
-        } catch (e) {
-            const contents = range.extractContents()
-            span.appendChild(contents)
-            range.insertNode(span)
+    const getAuthHeaders = () => {
+        const token = localStorage.getItem('access_token')
+        return {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
         }
-
-        selection.removeAllRanges()
     }
-
-    // Fetch reading mock data
+    // Data fetch
     useEffect(() => {
-        const fetchReadingData = async () => {
+        const fetchData = async () => {
             try {
+                setMockId(id)
                 setLoading(true)
-                const response = await api.get(`/mock/reading/mock/${id}`)
-                const mockData = response.data.mock
-                setMockData(mockData)
+                const response = await fetch(`${API_BASE_URL}/mock/reading/mock/${id}`)
+                const data = await response.json()
+                setMockData(data.mock)
 
-                // Fetch correct answers
-                const answerResponse = await api.get(`/mock/reading/answer/${id}`)
-                setCorrectAnswers(answerResponse.data.answers)
+                // Initialize answers
+                setAnswers({
+                    part1: Array(6).fill(''),
+                    part2: Array(10).fill(''),
+                    part3: Array(6).fill(''),
+                    part4MC: Array(4).fill(''),
+                    part4TF: Array(5).fill(''),
+                    part5Mini: Array(5).fill(''),
+                    part5MC: Array(2).fill('')
+                })
 
                 setError(null)
             } catch (err) {
-                console.error('Error fetching reading data:', err)
-                setError('Failed to load reading task. Please try again.')
-                setMockData(null)
+                console.error('Error fetching data:', err)
+                setError('Failed to load reading task')
             } finally {
                 setLoading(false)
             }
         }
 
-        if (id) {
-            fetchReadingData()
-        }
-    }, [id])
+        fetchData()
+    }, [mockId])
 
     const handleAnswerChange = (part, index, value) => {
         setAnswers(prev => ({
             ...prev,
-            [part]: {
-                ...prev[part],
-                [index]: value
-            }
+            [part]: prev[part].map((ans, i) => i === index ? value : ans)
         }))
     }
 
     const handleSubmit = async () => {
-        const results = {}
-        let totalCorrect = 0
-        let totalQuestions = 0
+        try {
+            const response = await fetch(`${API_BASE_URL}/mock/reading/submit`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    question_id: mockId,
+                    part1: answers.part1,
+                    part2: answers.part2,
+                    part3: answers.part3,
+                    part4MC: answers.part4MC,
+                    part4TF: answers.part4TF,
+                    part5Mini: answers.part5Mini,
+                    part5MC: answers.part5MC
+                })
+            })
 
-        Object.keys(mockData).forEach(part => {
-            if (part.startsWith('part')) {
-                const partData = mockData[part]
-                const partAnswers = answers[part] || {}
-                const partResults = []
-
-                // Get correct answers from API response
-                const partKey = part.replace('part', 'part')
-                const apiCorrectAnswers = correctAnswers?.[partKey] || []
-
-                if (partData.answers) {
-                    // Part 1
-                    partData.answers.forEach((correctAnswer, idx) => {
-                        totalQuestions++
-                        const userAnswer = partAnswers[idx]?.trim() || ''
-                        const correct = userAnswer.toLowerCase() === correctAnswer.toLowerCase()
-                        if (correct) totalCorrect++
-                        partResults.push({
-                            userAnswer: userAnswer || '(Not answered)',
-                            correctAnswer: correctAnswer,
-                            correct
-                        })
-                    })
-                } else if (partData.questions) {
-                    if (Array.isArray(partData.questions)) {
-                        // Part 2, 3, 4, 5
-                        partData.questions.forEach((q, idx) => {
-                            totalQuestions++
-                            const userAnswer = partAnswers[idx] || ''
-                            const correct = userAnswer === q.answer
-                            if (correct) totalCorrect++
-                            partResults.push({
-                                userAnswer: userAnswer || '(Not answered)',
-                                correctAnswer: q.answer,
-                                correct,
-                                questionNum: q.num || idx + 1
-                            })
-                        })
-                    }
-                } else if (partData.trueFalse) {
-                    partData.trueFalse.forEach((tf, idx) => {
-                        totalQuestions++
-                        const userAnswer = partAnswers[idx]
-                        const correct = userAnswer === (tf.answer ? 'true' : 'false')
-                        if (correct) totalCorrect++
-                        partResults.push({
-                            userAnswer: userAnswer || '(Not answered)',
-                            correctAnswer: tf.answer ? 'True' : 'False',
-                            correct,
-                            statement: tf.statement
-                        })
-                    })
-                }
-
-                results[part] = partResults
-            }
-        })
-
-        setResults({
-            results,
-            totalCorrect,
-            totalQuestions,
-            percentage: Math.round((totalCorrect / totalQuestions) * 100)
-        })
-        setSubmitted(true)
+            const result = await response.json()
+            setResults(result)
+            setSubmitted(true)
+        } catch (err) {
+            console.error('Error submitting:', err)
+            alert('Error submitting answers')
+        }
     }
 
     if (loading) {
-        return <div className="flex items-center justify-center h-screen">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading reading task...</p>
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading reading task...</p>
+                </div>
             </div>
-        </div>
+        )
     }
 
     if (error) {
-        return <div className="flex items-center justify-center h-screen">
-            <div className="text-center">
-                <p className="text-red-600 font-bold mb-4">{error}</p>
-                <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded-lg">
-                    Retry
-                </button>
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-center">
+                    <p className="text-red-600 font-bold mb-4">{error}</p>
+                    <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                        Retry
+                    </button>
+                </div>
             </div>
-        </div>
+        )
     }
 
     if (!mockData) {
@@ -180,25 +122,18 @@ export default function ReadingExamInterface() {
     const borderClass = isDark ? 'border-gray-700' : 'border-gray-200'
 
     const renderPart = () => {
-        const part = mockData[`part${currentPart}`]
-        if (!part) return null
-        console.log(part)
-        return (
-            <div className="space-y-6">
-                <div>
-                    <h2 className="text-2xl font-bold mb-2">Part {currentPart}</h2>
-                    <p className="text-lg opacity-80">{part.task}</p>
-                </div>
-
-                {/* Part 1 */}
-                {currentPart === 1 && (
+        switch (currentPart) {
+            // ===== PART 1: Fill in the gaps (6) =====
+            case 1:
+                return (
                     <div className="space-y-6">
-                        <div
-                            className={`p-6 rounded-lg border ${containerClass} ${borderClass}`}
-                        >
+                        <div>
+                            <h2 className="text-2xl font-bold mb-2">Part 1: {mockData.part1.task}</h2>
+                        </div>
+                        <div className={`p-6 rounded-lg border ${containerClass} ${borderClass}`}>
                             <div style={{ fontSize: `${fontSize}px`, lineHeight: '2' }} className="leading-relaxed select-text">
                                 {(() => {
-                                    const textParts = part.text.split(/(\(\d+\))/g)
+                                    const textParts = mockData.part1.text.split(/(\(\d+\))/g)
                                     let gapIndex = 0
 
                                     return (
@@ -213,15 +148,15 @@ export default function ReadingExamInterface() {
                                                             <span className="text-gray-500 font-semibold">({currentGapIndex + 1})</span>
                                                             <input
                                                                 type="text"
-                                                                value={answers.part1?.[currentGapIndex] || ''}
+                                                                value={answers.part1[currentGapIndex] || ''}
                                                                 onChange={(e) => handleAnswerChange('part1', currentGapIndex, e.target.value)}
                                                                 disabled={submitted}
                                                                 style={{ fontSize: `${fontSize}px` }}
                                                                 className={`inline-block w-24 mx-2 px-2 py-1 border-b-2 focus:outline-none text-center font-semibold transition ${submitted
-                                                                    ? results.results.part1?.[currentGapIndex]?.correct
-                                                                        ? 'border-green-500 bg-green-100 dark:bg-green-900/40'
-                                                                        : 'border-red-500 bg-red-100 dark:bg-red-900/40'
-                                                                    : 'border-blue-400 dark:border-blue-500 dark:bg-gray-600'
+                                                                    ? results.part1 >= currentGapIndex + 1
+                                                                        ? 'border-green-500 bg-green-100'
+                                                                        : 'border-red-500 bg-red-100'
+                                                                    : 'border-blue-400'
                                                                     }`}
                                                             />
                                                         </span>
@@ -233,412 +168,282 @@ export default function ReadingExamInterface() {
                                     )
                                 })()}
                             </div>
-
-                            {highlights.length > 0 && (
-                                <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded">
-                                    <p className="text-sm font-semibold mb-2">Highlights:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {highlights.map((h, idx) => (
-                                            <span key={idx} className="bg-yellow-300 dark:bg-yellow-700 px-2 py-1 rounded text-xs">
-                                                {h}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
-
                         {submitted && (
-                            <div className="space-y-2">
-                                <h4 className="font-bold text-lg mb-4">Answer Review:</h4>
-                                {results.results.part1?.map((r, idx) => (
-                                    <div key={idx} className={`p-4 rounded-lg border-l-4 ${r.correct ? 'bg-green-50 dark:bg-green-900/20 border-green-500' : 'bg-red-50 dark:bg-red-900/20 border-red-500'}`}>
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-semibold">Gap ({idx + 1})</span>
-                                            <span className={`text-sm font-bold ${r.correct ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                                {r.correct ? '✓ Correct' : '✗ Incorrect'}
-                                            </span>
-                                        </div>
-                                        <p className="mt-2 text-sm">
-                                            <span className="opacity-75">Your answer:</span>
-                                            <span className="ml-2 font-semibold">{r.userAnswer}</span>
-                                        </p>
-                                        {!r.correct && (
-                                            <p className="mt-1 text-sm">
-                                                <span className="opacity-75">Correct answer:</span>
-                                                <span className="ml-2 font-semibold text-green-700 dark:text-green-300">{r.correctAnswer}</span>
-                                            </p>
-                                        )}
-                                    </div>
-                                ))}
+                            <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded">
+                                <p className="font-bold">Part 1: {results.part1}/6 Correct</p>
                             </div>
                         )}
                     </div>
-                )}
+                )
 
-                {/* Part 2: Matching */}
-                {currentPart === 2 && (
-                    <div className="space-y-4">
-                        {part.statements.map((q, idx) => (
-                            <div key={idx} className={`p-4 rounded-lg border-2 ${borderClass} ${containerClass}`}>
-                                <div className="flex gap-4 flex-col md:flex-row">
-                                    <div className="flex-1">
-                                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-2">Question {q.num}</p>
-                                        <p style={{ fontSize: `${fontSize}px` }} className="text-sm leading-relaxed">
-                                            {q}
-                                        </p>
+            // ===== PART 2: Matching (10 statements -> 7 texts) =====
+            case 2:
+                return (
+                    <div className="space-y-6">
+                        <div>
+                            <h2 className="text-2xl font-bold mb-2">Part 2: {mockData.part2.task}</h2>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Kiritish: Statement qaysi text raqami bilan match bo'lsa, shu raqamni yozing (1-7)</p>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                <h3 className="font-bold mb-3">Texts:</h3>
+                                {mockData.part2.texts.map((text, idx) => (
+                                    <div key={idx} className="mb-4 p-3 bg-white dark:bg-gray-700 rounded">
+                                        <p className="font-bold text-blue-600 mb-2">Text {idx + 1}:</p>
+                                        <p style={{ fontSize: `${fontSize}px` }} className="text-sm">{text}</p>
                                     </div>
-                                    <div className="md:w-48">
-                                        <label className="block text-sm font-semibold mb-2">Select statement:</label>
-                                        <select
-                                            value={answers.part2?.[idx] || ''}
-                                            onChange={(e) => handleAnswerChange('part2', idx, e.target.value)}
-                                            disabled={submitted}
-                                            className={`w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-                                        >
-                                            <option value="">Select...</option>
-                                            {part.statements.map((s, i) => (
-                                                <option key={i} value={s.charAt(0)}>
-                                                    {s}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {submitted && (
-                                            <div className="mt-2 text-sm">
-                                                <p className={results.results.part2?.[idx]?.correct ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
-                                                    {results.results.part2?.[idx]?.correct ? `✓ ${results.results.part2?.[idx]?.correctAnswer}` : `✗ Correct: ${results.results.part2?.[idx]?.correctAnswer}`}
-                                                </p>
+                                ))}
+                            </div>
+
+                            <div className="mb-6">
+                                <h3 className="font-bold mb-3">Statements:</h3>
+                                {mockData.part2.statements.map((statement, idx) => (
+                                    <div key={idx} className={`p-4 rounded-lg border mb-3 ${containerClass} ${borderClass}`}>
+                                        <div className="flex justify-between items-start gap-4">
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-blue-600 mb-2">Statement {idx + 1}</p>
+                                                <p style={{ fontSize: `${fontSize}px` }}>{statement}</p>
                                             </div>
-                                        )}
+                                            <input
+                                                type="text"
+                                                value={answers.part2[idx] || ''}
+                                                onChange={(e) => handleAnswerChange('part2', idx, e.target.value)}
+                                                disabled={submitted}
+                                                placeholder="Text #"
+                                                maxLength="1"
+                                                className={`w-16 p-2 border rounded text-center font-bold ${isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
+                                                    }`}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        {submitted && (
+                            <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded">
+                                <p className="font-bold">Part 2: {results.part2}/10 Correct</p>
+                            </div>
+                        )}
+                    </div>
+                )
+
+            // ===== PART 3: Headings & Paragraphs (6 paragraphs -> 8 headings) =====
+            case 3:
+                return (
+                    <div className="space-y-6">
+                        <div>
+                            <h2 className="text-2xl font-bold mb-2">Part 3: {mockData.part3.task}</h2>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Kiritish: Paragraph qaysi heading raqami bilan match bo'lsa, shu raqamni yozing (1-8)</p>
+                        </div>
+
+                        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded">
+                            <h3 className="font-bold mb-3">Available Headings:</h3>
+                            <div className="grid grid-cols-2 gap-2">
+                                {mockData.part3.headings.map((heading, idx) => (
+                                    <div key={idx} className="p-2 bg-white dark:bg-gray-700 rounded text-sm">
+                                        <span className="font-bold text-blue-600">{idx + 1}.</span> {heading}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            {mockData.part3.paragraphs.map((para, idx) => (
+                                <div key={idx} className={`p-4 rounded-lg border ${containerClass} ${borderClass}`}>
+                                    <div className="flex justify-between items-start gap-4">
+                                        <div className="flex-1">
+                                            <p className="text-sm font-bold text-blue-600 mb-2">Paragraph {idx + 1}:</p>
+                                            <p style={{ fontSize: `${fontSize}px` }} className="bg-gray-100 dark:bg-gray-700 p-3 rounded">{para}</p>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={answers.part3[idx] || ''}
+                                            onChange={(e) => handleAnswerChange('part3', idx, e.target.value)}
+                                            disabled={submitted}
+                                            placeholder="Head #"
+                                            maxLength="1"
+                                            className={`w-16 p-2 border rounded text-center font-bold ${isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
+                                                }`}
+                                        />
                                     </div>
                                 </div>
+                            ))}
+                        </div>
+                        {submitted && (
+                            <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded">
+                                <p className="font-bold">Part 3: {results.part3}/6 Correct</p>
                             </div>
-                        ))}
+                        )}
                     </div>
-                )}
+                )
 
-                {/* Part 3: Headings */}
-                {currentPart === 3 && (
-                    <div className="space-y-4">
-                        {part.paragraphs.map((para, idx) => (
-                            <div key={idx} className={`p-4 rounded-lg border-2 ${borderClass} ${containerClass}`}>
-                                <p className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3">Paragraph {para.num}</p>
-                                <p style={{ fontSize: `${fontSize}px` }} className="mb-4 leading-relaxed p-3 bg-gray-100 dark:bg-gray-700 rounded">
-                                    {para}
-                                </p>
-                                <select
-                                    value={answers.part3?.[idx] || ''}
-                                    onChange={(e) => handleAnswerChange('part3', idx, e.target.value)}
-                                    disabled={submitted}
-                                    className={`w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-                                >
-                                    <option value="">Select heading...</option>
-                                    {part.headings.map((h, i) => (
-                                        <option key={i} value={h}>{h}</option>
-                                    ))}
-                                </select>
-                                {submitted && (
-                                    <p className={`mt-2 text-sm font-bold ${results.results.part3?.[idx]?.correct ? 'text-green-600' : 'text-red-600'}`}>
-                                        {results.results.part3?.[idx]?.correct ? '✓ Correct' : `✗ Correct: ${results.results.part3?.[idx]?.correctAnswer}`}
-                                    </p>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Part 4: Multiple Choice + True/False */}
-                {currentPart === 4 && (
+            // ===== PART 4: MC (4) + TF/NG (5) =====
+            case 4:
+                return (
                     <div className="space-y-8">
-                        <span>{part.text}</span>
-                        {/* ================= Multiple Choice ================= */}
-                        <div className="space-y-4">
-                            <h3 className="font-bold text-lg border-b pb-2">
-                                Multiple Choice Questions
-                            </h3>
-
-                            {part.questions &&
-                                Object.values(part.questions)
-                                    .filter(q => q.question && q.options)
-                                    .map((q, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg"
-                                        >
-                                            <p
-                                                style={{ fontSize: `${fontSize}px` }}
-                                                className="font-semibold"
-                                            >
-                                                {idx + 1}. {q.question}
-                                            </p>
-
-                                            <div className="space-y-2 ml-4">
-                                                {q.options.map((opt, optIdx) => (
-                                                    <label
-                                                        key={optIdx}
-                                                        className="flex items-start gap-3 cursor-pointer p-2 rounded hover:bg-blue-100 dark:hover:bg-blue-900/20"
-                                                    >
-                                                        <input
-                                                            type="radio"
-                                                            name={`part4-mcq-${idx}`}
-                                                            value={opt}
-                                                            checked={answers.part4?.[idx] === opt}
-                                                            onChange={(e) =>
-                                                                handleAnswerChange(
-                                                                    'part4',
-                                                                    idx,
-                                                                    e.target.value
-                                                                )
-                                                            }
-                                                            disabled={submitted}
-                                                            className="w-4 h-4 mt-1"
-                                                        />
-                                                        <span style={{ fontSize: `${fontSize}px` }}>
-                                                            {opt}
-                                                        </span>
-                                                    </label>
-                                                ))}
-                                            </div>
-
-                                            {submitted && (
-                                                <p
-                                                    className={`text-sm ml-4 font-bold ${results.results.part4?.[idx]?.correct
-                                                            ? 'text-green-600 dark:text-green-400'
-                                                            : 'text-red-600 dark:text-red-400'
-                                                        }`}
-                                                >
-                                                    {results.results.part4?.[idx]?.correct
-                                                        ? '✓ Correct'
-                                                        : `✗ Correct: ${results.results.part4?.[idx]?.correctAnswer
-                                                        }`}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ))}
+                        <div>
+                            <h2 className="text-2xl font-bold mb-2">Part 4: {mockData.part4.task}</h2>
                         </div>
 
-                        {/* ================= True / False / Not Given ================= */}
-                        <div className="space-y-4">
-                            <h3 className="font-bold text-lg border-b pb-2">
-                                True / False / Not Given
-                            </h3>
-
-                            {Array.isArray(part.questions?.true_or_false) &&
-                                part.questions.true_or_false.map((statement, idx) => {
-                                    const answerIndex =
-                                        Object.values(part.questions).filter(
-                                            q => q.question && q.options
-                                        ).length + idx;
-
-                                    return (
-                                        <div
-                                            key={idx}
-                                            className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg"
-                                        >
-                                            <p
-                                                style={{ fontSize: `${fontSize}px` }}
-                                                className="font-semibold"
-                                            >
-                                                {idx + 1}. {statement}
-                                            </p>
-
-                                            <div className="flex gap-4 ml-4">
-                                                {['true', 'false', 'not given'].map(option => (
-                                                    <label
-                                                        key={option}
-                                                        className="flex items-center gap-2 cursor-pointer"
-                                                    >
-                                                        <input
-                                                            type="radio"
-                                                            name={`part4-tf-${idx}`}
-                                                            value={option}
-                                                            checked={
-                                                                answers.part4?.[answerIndex] === option
-                                                            }
-                                                            onChange={(e) =>
-                                                                handleAnswerChange(
-                                                                    'part4',
-                                                                    answerIndex,
-                                                                    e.target.value
-                                                                )
-                                                            }
-                                                            disabled={submitted}
-                                                            className="w-4 h-4"
-                                                        />
-                                                        <span
-                                                            style={{ fontSize: `${fontSize}px` }}
-                                                            className="capitalize"
-                                                        >
-                                                            {option}
-                                                        </span>
-                                                    </label>
-                                                ))}
-                                            </div>
-
-                                            {submitted && (
-                                                <p
-                                                    className={`text-sm ml-4 font-bold ${results.results.part4?.[answerIndex]?.correct
-                                                            ? 'text-green-600 dark:text-green-400'
-                                                            : 'text-red-600 dark:text-red-400'
-                                                        }`}
-                                                >
-                                                    {results.results.part4?.[answerIndex]?.correct
-                                                        ? '✓ Correct'
-                                                        : `✗ Correct: ${results.results.part4?.[answerIndex]
-                                                            ?.correctAnswer
-                                                        }`}
-                                                </p>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                        <div className={`p-6 rounded-lg border ${containerClass} ${borderClass}`}>
+                            <p style={{ fontSize: `${fontSize}px` }} className="mb-4">{mockData.part4.text}</p>
                         </div>
+
+                        {/* Multiple Choice */}
+                        <div>
+                            <h3 className="text-xl font-bold border-b pb-2 mb-4">Multiple Choice (4 questions)</h3>
+                            {mockData.part4.multipleChoice.map((q, idx) => (
+                                <div key={idx} className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg mb-4">
+                                    <p style={{ fontSize: `${fontSize}px` }} className="font-semibold">{idx + 1}. {q.question}</p>
+                                    <div className="space-y-2 ml-4">
+                                        {q.options.map((opt, oIdx) => (
+                                            <label key={oIdx} className="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-blue-100 dark:hover:bg-blue-900/20">
+                                                <input
+                                                    type="radio"
+                                                    name={`part4-mc-${idx}`}
+                                                    value={opt}
+                                                    checked={answers.part4MC[idx] === opt}
+                                                    onChange={(e) => handleAnswerChange('part4MC', idx, e.target.value)}
+                                                    disabled={submitted}
+                                                    className="w-4 h-4"
+                                                />
+                                                <span style={{ fontSize: `${fontSize}px` }}>{opt}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* True/False/Not Given */}
+                        <div>
+                            <h3 className="text-xl font-bold border-b pb-2 mb-4">True / False / Not Given (5 statements)</h3>
+                            {mockData.part4.trueFalse.map((tf, idx) => (
+                                <div key={idx} className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg mb-4">
+                                    <p style={{ fontSize: `${fontSize}px` }} className="font-semibold">{idx + 1}. {tf.statement}</p>
+                                    <div className="flex gap-4 ml-4">
+                                        {['True', 'False', 'Not Given'].map(opt => (
+                                            <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name={`part4-tf-${idx}`}
+                                                    value={opt}
+                                                    checked={answers.part4TF[idx] === opt}
+                                                    onChange={(e) => handleAnswerChange('part4TF', idx, e.target.value)}
+                                                    disabled={submitted}
+                                                    className="w-4 h-4"
+                                                />
+                                                <span style={{ fontSize: `${fontSize}px` }}>{opt}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {submitted && (
+                            <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded">
+                                <p className="font-bold">Part 4 MC: {results.part4MC}/4 Correct</p>
+                                <p className="font-bold">Part 4 TF: {results.part4TF}/5 Correct</p>
+                            </div>
+                        )}
                     </div>
-                )}
+                )
 
+            // ===== PART 5: Mini text (5 gaps) + MC (2) =====
+            case 5:
+                return (
+                    <div className="space-y-8">
+                        <div>
+                            <h2 className="text-2xl font-bold mb-2">Part 5: {mockData.part5.task}</h2>
+                        </div>
 
-                {/* Part 5: Fill in + Multiple Choice */}
-       {currentPart === 5 && (
-  <div className="space-y-8">
+                        {/* Main Text */}
+                        <div className={`p-6 rounded-lg border ${containerClass} ${borderClass}`}>
+                            <p style={{ fontSize: `${fontSize}px` }} className="leading-relaxed">{mockData.part5.mainText}</p>
+                        </div>
 
-    {/* ================= Text ================= */}
-    <div className={`p-6 rounded-lg border ${containerClass} ${borderClass}`}>
-      {typeof part.text === 'string' && (
-        <p
-          style={{ fontSize: `${fontSize}px`, lineHeight: '1.8' }}
-          className="leading-relaxed select-text"
-        >
-          {part.text}
-        </p>
-      )}
-    </div>
+                        {/* Mini Text with gaps */}
+                        <div>
+                            <h3 className="text-xl font-bold border-b pb-2 mb-4">Fill in the gaps (5)</h3>
+                            <div className={`p-6 rounded-lg border ${containerClass} ${borderClass}`}>
+                                <div style={{ fontSize: `${fontSize}px`, lineHeight: '2' }} className="leading-relaxed">
+                                    {(() => {
+                                        const textParts = mockData.part5.miniText.split(/(\(\d+\))/g)
+                                        let gapIndex = 0
 
-    {/* ================= Filling ================= */}
-    {typeof part.filling === 'string' && (
-      <div className="space-y-4">
-        <h3 className="font-bold text-lg border-b pb-2">Fill in the gaps</h3>
+                                        return (
+                                            <span>
+                                                {textParts.map((segment, idx) => {
+                                                    const gapMatch = segment.match(/\((\d+)\)/)
+                                                    if (gapMatch) {
+                                                        const currentGapIndex = gapIndex
+                                                        gapIndex++
+                                                        return (
+                                                            <span key={idx}>
+                                                                <span className="text-gray-500 font-semibold">({currentGapIndex + 1})</span>
+                                                                <input
+                                                                    type="text"
+                                                                    value={answers.part5Mini[currentGapIndex] || ''}
+                                                                    onChange={(e) => handleAnswerChange('part5Mini', currentGapIndex, e.target.value)}
+                                                                    disabled={submitted}
+                                                                    style={{ fontSize: `${fontSize}px` }}
+                                                                    className={`inline-block w-24 mx-2 px-2 py-1 border-b-2 focus:outline-none text-center font-semibold transition ${submitted
+                                                                        ? 'border-green-500 bg-green-100'
+                                                                        : 'border-blue-400'
+                                                                        }`}
+                                                                />
+                                                            </span>
+                                                        )
+                                                    }
+                                                    return <span key={idx}>{segment}</span>
+                                                })}
+                                            </span>
+                                        )
+                                    })()}
+                                </div>
+                            </div>
+                        </div>
 
-        <p
-          style={{ fontSize: `${fontSize}px` }}
-          className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg leading-relaxed"
-        >
-          {part.filling}
-        </p>
+                        {/* Multiple Choice */}
+                        <div>
+                            <h3 className="text-xl font-bold border-b pb-2 mb-4">Multiple Choice (2 questions)</h3>
+                            {mockData.part5.multipleChoice.map((q, idx) => (
+                                <div key={idx} className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg mb-4">
+                                    <p style={{ fontSize: `${fontSize}px` }} className="font-semibold">{idx + 1}. {q.question}</p>
+                                    <div className="space-y-2 ml-4">
+                                        {q.options.map((opt, oIdx) => (
+                                            <label key={oIdx} className="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-blue-100 dark:hover:bg-blue-900/20">
+                                                <input
+                                                    type="radio"
+                                                    name={`part5-mc-${idx}`}
+                                                    value={opt}
+                                                    checked={answers.part5MC[idx] === opt}
+                                                    onChange={(e) => handleAnswerChange('part5MC', idx, e.target.value)}
+                                                    disabled={submitted}
+                                                    className="w-4 h-4"
+                                                />
+                                                <span style={{ fontSize: `${fontSize}px` }}>{opt}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
 
-        {/* 27–30 inputs (static, chunki backendda array yo‘q) */}
-        <div className="space-y-3">
-          {[27, 28, 29, 30].map((num, idx) => (
-            <div
-              key={num}
-              className="flex gap-3 items-center p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg"
-            >
-              <span className="font-bold text-blue-600 dark:text-blue-400 w-12">
-                ({num})
-              </span>
+                        {submitted && (
+                            <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded">
+                                <p className="font-bold">Part 5 Mini: {results.part5Mini}/5 Correct</p>
+                                <p className="font-bold">Part 5 MC: {results.part5MC}/2 Correct</p>
+                            </div>
+                        )}
+                    </div>
+                )
 
-              <input
-                type="text"
-                value={answers.part5?.[idx] || ''}
-                onChange={(e) =>
-                  handleAnswerChange('part5', idx, e.target.value)
-                }
-                disabled={submitted}
-                style={{ fontSize: `${fontSize}px` }}
-                className={`flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  isDark
-                    ? 'bg-gray-700 border-gray-600'
-                    : 'bg-white border-gray-300'
-                }`}
-                placeholder="Your answer..."
-              />
-
-              {submitted && (
-                <span
-                  className={`text-sm font-bold ${
-                    results.results.part5?.[idx]?.correct
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-red-600 dark:text-red-400'
-                  }`}
-                >
-                  {results.results.part5?.[idx]?.correct ? '✓' : '✗'}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
-
-    {/* ================= Multiple Choice ================= */}
-    <div className="space-y-4">
-      <h3 className="font-bold text-lg border-b pb-2">Multiple Choice</h3>
-
-      {part.questions &&
-        Object.values(part.questions).map((q, idx) => {
-          const answerIndex = 4 + idx; // filling 0–3, MCQ 4+
-
-          return (
-            <div
-              key={idx}
-              className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg"
-            >
-              <p
-                style={{ fontSize: `${fontSize}px` }}
-                className="font-semibold"
-              >
-                {idx + 1}. {q.question}
-              </p>
-
-              <div className="space-y-2 ml-4">
-                {q.options.map((opt, optIdx) => (
-                  <label
-                    key={optIdx}
-                    className="flex items-start gap-3 cursor-pointer p-2 rounded hover:bg-blue-100 dark:hover:bg-blue-900/20"
-                  >
-                    <input
-                      type="radio"
-                      name={`part5-mcq-${idx}`}
-                      value={opt}
-                      checked={answers.part5?.[answerIndex] === opt}
-                      onChange={(e) =>
-                        handleAnswerChange(
-                          'part5',
-                          answerIndex,
-                          e.target.value
-                        )
-                      }
-                      disabled={submitted}
-                      className="w-4 h-4 mt-1"
-                    />
-                    <span style={{ fontSize: `${fontSize}px` }}>{opt}</span>
-                  </label>
-                ))}
-              </div>
-
-              {submitted && (
-                <p
-                  className={`text-sm ml-4 font-bold ${
-                    results.results.part5?.[answerIndex]?.correct
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-red-600 dark:text-red-400'
-                  }`}
-                >
-                  {results.results.part5?.[answerIndex]?.correct
-                    ? '✓ Correct'
-                    : `✗ Correct: ${
-                        results.results.part5?.[answerIndex]?.correctAnswer
-                      }`}
-                </p>
-              )}
-            </div>
-          );
-        })}
-    </div>
-  </div>
-)}
-
-            </div>
-        )
+            default:
+                return null
+        }
     }
 
     return (
@@ -652,12 +457,11 @@ export default function ReadingExamInterface() {
                     </div>
 
                     <div className="flex items-center gap-3 flex-wrap">
-                        {/* Font Size Control */}
+                        {/* Font Size */}
                         <div className="flex items-center gap-2 bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
                             <button
                                 onClick={() => setFontSize(Math.max(12, fontSize - 2))}
                                 className="p-1 hover:bg-gray-300 dark:hover:bg-gray-600 rounded"
-                                title="Decrease font size"
                             >
                                 <ChevronDown className="w-4 h-4" />
                             </button>
@@ -665,40 +469,27 @@ export default function ReadingExamInterface() {
                             <button
                                 onClick={() => setFontSize(Math.min(24, fontSize + 2))}
                                 className="p-1 hover:bg-gray-300 dark:hover:bg-gray-600 rounded"
-                                title="Increase font size"
                             >
                                 <ChevronUp className="w-4 h-4" />
                             </button>
                         </div>
 
-                        {/* Highlight Button */}
-                        <button
-                            onClick={handleHighlightClick}
-                            disabled={submitted}
-                            className="flex items-center gap-2 px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Highlight selected text - Select text first then click"
-                        >
-                            <Highlighter className="w-4 h-4" />
-                            <span className="hidden sm:inline">Highlight</span>
-                        </button>
-
-                        {/* Dark Mode Toggle */}
+                        {/* Dark Mode */}
                         <button
                             onClick={() => setIsDark(!isDark)}
                             className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                            title="Toggle dark mode"
                         >
                             {isDark ? '☀️' : '🌙'}
                         </button>
 
-                        {/* Submit Button - Top Right */}
+                        {/* Submit */}
                         {!submitted && (
                             <button
                                 onClick={handleSubmit}
-                                className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition transform hover:scale-105 ml-auto"
+                                className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700"
                             >
                                 <Send className="w-5 h-5" />
-                                <span className="hidden sm:inline">Submit</span>
+                                Submit
                             </button>
                         )}
                     </div>
@@ -712,49 +503,31 @@ export default function ReadingExamInterface() {
                         <div className="space-y-6">
                             <div className="text-center">
                                 <h2 className="text-3xl font-bold mb-2">Results</h2>
-                                <p className="text-5xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                                    {results.totalCorrect}/{results.totalQuestions}
+                                <p className="text-5xl font-bold text-blue-600 mb-2">
+                                    {results.total}/{6 + 10 + 6 + 4 + 5 + 5 + 2}
                                 </p>
-                                <p className="text-2xl opacity-80">{results.percentage}% Correct</p>
+                                <p className="text-2xl opacity-80">{Math.round((results.total / 38) * 100)}% Correct</p>
                             </div>
 
                             <div className="grid grid-cols-5 gap-2 my-8">
                                 {[1, 2, 3, 4, 5].map(part => {
-                                    const partResults = results.results[`part${part}`]
-                                    const correct = partResults?.filter(r => r.correct).length || 0
-                                    const total = partResults?.length || 0
+                                    const partMap = { 1: 'part1', 2: 'part2', 3: 'part3', 4: 'part4MC', 5: 'part5Mini' }
+                                    const score = results[partMap[part]]
+                                    const totals = [6, 10, 6, 4, 5]
                                     return (
                                         <button
                                             key={part}
                                             onClick={() => setCurrentPart(part)}
                                             className={`p-4 rounded-lg border-2 cursor-pointer transition ${currentPart === part
                                                 ? 'border-blue-600 bg-blue-100 dark:bg-blue-900/30'
-                                                : `border-gray-300 dark:border-gray-600`
+                                                : 'border-gray-300 dark:border-gray-600'
                                                 }`}
                                         >
                                             <p className="font-bold">Part {part}</p>
-                                            <p className="text-sm opacity-75">{correct}/{total}</p>
+                                            <p className="text-sm opacity-75">{score}/{totals[part - 1]}</p>
                                         </button>
                                     )
                                 })}
-                            </div>
-
-                            <div className="mt-8">
-                                <h3 className="text-xl font-bold mb-4">Part {currentPart} Details:</h3>
-                                <div className="space-y-3">
-                                    {results.results[`part${currentPart}`]?.map((r, idx) => (
-                                        <div key={idx} className={`p-4 rounded-lg border-l-4 ${r.correct ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-red-500 bg-red-50 dark:bg-red-900/20'}`}>
-                                            <p className="font-semibold">
-                                                {r.questionNum ? `Question ${r.questionNum}` : r.statement ? 'Statement' : `Question ${idx + 1}`}
-                                            </p>
-                                            {r.statement && <p className="text-sm opacity-75 mt-1">{r.statement}</p>}
-                                            <p className="mt-2 text-sm"><span className="opacity-75">Your answer:</span> <span className={r.correct ? 'text-green-700 dark:text-green-300 font-bold' : 'text-red-700 dark:text-red-300 font-bold'}>{r.userAnswer}</span></p>
-                                            {!r.correct && (
-                                                <p className="mt-1 text-sm"><span className="opacity-75">Correct answer:</span> <span className="text-green-700 dark:text-green-300 font-bold">{r.correctAnswer}</span></p>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
                         </div>
                     )}
@@ -764,21 +537,19 @@ export default function ReadingExamInterface() {
             {/* Footer */}
             {!submitted && (
                 <div className={`sticky bottom-0 border-t ${borderClass} ${containerClass} p-4`}>
-                    <div className="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-4">
-                        <div className="flex gap-2 flex-wrap">
-                            {[1, 2, 3, 4, 5].map(part => (
-                                <button
-                                    key={part}
-                                    onClick={() => setCurrentPart(part)}
-                                    className={`px-4 py-2 rounded-lg font-semibold transition ${currentPart === part
-                                        ? 'bg-blue-600 text-white'
-                                        : `bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600`
-                                        }`}
-                                >
-                                    Part {part}
-                                </button>
-                            ))}
-                        </div>
+                    <div className="max-w-6xl mx-auto flex gap-2">
+                        {[1, 2, 3, 4, 5].map(part => (
+                            <button
+                                key={part}
+                                onClick={() => setCurrentPart(part)}
+                                className={`px-4 py-2 rounded-lg font-semibold transition ${currentPart === part
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300'
+                                    }`}
+                            >
+                                Part {part}
+                            </button>
+                        ))}
                     </div>
                 </div>
             )}
