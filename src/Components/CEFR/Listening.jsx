@@ -463,79 +463,94 @@ const Part6 = ({ data, answers, setAnswers }) => {
     )
 }
 
-const ResultPage = ({ mockData, answers, correctAnswers }) => {
+const ResultPage = ({ mockData, answers, correctAnswers, queryPart, currentPart }) => {
     const calculateResults = () => {
         let totalCorrect = 0
         let totalQuestions = 0
         const partResults = {}
 
+        // Faqat individual partni yoki barcha partlarni hisoblash
+        const partsToCheck = queryPart === "all" ? [1, 2, 3, 4, 5, 6] : [currentPart]
+
         // Part 1: 8 questions
-        let part1Correct = 0
-        Object.keys(answers.part_1 || {}).forEach(key => {
-            const idx = parseInt(key) - 1
-            const userAnswer = String.fromCharCode(65 + answers.part_1[key])
-            const correctAnswer = correctAnswers.part_1[idx]
-            if (userAnswer === correctAnswer) part1Correct++
-        })
-        partResults.part_1 = { correct: part1Correct, total: 8 }
-        totalCorrect += part1Correct
-        totalQuestions += 8
+        if (partsToCheck.includes(1)) {
+            let part1Correct = 0
+            Object.keys(answers.part_1 || {}).forEach(key => {
+                const idx = parseInt(key) - 1
+                const userAnswer = String.fromCharCode(65 + answers.part_1[key])
+                const correctAnswer = correctAnswers.part_1[idx]
+                if (userAnswer === correctAnswer) part1Correct++
+            })
+            partResults.part_1 = { correct: part1Correct, total: 8 }
+            totalCorrect += part1Correct
+            totalQuestions += 8
+        }
 
         // Part 2: 6 questions
-        let part2Correct = 0
-        Object.keys(answers.part_2 || {}).forEach(key => {
-            const userAnswer = answers.part_2[key]?.toLowerCase().trim()
-            const correctAnswer = correctAnswers.part_2[parseInt(key)]?.toLowerCase()
-            if (userAnswer === correctAnswer) part2Correct++
-        })
-        partResults.part_2 = { correct: part2Correct, total: 6 }
-        totalCorrect += part2Correct
-        totalQuestions += 6
+        if (partsToCheck.includes(2)) {
+            let part2Correct = 0
+            Object.keys(answers.part_2 || {}).forEach(key => {
+                const userAnswer = answers.part_2[key]?.toLowerCase().trim()
+                const correctAnswer = correctAnswers.part_2[parseInt(key)]?.toLowerCase()
+                if (userAnswer === correctAnswer) part2Correct++
+            })
+            partResults.part_2 = { correct: part2Correct, total: 6 }
+            totalCorrect += part2Correct
+            totalQuestions += 6
+        }
 
         // Part 3: 4 questions
-        let part3Correct = 0
-        Object.keys(answers.part_3 || {}).forEach(key => {
-            const userAnswer = String.fromCharCode(65 + answers.part_3[key])
-            const correctAnswer = correctAnswers.part_3[parseInt(key)]
-            if (userAnswer === correctAnswer) part3Correct++
-        })
-        partResults.part_3 = { correct: part3Correct, total: 4 }
-        totalCorrect += part3Correct
-        totalQuestions += 4
+        if (partsToCheck.includes(3)) {
+            let part3Correct = 0
+            Object.keys(answers.part_3 || {}).forEach(key => {
+                const userAnswer = String.fromCharCode(65 + answers.part_3[key])
+                const correctAnswer = correctAnswers.part_3[parseInt(key)]
+                if (userAnswer === correctAnswer) part3Correct++
+            })
+            partResults.part_3 = { correct: part3Correct, total: 4 }
+            totalCorrect += part3Correct
+            totalQuestions += 4
+        }
 
         // Part 4: 5 questions
-        let part4Correct = 0
-        Object.keys(answers.part_4 || {}).forEach(key => {
-            const userAnswer = answers.part_4[key]
-            const correctAnswer = correctAnswers.part_4[parseInt(key)]
-            if (userAnswer === correctAnswer) part4Correct++
-        })
-        partResults.part_4 = { correct: part4Correct, total: 5 }
-        totalCorrect += part4Correct
-        totalQuestions += 5
+        if (partsToCheck.includes(4)) {
+            let part4Correct = 0
+            Object.keys(answers.part_4 || {}).forEach(key => {
+                const userAnswer = answers.part_4[key]
+                const correctAnswer = correctAnswers.part_4[parseInt(key)]
+                if (userAnswer === correctAnswer) part4Correct++
+            })
+            partResults.part_4 = { correct: part4Correct, total: 5 }
+            totalCorrect += part4Correct
+            totalQuestions += 5
+        }
 
         // Part 5: 6 questions
-        let part5Correct = 0
-        Object.keys(answers.part_5 || {}).forEach(key => {
-            const userAnswer = String.fromCharCode(65 + answers.part_5[key])
-            const qIdx = parseInt(key.split('-')[0]) * 2 + parseInt(key.split('-')[1])
-            const correctAnswer = correctAnswers.part_5[qIdx]
-            if (userAnswer === correctAnswer) part5Correct++
-        })
-        partResults.part_5 = { correct: part5Correct, total: 6 }
-        totalCorrect += part5Correct
-        totalQuestions += 6
+        if (partsToCheck.includes(5)) {
+            let part5Correct = 0
+            Object.keys(answers.part_5 || {}).forEach(key => {
+                const userAnswer = String.fromCharCode(65 + answers.part_5[key])
+                const qIdx = parseInt(key.split('-')[0]) * 2 + parseInt(key.split('-')[1])
+                const correctAnswer = correctAnswers.part_5[qIdx]
+                if (userAnswer === correctAnswer) part5Correct++
+            })
+            partResults.part_5 = { correct: part5Correct, total: 6 }
+            totalCorrect += part5Correct
+            totalQuestions += 6
+        }
 
         // Part 6: 6 questions
-        let part6Correct = 0
-        Object.keys(answers.part_6 || {}).forEach(key => {
-            const userAnswer = answers.part_6[key]?.toLowerCase().trim()
-            const correctAnswer = correctAnswers.part_6[parseInt(key)]?.toLowerCase()
-            if (userAnswer === correctAnswer) part6Correct++
-        })
-        partResults.part_6 = { correct: part6Correct, total: 6 }
-        totalCorrect += part6Correct
-        totalQuestions += 6
+        if (partsToCheck.includes(6)) {
+            let part6Correct = 0
+            Object.keys(answers.part_6 || {}).forEach(key => {
+                const userAnswer = answers.part_6[key]?.toLowerCase().trim()
+                const correctAnswer = correctAnswers.part_6[parseInt(key)]?.toLowerCase()
+                if (userAnswer === correctAnswer) part6Correct++
+            })
+            partResults.part_6 = { correct: part6Correct, total: 6 }
+            totalCorrect += part6Correct
+            totalQuestions += 6
+        }
 
         return { totalCorrect, totalQuestions, partResults }
     }
@@ -548,7 +563,9 @@ const ResultPage = ({ mockData, answers, correctAnswers }) => {
             <div className="w-full max-w-5xl mt-24">
                 <div className="bg-white rounded-xl p-12 shadow-2xl">
                     <h1 className='text-4xl font-bold text-center text-slate-800 mb-2'>Test Results</h1>
-                    <p className='text-center text-slate-600 mb-12 text-lg'>{mockData?.title}</p>
+                    <p className='text-center text-slate-600 mb-12 text-lg'>
+                        {queryPart === "all" ? mockData?.title : `${mockData?.title} - Part ${currentPart}`}
+                    </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-8 text-white text-center shadow-lg">
@@ -619,6 +636,7 @@ export default function Listening() {
     const mockId = id
     const queryPart = params.get("part")
     const initialPart = queryPart === "all" ? 1 : Number(queryPart)
+    const initialAudioIndex = queryPart === "all" ? 0 : (Number(queryPart) - 1)
 
     // ✅ State declarations
     const [currentPart, setCurrentPart] = useState(initialPart)
@@ -636,7 +654,7 @@ export default function Listening() {
     })
     const [showResults, setShowResults] = useState(false)
     const [showStartModal, setShowStartModal] = useState(true)
-    const [currentAudioIndex, setCurrentAudioIndex] = useState(0)
+    const [currentAudioIndex, setCurrentAudioIndex] = useState(initialAudioIndex)
     const [showBreak, setShowBreak] = useState(false)
     const [breakTimer, setBreakTimer] = useState(10)
     const [shouldPlay, setShouldPlay] = useState(false) // ✅ NEW: Audio play qilishni control qilish
@@ -721,6 +739,7 @@ export default function Listening() {
 
     // ✅ AUDIO ENDED HANDLER
     const handleAudioEnded = () => {
+        // Agar "all" rejimida bo'lsa va yana audio qolsa - break vaqt ko'rsatish
         if (queryPart === "all" && currentAudioIndex < audioList.length - 1) {
             setShowBreak(true)
             setBreakTimer(10)
@@ -740,9 +759,8 @@ export default function Listening() {
                 })
             }, 1000)
             breakIntervalRef.current = interval
-        } else if (queryPart !== "all") {
-            setShowResults(true)
-        } else if (queryPart === "all" && currentAudioIndex === audioList.length - 1) {
+        } else {
+            // Audio tugadi - natijalarni ko'rsatish (individual part yoki oxirgi part)
             setShowResults(true)
         }
     }
@@ -798,7 +816,7 @@ export default function Listening() {
 
     // ✅ RESULTS PAGE
     if (showResults) {
-        return <ResultPage mockData={mockData} answers={answers} correctAnswers={correctAnswers} />
+        return <ResultPage mockData={mockData} answers={answers} correctAnswers={correctAnswers} queryPart={queryPart} currentPart={currentPart} />
     }
 
     // ✅ RENDER PART
