@@ -758,7 +758,11 @@ export default function Listening() {
 
     // ✅ NEXT PART HANDLER
     const handleNextPart = () => {
-        if (currentAudioIndex < audioList.length - 1) {
+        if (currentPart === 6 || currentAudioIndex === audioList.length - 1) {
+            // ✅ Oxirgi part yoki oxirgi audio - natijalarni ko'rsatish
+            setShowResults(true)
+        } else if (currentAudioIndex < audioList.length - 1) {
+            // ✅ Keyingi partga o'tish
             setShowBreak(true)
             setBreakTimer(10)
             setShouldPlay(false)
@@ -777,8 +781,6 @@ export default function Listening() {
                 })
             }, 1000)
             breakIntervalRef.current = interval
-        } else {
-            setShowResults(true)
         }
     }
 
@@ -867,7 +869,7 @@ export default function Listening() {
                 <span>CEFR Listening Test</span>
                 <div className="flex items-center gap-4">
                     <span>Part {currentPart}/6</span>
-                    {queryPart === "all" && currentPart < 6 && (
+                    {queryPart === "all" && (
                         <button
                             onClick={handleNextPart}
                             className="px-6 py-2 bg-white text-green-600 font-bold rounded-lg hover:bg-gray-100 transition-all"
