@@ -863,7 +863,7 @@ export default function Listening() {
             />
 
             {/* HEADER */}
-            <div className="w-full max-w-5xl fixed top-0 left-0 right-0 bg-gradient-to-r from-green-500 to-cyan-500 rounded-b-xl flex p-4 items-center justify-between text-white text-2xl font-bold z-30">
+            <div className="w-full  fixed top-0 left-0 right-0 bg-gradient-to-r from-green-500 to-cyan-500 rounded-b-xl flex p-4 items-center justify-between text-white text-2xl font-bold z-30">
                 <span>CEFR Listening Test</span>
                 <div className="flex items-center gap-4">
                     <span>Part {currentPart}/6</span>
