@@ -17,7 +17,7 @@ export default function Auth() {
   // ============================================
   // AUTH SUBMIT — BACKENDGA ULANGAN QISMI
   // ============================================
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrM(null);
     setLoading(true); // <-- loading boshlandi
@@ -25,6 +25,19 @@ const handleSubmit = async (e) => {
     try {
       if (isRegister) {
         // ============= REGISTER REQUEST =============
+        // Backend should return:
+        // {
+        //   access_token: "...",
+        //   refresh_token: "...",
+        //   user: {
+        //     id: "...",
+        //     username: "...",
+        //     email: "...",
+        //     is_new_user: true,
+        //     premium_duration: "2025-01-17T...",  <- 5 days from now
+        //     ...
+        //   }
+        // }
         const res = await api.post("/auth/register", {
           username,
           email,
@@ -35,9 +48,9 @@ const handleSubmit = async (e) => {
         localStorage.setItem("refresh_token", res.data.refresh_token);
 
         nav("/dashboard");
-        
-      } 
-      
+
+      }
+
       else {
         // ============= LOGIN REQUEST =============
         const res = await api.post("/auth/login", {
@@ -107,18 +120,34 @@ const handleSubmit = async (e) => {
     setStep(1);
   };
 
-  useEffect(()=>{
-    const access_token = localStorage.getItem("access_token")
-    if(access_token){
-      api.get("/user/me").then(res=>{
-        if(res.status === 200){
-          nav("/dashboard")
+useEffect(() => {
+  // 1️⃣ Google OAuth'dan qaytganda
+  const params = new URLSearchParams(window.location.search);
+  const access = params.get("access");
+  const refresh = params.get("refresh");
+
+  if (access && refresh) {
+    localStorage.setItem("access_token", access);
+    localStorage.setItem("refresh_token", refresh);
+    nav("/dashboard");
+    return;
+  }
+
+  // 2️⃣ Oddiy login bo‘lsa
+  const access_token = localStorage.getItem("access_token");
+  if (access_token) {
+    api.get("/user/me")
+      .then(res => {
+        if (res.status === 200) {
+          nav("/dashboard");
         }
-      }).catch(err=>{
-        console.log(err);
       })
-    }
-  },[])
+      .catch(err => {
+        console.log(err);
+      });
+  }
+}, []);
+
 
   // ============================================
   // UI
@@ -320,6 +349,21 @@ const handleSubmit = async (e) => {
             <span className="text-gray-500 text-xs">OR</span>
             <div className="flex-1 h-px bg-gray-300"></div>
           </div>
+
+          {/* GOOGLE LOGIN */}
+          <button
+            onClick={() => {
+              window.location.href = "https://english-server-p7y6.onrender.com/auth/google/login";
+            }}
+            className="w-full flex items-center justify-center gap-3 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-semibold"
+          >
+            <img
+              src="https://developers.google.com/identity/images/g-logo.png"
+              className="w-5 h-5"
+            />
+            Continue with Google
+          </button>
+
 
           {/* FOOTER */}
           <div className="space-y-3 text-center">
