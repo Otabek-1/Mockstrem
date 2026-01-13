@@ -71,7 +71,6 @@ export default function Dashboard() {
       try {
         const res = await api.get("/user/me");
         const data = res.data;
-
         setUser(data);
         setIsAdmin(data.role === "admin");
 
@@ -146,7 +145,7 @@ export default function Dashboard() {
 
   const goto = (data) => {
     if (!data.is_read) {
-      api.put(`/notifications/${data.id}`, { title: data.title, body: data.body, is_read: true }).catch(err => {});
+      api.put(`/notifications/${data.id}`, { title: data.title, body: data.body, is_read: true }).catch(err => { });
     }
     if (data.title == "Writing mock results") {
       const id = data.body.split(" ")[2].split("")[1];
@@ -410,7 +409,8 @@ export default function Dashboard() {
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-2 rounded-lg transition-all duration-200"
               >
-                <User className="rounded-full border-2 text-xl w-10 h-10 p-1 border-blue-500 text-blue-500" />
+
+                {!user.google_avatar ? <User className="rounded-full border-2 text-xl w-10 h-10 p-1 border-blue-500 text-blue-500" /> : <img src={user.google_avatar} className="w-10 h-10 rounded-full" alt="" />}
                 <div className="hidden sm:block">
                   <p className="font-bold text-gray-900 dark:text-white">
                     {user?.username}
@@ -503,7 +503,7 @@ export default function Dashboard() {
           {active === "home" && <Main />}
 
           {active === "cefr_writing" && <Writing_list isPremium={isPremium} />}
-          {active === "cefr_listening" && <Listening_list isPremium={isPremium}/>}
+          {active === "cefr_listening" && <Listening_list isPremium={isPremium} />}
           {active === "cefr_reading" && <Reading_list isPremium={isPremium} />}
           {active === "cefr_speaking" && <Speaking_list isPremium={isPremium} />}
 
