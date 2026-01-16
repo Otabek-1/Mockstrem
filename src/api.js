@@ -3,6 +3,15 @@ import axios from "axios";
 // https://english-server-p7y6.onrender.com
 const baseURL = "https://english-server-p7y6.onrender.com";
 
+// 🧪 TEST MODE TOKEN
+const TEST_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTYsImVtYWlsIjoiZm9ydGVzdGluZ0BnbWFpbC5jb20iLCJleHAiOjEzMTM2ODU4MTk3M30.E5_03H5UQd3UqZiFMdOTnO1FtqYF3szopG_EAEDS0cA";
+
+// 🧪 Check if test mode is enabled
+function isTestMode() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("test") === "true";
+}
+
 const api = axios.create({
   baseURL,
   headers: {
@@ -15,6 +24,10 @@ const api = axios.create({
 // =========================
 
 function getAccessToken() {
+  // 🧪 If test mode, return test token
+  if (isTestMode()) {
+    return TEST_TOKEN;
+  }
   return localStorage.getItem("access_token");
 }
 
