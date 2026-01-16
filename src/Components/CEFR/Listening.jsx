@@ -764,6 +764,98 @@ export default function Listening() {
         return params.get("test") === "true"
     }
 
+    // ✅ Calculate results function (shared between ResultPage and test modal)
+    const calculateResults = () => {
+        let totalCorrect = 0
+        let totalQuestions = 0
+        const partResults = {}
+
+        // Faqat individual partni yoki barcha partlarni hisoblash
+        const partsToCheck = queryPart === "all" ? [1, 2, 3, 4, 5, 6] : [currentPart]
+
+        // Part 1: 8 questions
+        if (partsToCheck.includes(1)) {
+            let part1Correct = 0
+            Object.keys(answers.part_1 || {}).forEach(key => {
+                const idx = parseInt(key) - 1
+                const userAnswer = String.fromCharCode(65 + answers.part_1[key])
+                const correctAnswer = correctAnswers.part_1[idx]
+                if (userAnswer === correctAnswer) part1Correct++
+            })
+            partResults.part_1 = { correct: part1Correct, total: 8 }
+            totalCorrect += part1Correct
+            totalQuestions += 8
+        }
+
+        // Part 2: 6 questions
+        if (partsToCheck.includes(2)) {
+            let part2Correct = 0
+            Object.keys(answers.part_2 || {}).forEach(key => {
+                const userAnswer = answers.part_2[key]?.toLowerCase().trim()
+                const correctAnswer = correctAnswers.part_2[parseInt(key)]?.toLowerCase()
+                if (userAnswer === correctAnswer) part2Correct++
+            })
+            partResults.part_2 = { correct: part2Correct, total: 6 }
+            totalCorrect += part2Correct
+            totalQuestions += 6
+        }
+
+        // Part 3: 4 questions
+        if (partsToCheck.includes(3)) {
+            let part3Correct = 0
+            Object.keys(answers.part_3 || {}).forEach(key => {
+                const userAnswer = String.fromCharCode(65 + answers.part_3[key])
+                const correctAnswer = correctAnswers.part_3[parseInt(key)]
+                if (userAnswer === correctAnswer) part3Correct++
+            })
+            partResults.part_3 = { correct: part3Correct, total: 4 }
+            totalCorrect += part3Correct
+            totalQuestions += 4
+        }
+
+        // Part 4: 5 questions
+        if (partsToCheck.includes(4)) {
+            let part4Correct = 0
+            Object.keys(answers.part_4 || {}).forEach(key => {
+                const userAnswer = answers.part_4[key]
+                const correctAnswer = correctAnswers.part_4[parseInt(key)]
+                if (userAnswer === correctAnswer) part4Correct++
+            })
+            partResults.part_4 = { correct: part4Correct, total: 5 }
+            totalCorrect += part4Correct
+            totalQuestions += 5
+        }
+
+        // Part 5: 6 questions
+        if (partsToCheck.includes(5)) {
+            let part5Correct = 0
+            Object.keys(answers.part_5 || {}).forEach(key => {
+                const userAnswer = String.fromCharCode(65 + answers.part_5[key])
+                const qIdx = parseInt(key.split('-')[0]) * 2 + parseInt(key.split('-')[1])
+                const correctAnswer = correctAnswers.part_5[qIdx]
+                if (userAnswer === correctAnswer) part5Correct++
+            })
+            partResults.part_5 = { correct: part5Correct, total: 6 }
+            totalCorrect += part5Correct
+            totalQuestions += 6
+        }
+
+        // Part 6: 6 questions
+        if (partsToCheck.includes(6)) {
+            let part6Correct = 0
+            Object.keys(answers.part_6 || {}).forEach(key => {
+                const userAnswer = answers.part_6[key]?.toLowerCase().trim()
+                const correctAnswer = correctAnswers.part_6[parseInt(key)]?.toLowerCase()
+                if (userAnswer === correctAnswer) part6Correct++
+            })
+            partResults.part_6 = { correct: part6Correct, total: 6 }
+            totalCorrect += part6Correct
+            totalQuestions += 6
+        }
+
+        return { totalCorrect, totalQuestions, partResults }
+    }
+
     // ✅ Refs
     const audioRef = useRef(null)
     const breakIntervalRef = useRef(null)
