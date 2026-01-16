@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaEdit, FaTrash, FaPlus } from "react-icons/fa";
+import { FaEdit, FaTrash, FaPlus, FaShare, FaCopy, FaCheck } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import api from "../api";
 
@@ -7,6 +7,7 @@ export default function CEFR_Listening() {
   const [listenings, setListenings] = useState([]);
   const [userPermissions, setUserPermissions] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState(null); // 🧪 Track which link was copied
 
   // ✅ Current user va permissions olish
   const fetchUserAndPermissions = async () => {
@@ -92,6 +93,24 @@ export default function CEFR_Listening() {
     return userPermissions.cefr?.listening?.length > 0;
   };
 
+  // 🧪 Generate test link with test=true parameter
+  const generateTestLink = (mockId) => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/mock/cefr/listening/${mockId}?part=all&test=true`;
+  };
+
+  // 🧪 Copy test link to clipboard
+  const handleShareTestLink = (mockId) => {
+    const testLink = generateTestLink(mockId);
+    navigator.clipboard.writeText(testLink).then(() => {
+      setCopiedId(mockId);
+      // Reset after 2 seconds
+      setTimeout(() => setCopiedId(null), 2000);
+    }).catch(() => {
+      alert("Failed to copy link");
+    });
+  };
+
   useEffect(() => {
     fetchUserAndPermissions();
     getMocks();
@@ -168,6 +187,19 @@ export default function CEFR_Listening() {
                     </td>
                     <td className="p-2">B2</td>
                     <td className="p-2 flex gap-3">
+                      {/* 🧪 Share for Testing button */}
+                      <button
+                        onClick={() => handleShareTestLink(l.id)}
+                        className="p-2 rounded-lg transition bg-cyan-500 text-white hover:bg-cyan-600 flex items-center gap-1"
+                        title="Copy test link with ?test=true"
+                      >
+                        {copiedId === l.id ? (
+                          <FaCheck size={16} />
+                        ) : (
+                          <FaShare size={16} />
+                        )}
+                      </button>
+
                       {/* ✅ Edit button - requires "update_delete" permission */}
                       <Link
                         to={
