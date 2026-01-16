@@ -1,0 +1,194 @@
+{
+  "title": "CEFR Listening Mock Test 2024",
+  "audios": {
+    "part_1": "https://example.com/audio_part1.mp3",
+    "part_2": "https://example.com/audio_part2.mp3",
+    "part_3": "https://example.com/audio_part3.mp3",
+    "part_4": "https://example.com/audio_part4.mp3",
+    "part_5": "https://example.com/audio_part5.mp3",
+    "part_6": "https://example.com/audio_part6.mp3"
+  },
+  "part1": [
+    {
+      "options": ["Paris", "London", "Berlin"],
+      "answer": "A"
+    },
+    {
+      "options": ["Monday", "Tuesday", "Wednesday"],
+      "answer": "B"
+    },
+    {
+      "options": ["Coffee", "Tea", "Water"],
+      "answer": "C"
+    },
+    {
+      "options": ["Option1", "Option2", "Option3"],
+      "answer": "A"
+    },
+    {
+      "options": ["Option1", "Option2", "Option3"],
+      "answer": "B"
+    },
+    {
+      "options": ["Option1", "Option2", "Option3"],
+      "answer": "C"
+    },
+    {
+      "options": ["Option1", "Option2", "Option3"],
+      "answer": "A"
+    },
+    {
+      "options": ["Option1", "Option2", "Option3"],
+      "answer": "B"
+    }
+  ],
+  "part2": [
+    {
+      "label": "Train departures",
+      "before": "The next train to Manchester leaves at",
+      "after": "and arrives at 14:30",
+      "answer": "12:45"
+    },
+    {
+      "label": "Restaurant hours",
+      "before": "We are open from",
+      "after": "Monday to Friday",
+      "answer": "11am"
+    },
+    {
+      "label": "Library closing",
+      "before": "The library closes at",
+      "after": "on weekends",
+      "answer": "5pm"
+    },
+    {
+      "label": "Flight boarding",
+      "before": "Flight BA205 is boarding at gate",
+      "after": "immediately",
+      "answer": "12"
+    },
+    {
+      "label": "Meeting room",
+      "before": "The conference is in room",
+      "after": "on the second floor",
+      "answer": "204"
+    },
+    {
+      "label": "Store opening",
+      "before": "We open at",
+      "after": "every day",
+      "answer": "9am"
+    }
+  ],
+  "part3": {
+    "speakers": ["John", "Mary", "David", "Sarah"],
+    "options": [
+      "Working in IT",
+      "Teaching English",
+      "Managing a hotel",
+      "Selling cars",
+      "Writing books",
+      "Cooking professionally"
+    ],
+    "answers": ["A", "B", "C", "D"]
+  },
+  "part4": {
+    "mapUrl": "https://example.com/map.jpg",
+    "mapLabels": ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+    "questions": [
+      {
+        "place": "Museum",
+        "answer": "A"
+      },
+      {
+        "place": "Library",
+        "answer": "B"
+      },
+      {
+        "place": "Hospital",
+        "answer": "C"
+      },
+      {
+        "place": "Train Station",
+        "answer": "D"
+      },
+      {
+        "place": "Park",
+        "answer": "E"
+      }
+    ]
+  },
+  "part5": [
+    {
+      "text": "Extract 1: Interview with a scientist",
+      "q1": {
+        "question": "What is the scientist's main research area?",
+        "options": ["Climate change", "Space exploration", "Medicine"],
+        "answer": "A"
+      },
+      "q2": {
+        "question": "How long has she been working in this field?",
+        "options": ["5 years", "10 years", "15 years"],
+        "answer": "B"
+      }
+    },
+    {
+      "text": "Extract 2: Business discussion",
+      "q1": {
+        "question": "What is the main topic?",
+        "options": ["Marketing", "Finance", "Operations"],
+        "answer": "B"
+      },
+      "q2": {
+        "question": "What is their plan?",
+        "options": ["Expand", "Reduce", "Maintain"],
+        "answer": "A"
+      }
+    },
+    {
+      "text": "Extract 3: Travel planning",
+      "q1": {
+        "question": "Where are they going?",
+        "options": ["France", "Spain", "Italy"],
+        "answer": "C"
+      },
+      "q2": {
+        "question": "When will they travel?",
+        "options": ["Summer", "Winter", "Spring"],
+        "answer": "A"
+      }
+    }
+  ],
+  "part6": [
+    {
+      "before": "The new policy will",
+      "after": "all employees starting next month",
+      "answer": "affect"
+    },
+    {
+      "before": "We must",
+      "after": "our responsibilities seriously",
+      "answer": "take"
+    },
+    {
+      "before": "The project has been",
+      "after": "successfully for six months",
+      "answer": "running"
+    },
+    {
+      "before": "Students should",
+      "after": "more attention in class",
+      "answer": "pay"
+    },
+    {
+      "before": "The company will",
+      "after": "new products next year",
+      "answer": "launch"
+    },
+    {
+      "before": "We need to",
+      "after": "the current situation",
+      "after": "improve"
+    }
+  ]
+}

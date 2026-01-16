@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api from "./api";
+import api, { createSession } from "./api";
 import { useNavigate } from "react-router-dom";
 
 export default function Auth() {
@@ -47,6 +47,13 @@ export default function Auth() {
         localStorage.setItem("access_token", res.data.access_token);
         localStorage.setItem("refresh_token", res.data.refresh_token);
 
+        // ✅ Register qilgandan keyin session yaratish
+        try {
+          await createSession();
+        } catch (sessionErr) {
+          console.log("Session creation failed (non-critical):", sessionErr);
+        }
+
         nav("/dashboard");
 
       }
@@ -60,6 +67,13 @@ export default function Auth() {
 
         localStorage.setItem("access_token", res.data.access_token);
         localStorage.setItem("refresh_token", res.data.refresh_token);
+
+        // ✅ Login qilgandan keyin session yaratish
+        try {
+          await createSession();
+        } catch (sessionErr) {
+          console.log("Session creation failed (non-critical):", sessionErr);
+        }
 
         nav("/dashboard");
       }

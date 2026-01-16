@@ -7,7 +7,6 @@ import api from "../api";
 function Section({ title, children }) {
     const [open, setOpen] = useState(true);
 
-
     return (
         <div className="border rounded-lg mb-6 bg-white dark:bg-gray-800">
             <div
@@ -35,6 +34,242 @@ function AudioInput({ label, value, onChange }) {
             {value && <audio className="mt-2" controls src={value} />}
         </div>
     );
+}
+
+/* ===================== FILE PARSER ===================== */
+
+function parseFileContent(fileContent, fileName) {
+    try {
+        if (fileName.endsWith('.json')) {
+            return JSON.parse(fileContent);
+        } else if (fileName.endsWith('.csv')) {
+            // CSV parser - custom format
+            return parseCSV(fileContent);
+        } else {
+            alert("Faqat .json yoki .csv fayllar qabul qilinadi");
+            return null;
+        }
+    } catch (error) {
+        alert("Fayl parse qilishda xato: " + error.message);
+        return null;
+    }
+}
+
+function parseCSV(csvContent) {
+    const lines = csvContent.trim().split('\n');
+    const data = {
+        title: "",
+        audios: {
+            part_1: "", part_2: "", part_3: "", part_4: "", part_5: "", part_6: ""
+        },
+        part1: [], part2: [], part3: {}, part4: {}, part5: [], part6: []
+    };
+
+    let i = 0;
+
+    while (i < lines.length) {
+        const line = lines[i].trim();
+        i++;
+
+        if (!line || line.startsWith('#')) continue;
+
+        if (line.startsWith('[TITLE]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const titleLine = lines[i].trim();
+                if (titleLine && !titleLine.startsWith('#')) {
+                    data.title = titleLine;
+                    i++;
+                    break;
+                }
+                i++;
+            }
+        } 
+        else if (line.startsWith('[AUDIOS]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const audioLine = lines[i].trim();
+                if (audioLine && !audioLine.startsWith('#')) {
+                    const parts = audioLine.split('|');
+                    if (parts.length === 2) {
+                        const key = parts[0].trim();
+                        const url = parts[1].trim();
+                        if (key in data.audios) {
+                            data.audios[key] = url;
+                        }
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART1]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    // Format: options|opt1;opt2;opt3|answer|A
+                    const parts = qLine.split('|');
+                    const parsed = {};
+                    for (let j = 0; j < parts.length; j += 2) {
+                        const key = parts[j].trim();
+                        const value = parts[j + 1]?.trim() || "";
+                        parsed[key] = value;
+                    }
+                    if (parsed.options) {
+                        const opts = parsed.options.split(';').map(o => o.trim());
+                        data.part1.push({
+                            options: opts.length === 3 ? opts : [opts[0] || "", opts[1] || "", opts[2] || ""],
+                            answer: parsed.answer || ""
+                        });
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART2]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    // Format: label|Label Text|before|Before Text|after|After Text|answer|Answer
+                    const parsed = {};
+                    const parts = qLine.split('|');
+                    for (let j = 0; j < parts.length; j += 2) {
+                        const key = parts[j].trim();
+                        const value = parts[j + 1]?.trim() || "";
+                        parsed[key] = value;
+                    }
+                    if (parsed.label && parsed.before && ('after' in parsed) && parsed.answer) {
+                        data.part2.push({
+                            label: parsed.label,
+                            before: parsed.before,
+                            after: parsed.after || "",
+                            answer: parsed.answer
+                        });
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART3]')) {
+            const part3Data = { speakers: [], options: [], answers: [] };
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    const parts = qLine.split('|');
+                    if (parts.length >= 2) {
+                        const key = parts[0].trim();
+                        const value = parts[1].trim();
+                        if (key === 'speakers') {
+                            part3Data.speakers = value.split(';').map(s => s.trim());
+                        } else if (key === 'options') {
+                            part3Data.options = value.split(';').map(s => s.trim());
+                        } else if (key === 'answers') {
+                            part3Data.answers = value.split(';').map(s => s.trim());
+                        }
+                    }
+                }
+                i++;
+            }
+            data.part3 = part3Data;
+        }
+        else if (line.startsWith('[PART4]')) {
+            const part4Data = { mapUrl: "", mapLabels: [], questions: [] };
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    const parts = qLine.split('|');
+                    if (parts.length >= 2) {
+                        const key = parts[0].trim();
+                        if (key === 'mapUrl') {
+                            part4Data.mapUrl = parts[1].trim();
+                        } else if (key === 'mapLabels') {
+                            part4Data.mapLabels = parts[1].trim().split(';').map(s => s.trim());
+                        } else if (key.startsWith('question')) {
+                            // Format: questionN|place|Place Name|answer|Label
+                            const q = {};
+                            for (let j = 1; j < parts.length; j += 2) {
+                                const fKey = parts[j].trim();
+                                const fVal = parts[j + 1]?.trim() || "";
+                                q[fKey] = fVal;
+                            }
+                            if (q.place && q.answer) {
+                                part4Data.questions.push({
+                                    place: q.place,
+                                    answer: q.answer
+                                });
+                            }
+                        }
+                    }
+                }
+                i++;
+            }
+            data.part4 = part4Data;
+        }
+        else if (line.startsWith('[PART5]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    // Format: extractN|text|Text|q1_question|Q1|q1_options|opt1;opt2;opt3|q1_answer|A|q2_question|Q2|q2_options|opt1;opt2;opt3|q2_answer|B
+                    const parsed = {};
+                    const parts = qLine.split('|');
+                    for (let j = 1; j < parts.length; j += 2) {
+                        const key = parts[j].trim();
+                        const value = parts[j + 1]?.trim() || "";
+                        parsed[key] = value;
+                    }
+                    
+                    const extract = {
+                        text: parsed.text || "",
+                        q1: {
+                            question: parsed.q1_question || "",
+                            options: (parsed.q1_options || "").split(';').map(o => o.trim()).filter(o => o),
+                            answer: parsed.q1_answer || ""
+                        },
+                        q2: {
+                            question: parsed.q2_question || "",
+                            options: (parsed.q2_options || "").split(';').map(o => o.trim()).filter(o => o),
+                            answer: parsed.q2_answer || ""
+                        }
+                    };
+                    
+                    // Ensure we have 3 options for each question
+                    if (extract.q1.options.length < 3) {
+                        while (extract.q1.options.length < 3) extract.q1.options.push("");
+                    }
+                    if (extract.q2.options.length < 3) {
+                        while (extract.q2.options.length < 3) extract.q2.options.push("");
+                    }
+                    
+                    if (extract.q1.question && extract.q2.question) {
+                        data.part5.push(extract);
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART6]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    // Format: before|Before Text|after|After Text|answer|Answer
+                    const parsed = {};
+                    const parts = qLine.split('|');
+                    for (let j = 0; j < parts.length; j += 2) {
+                        const key = parts[j].trim();
+                        const value = parts[j + 1]?.trim() || "";
+                        parsed[key] = value;
+                    }
+                    if (parsed.before && ('after' in parsed) && parsed.answer) {
+                        data.part6.push({
+                            before: parsed.before,
+                            after: parsed.after || "",
+                            answer: parsed.answer
+                        });
+                    }
+                }
+                i++;
+            }
+        }
+    }
+
+    return data;
 }
 
 /* ===================== MAIN ===================== */
@@ -225,11 +460,16 @@ export default function ListeningMockForm() {
     /* ===================== SAVE ===================== */
 
     async function saveMock() {
+        // Prepare payload matching database schema exactly
         const payload = {
             title,
             data: {
                 part_1: part1.map((q) => q.options),
-                part_2: part2.map(({ label, before, after }) => ({ label, before, after })),
+                part_2: part2.map(({ label, before, after }) => ({ 
+                    label, 
+                    before, 
+                    after 
+                })),
                 part_3: {
                     speakers: part3.speakers,
                     options: part3.options,
@@ -274,24 +514,181 @@ export default function ListeningMockForm() {
             part_6: part6.map((q) => q.answer),
         };
 
-        if (isEdit) {
-            await api.put(`/cefr/listening/update/${mockId}`, payload);
-            await api.put(`/cefr/listening/answer/update/${mockId}`, answersPayload);
-        } else {
-            const res = await api.post("/cefr/listening/create", payload);
-            await api.post(`/cefr/listening/answer/create/${res.data.id}`, answersPayload);
+        try {
+            if (isEdit) {
+                await api.put(`/cefr/listening/update/${mockId}`, payload);
+                await api.put(`/cefr/listening/answer/update/${mockId}`, answersPayload);
+            } else {
+                const res = await api.post("/cefr/listening/create", payload);
+                await api.post(`/cefr/listening/answer/create/${res.data.id}`, answersPayload);
+            }
+            alert("✅ Muvaffaqiyatli saqlandi!");
+            navigate("/admin/dashboard");
+        } catch (error) {
+            console.error("Save error:", error);
+            alert("❌ Saqlashda xato: " + error.message);
         }
-
-        alert("Saved successfully");
-        navigate("/admin/dashboard");
     }
 
 
     /* ===================== RENDER ===================== */
 
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target.result;
+            const data = parseFileContent(content, file.name);
+            
+            if (data) {
+                // Set title
+                if (data.title) setTitle(data.title);
+
+                // Set audios
+                if (data.audios) {
+                    setAudios(data.audios);
+                }
+
+                // Set part1
+                if (data.part1 && data.part1.length > 0) {
+                    setPart1([
+                        ...data.part1,
+                        ...Array.from(
+                            { length: Math.max(0, 8 - data.part1.length) },
+                            () => ({ options: ["", "", ""], answer: "" })
+                        )
+                    ]);
+                }
+
+                // Set part2
+                if (data.part2 && data.part2.length > 0) {
+                    setPart2([
+                        ...data.part2,
+                        ...Array.from(
+                            { length: Math.max(0, 6 - data.part2.length) },
+                            () => ({ label: "", before: "", after: "", answer: "" })
+                        )
+                    ]);
+                }
+
+                // Set part3
+                if (data.part3 && Object.keys(data.part3).length > 0) {
+                    setPart3({
+                        speakers: data.part3.speakers || ["", "", "", ""],
+                        options: data.part3.options || ["", "", "", "", "", ""],
+                        answers: data.part3.answers || ["", "", "", ""]
+                    });
+                }
+
+                // Set part4
+                if (data.part4 && Object.keys(data.part4).length > 0) {
+                    setPart4({
+                        mapUrl: data.part4.mapUrl || "",
+                        mapLabels: data.part4.mapLabels || ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+                        questions: [
+                            ...data.part4.questions || [],
+                            ...Array.from(
+                                { length: Math.max(0, 5 - (data.part4.questions?.length || 0)) },
+                                () => ({ place: "", answer: "" })
+                            )
+                        ]
+                    });
+                }
+
+                // Set part5
+                if (data.part5 && data.part5.length > 0) {
+                    setPart5([
+                        ...data.part5,
+                        ...Array.from(
+                            { length: Math.max(0, 3 - data.part5.length) },
+                            () => ({
+                                text: "",
+                                q1: { question: "", options: ["", "", ""], answer: "" },
+                                q2: { question: "", options: ["", "", ""], answer: "" }
+                            })
+                        )
+                    ]);
+                }
+
+                // Set part6
+                if (data.part6 && data.part6.length > 0) {
+                    setPart6([
+                        ...data.part6,
+                        ...Array.from(
+                            { length: Math.max(0, 6 - data.part6.length) },
+                            () => ({ before: "", after: "", answer: "" })
+                        )
+                    ]);
+                }
+
+                alert("✅ Fayl muvaffaqiyatli yuklandi!");
+            }
+        };
+        reader.readAsText(file);
+    };
+
     return (
         <div className="p-6 max-w-6xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">Create Listening Mock</h1>
+
+            {/* FILE UPLOAD SECTION */}
+            <div className="border-2 border-dashed border-blue-400 rounded-lg p-6 mb-6 bg-blue-50">
+                <h3 className="font-bold text-lg mb-3">📁 Fayldan Yuklash (JSON/CSV)</h3>
+                <input
+                    type="file"
+                    accept=".json,.csv,.txt"
+                    onChange={handleFileUpload}
+                    className="block w-full p-3 border border-blue-300 rounded-lg cursor-pointer"
+                />
+                <p className="text-sm text-gray-600 mt-2">
+                    💡 Masala: 
+                    <code className="bg-gray-200 px-2 py-1 rounded">.json</code> yoki 
+                    <code className="bg-gray-200 px-2 py-1 rounded">.csv</code> fayl yuklang
+                </p>
+                <details className="mt-3 text-sm">
+                    <summary className="cursor-pointer font-semibold">📋 CSV Format Namunasi</summary>
+                    <pre className="bg-gray-100 p-3 rounded mt-2 overflow-x-auto text-xs">
+{`[TITLE]
+CEFR Listening Test 2024
+
+[AUDIOS]
+part_1|https://example.com/audio1.mp3
+part_2|https://example.com/audio2.mp3
+part_3|https://example.com/audio3.mp3
+
+[PART1]
+Apple|Banana|Orange|A
+Car|Bus|Train|B
+
+[PART2]
+label|Numbers|before|Flight is at|after|o'clock|answer|3pm
+label|Time|before|Shop opens|after|daily|answer|9am
+
+[PART3]
+speakers|John;Mary;David;Sarah
+options|Doctor;Teacher;Engineer;Driver;Manager;Accountant
+answers|A;B;C;D
+
+[PART4]
+mapUrl|https://example.com/map.jpg
+mapLabels|A;B;C;D;E
+question1|place|Museum|answer|A
+question2|place|Library|answer|B
+
+[PART5]
+extract1|text|Interview|q1_question|What is the job?|q1_options|Doctor;Teacher;Engineer|q1_answer|A|q2_question|Experience?|q2_options|5;10;15|q2_answer|B
+
+[PART6]
+before|The project|after|completed successfully|answer|was
+before|We must|after|responsibilities|answer|take`}
+                    </pre>
+                    <p className="text-gray-600 mt-2">
+                        💡 <strong>JSON</strong> formatiga o'tish: <code className="bg-gray-200 px-1">LISTENING_MOCK_TEMPLATE.json</code> faylni ko'ring
+                    </p>
+                </details>
+            </div>
 
             {/* TITLE */}
             <Section title="Basic Info">

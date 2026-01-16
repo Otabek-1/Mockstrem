@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { FaEdit, FaTimes, FaLock, FaTrash, FaCheck } from "react-icons/fa"
-import api from "../api"
+import { FaEdit, FaTimes, FaLock, FaTrash, FaCheck, FaDesktop, FaMobileAlt } from "react-icons/fa"
+import api, { getMyDevices, logoutDevice } from "../api"
+import { User } from "lucide-react"
 
 // Password Change Modal
 function PasswordModal({ isOpen, onClose, onSubmit, passwordData, onPasswordChange }) {
@@ -133,17 +134,77 @@ function DeleteModal({ isOpen, onClose, onConfirm }) {
   )
 }
 
+// Active Sessions Modal
+function SessionsModal({ isOpen, onClose, sessions, onLogoutSession, loading }) {
+  if (!isOpen) return null
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full border border-gray-200 dark:border-gray-700 animate-in fade-in scale-95 duration-200 my-8">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white p-6 flex items-center justify-between">
+          <h3 className="text-2xl font-bold flex items-center gap-2">
+            <FaDesktop size={24} />
+            Active Sessions
+          </h3>
+          <button onClick={onClose} className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors">
+            <FaTimes size={20} />
+          </button>
+        </div>
+        {/* Content */}
+        <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
+          {sessions && sessions.length > 0 ? (
+            sessions.map((session) => (
+              <div key={session.id} className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 rounded-lg p-4 flex items-center justify-between border-l-4 border-cyan-500">
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="text-2xl">
+                    {session.device_type === "mobile" ? <FaMobileAlt /> : <FaDesktop />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-800 dark:text-white">
+                      {session.device_type === "mobile" ? "📱 Mobile" : "💻 " + (session.browser || "Web")}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{session.device_name?.substring(0, 50) || "Unknown"}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Last active: {new Date(session.last_activity).toLocaleString()}
+                    </p>
+                    {session.ip_address && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">IP: {session.ip_address}</p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => onLogoutSession(session.id)}
+                  disabled={loading}
+                  className="ml-4 px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white font-bold rounded-lg transition-all"
+                >
+                  {loading ? "..." : "Logout"}
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-center text-gray-600 dark:text-gray-400">No active sessions</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Main Profile Component
 export default function Profile() {
   const [editMode, setEditMode] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showSessionsModal, setShowSessionsModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [sessions, setSessions] = useState([])
+  const [sessionLoading, setSessionLoading] = useState(false)
   const [profileData, setProfileData] = useState({
     id: "",
     username: "",
     email: "",
   })
+  const [avatar, setAvatar] = useState(null)
   const [tempData, setTempData] = useState(profileData)
   const [passwordData, setPasswordData] = useState({
     oldPassword: "",
@@ -160,6 +221,7 @@ export default function Profile() {
           username: response.data.username,
           email: response.data.email,
         }
+        setAvatar(response.data.google_avatar)
         setProfileData(userData)
         setTempData(userData)
       } catch (error) {
@@ -171,6 +233,41 @@ export default function Profile() {
     }
     fetchUserData()
   }, [])
+
+  // ✅ Fetch active sessions
+  const fetchSessions = async () => {
+    try {
+      setSessionLoading(true)
+      const data = await getMyDevices()
+      setSessions(data)
+    } catch (error) {
+      console.log("Error fetching sessions:", error)
+      alert("Failed to load active sessions")
+    } finally {
+      setSessionLoading(false)
+    }
+  }
+
+  // ✅ Logout from specific session
+  const handleLogoutSession = async (sessionId) => {
+    try {
+      setSessionLoading(true)
+      await logoutDevice(sessionId)
+      alert("✅ Session logged out successfully!")
+      await fetchSessions() // Refresh sessions list
+    } catch (error) {
+      console.log("Error logging out session:", error)
+      alert("Failed to logout from session")
+    } finally {
+      setSessionLoading(false)
+    }
+  }
+
+  // ✅ Open sessions modal and fetch
+  const handleOpenSessionsModal = () => {
+    setShowSessionsModal(true)
+    fetchSessions()
+  }
 
   const handleEditClick = () => {
     setTempData(profileData)
@@ -253,11 +350,11 @@ export default function Profile() {
                 <p className="text-blue-100 text-sm mt-1">Update your personal details</p>
               </div>
               <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                <img
-                  src="https://i.pravatar.cc/150?img=1"
+                {avatar ? <img
+                  src={avatar}
                   alt="Profile"
                   className="w-14 h-14 rounded-full border-2 border-white"
-                />
+                /> : <User />}
               </div>
             </div>
 
@@ -366,6 +463,30 @@ export default function Profile() {
             </div>
           </div>
 
+          {/* Active Sessions Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            {/* Section Header */}
+            <div className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white p-6">
+              <h3 className="text-2xl font-bold flex items-center gap-2">
+                <FaDesktop size={24} />
+                🔐 Active Sessions
+              </h3>
+              <p className="text-cyan-100 text-sm mt-1">Manage your active login sessions across devices</p>
+            </div>
+            {/* Content */}
+            <div className="p-8">
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                You can see all devices that are currently logged into your account. You can log out from any device at any time.
+              </p>
+              <button
+                onClick={handleOpenSessionsModal}
+                className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg"
+              >
+                View & Manage Sessions
+              </button>
+            </div>
+          </div>
+
           {/* Danger Zone */}
           <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl shadow-lg overflow-hidden border-2 border-red-300 dark:border-red-900">
             {/* Section Header */}
@@ -405,6 +526,13 @@ export default function Profile() {
             isOpen={showDeleteModal}
             onClose={() => setShowDeleteModal(false)}
             onConfirm={handleDeleteAccount}
+          />
+          <SessionsModal
+            isOpen={showSessionsModal}
+            onClose={() => setShowSessionsModal(false)}
+            sessions={sessions}
+            onLogoutSession={handleLogoutSession}
+            loading={sessionLoading}
           />
         </>
       )}

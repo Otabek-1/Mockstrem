@@ -12,8 +12,6 @@ import Reading_list from "./Components/CEFR/Reading_list";
 import Speaking_list from "./Components/CEFR/Speaking_list";
 import Background from "./Background";
 import Listening_list from "./Components/CEFR/Listening_list";
-import PremiumWelcomeModal from "./Components/PremiumWelcomeModal";
-import PremiumRenewalModal from "./Components/PremiumRenewalModal";
 
 // Vaqtni "X minutes ago" formatiga o'tkazish
 const formatTimeAgo = (dateString) => {
@@ -53,9 +51,6 @@ export default function Dashboard() {
   const [isAdmin, setIsAdmin] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [showPremiumWelcome, setShowPremiumWelcome] = useState(false);
-  const [showPremiumRenewal, setShowPremiumRenewal] = useState(false);
-  const [premiumDaysLeft, setPremiumDaysLeft] = useState(0);
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
@@ -71,30 +66,12 @@ export default function Dashboard() {
       try {
         const res = await api.get("/user/me");
         const data = res.data;
+
         setUser(data);
         setIsAdmin(data.role === "admin");
 
-        const premiumEndDate = data.premium_duration ? new Date(data.premium_duration) : null;
-        const now = new Date();
-        const isPremiumUser = premiumEndDate && premiumEndDate > now;
+        const isPremiumUser = data.premium_duration && new Date(data.premium_duration) > new Date();
         setIsPremium(isPremiumUser);
-
-        // Check if premium is expiring soon (1-2 days left)
-        if (isPremiumUser) {
-          const daysLeftMs = premiumEndDate - now;
-          const daysLeft = Math.ceil(daysLeftMs / (1000 * 60 * 60 * 24));
-          if (daysLeft <= 2) {
-            setPremiumDaysLeft(daysLeft);
-            setShowPremiumRenewal(true);
-          }
-        }
-
-        // Check if user is new (created today) and premium was just given
-        if (data.is_new_user) {
-          setShowPremiumWelcome(true);
-          // Mark that we've shown the welcome modal
-          localStorage.setItem(`premium_welcome_shown_${data.id}`, "true");
-        }
 
         await fetchNotifications(data.id);
       } catch (error) {
@@ -524,22 +501,6 @@ export default function Dashboard() {
             setProfileOpen(false);
             setNotificationsOpen(false);
           }}
-        />
-      )}
-
-      {/* Premium Welcome Modal - Birinchi marta sign up qilganda */}
-      {showPremiumWelcome && user && (
-        <PremiumWelcomeModal
-          user={user}
-          onClose={() => setShowPremiumWelcome(false)}
-        />
-      )}
-
-      {/* Premium Renewal Modal - Premium tugashiga qolganida */}
-      {showPremiumRenewal && (
-        <PremiumRenewalModal
-          daysLeft={premiumDaysLeft}
-          onClose={() => setShowPremiumRenewal(false)}
         />
       )}
     </div>

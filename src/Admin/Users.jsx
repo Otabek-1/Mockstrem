@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Search, MoreVertical, Shield, Crown, ListChecks, X } from 'lucide-react'
-import api from '../api'
+import api, { getMyDevices } from '../api'
 
 const permissions = {
   users: ["promote_admin", "give_premium", "manage_permissions"],
@@ -20,6 +20,9 @@ export default function Users() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [currentUserPermissions, setCurrentUserPermissions] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [showSessionsModal, setShowSessionsModal] = useState(false)
+  const [userSessions, setUserSessions] = useState([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
 
   const [userPermissions, setUserPermissions] = useState({
     users: [],
@@ -306,6 +309,28 @@ export default function Users() {
       .finally(() => setLoading(false))
   }
 
+  // ✅ Fetch user sessions
+  const fetchUserSessions = async (userId) => {
+    try {
+      setSessionsLoading(true)
+      // Backend should have endpoint: GET /sessions/user/{userId} 
+      // va bu endpoint user sessions qaytaradi
+      const response = await api.get(`/sessions/user/${userId}`)
+      setUserSessions(response.data || [])
+      setShowSessionsModal(true)
+    } catch (error) {
+      console.log("Error fetching user sessions:", error)
+      alert("Failed to load user sessions")
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
+
+  // ✅ View user sessions
+  const handleViewSessions = (user) => {
+    fetchUserSessions(user.id)
+  }
+
   useEffect(() => {
     fetchUsers()
   }, [])
@@ -354,13 +379,14 @@ export default function Users() {
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Premium</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Sessions</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
             {filteredUsers?.length === 0 ? (
               <tr>
-                <td colSpan="6" className="px-6 py-8 text-center text-slate-500">
+                <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
                   No users found
                 </td>
               </tr>
@@ -402,6 +428,14 @@ export default function Users() {
                         User
                       </span>
                     )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => handleViewSessions(user)}
+                      className="inline-flex items-center px-3 py-1 rounded text-xs font-medium bg-cyan-100 text-cyan-800 hover:bg-cyan-200 transition-colors"
+                    >
+                      View Sessions
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
                     <button
@@ -578,6 +612,61 @@ export default function Users() {
                 className="px-6 py-2 border-2 border-slate-300 text-slate-800 rounded-lg hover:bg-slate-50 transition font-medium disabled:opacity-50"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSessionsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 shadow-2xl my-8">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b">
+              <div>
+                <h3 className="text-2xl font-semibold text-slate-800 mb-1">
+                  <span className="text-cyan-600">{selectedUser?.username}</span>'s Active Sessions
+                </h3>
+                <p className="text-sm text-slate-500">User is currently logged in from these devices</p>
+              </div>
+              <button
+                onClick={() => setShowSessionsModal(false)}
+                className="p-1 hover:bg-slate-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 space-y-3">
+              {sessionsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+                </div>
+              ) : userSessions && userSessions.length > 0 ? (
+                userSessions.map((session) => (
+                  <div key={session.id} className="bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 rounded-lg p-4 flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-semibold text-slate-800">
+                        {session.device_type === "mobile" ? "📱 Mobile" : "💻 " + (session.browser || "Web")}
+                      </p>
+                      <p className="text-sm text-slate-600">{session.device_name?.substring(0, 50) || "Unknown"}</p>
+                      <div className="flex gap-4 mt-2 text-xs text-slate-500">
+                        <span>Last active: {new Date(session.last_activity).toLocaleString()}</span>
+                        {session.ip_address && <span>IP: {session.ip_address}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-slate-500 py-8">No active sessions</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <button
+                onClick={() => setShowSessionsModal(false)}
+                className="px-6 py-2 bg-slate-100 text-slate-800 rounded-lg hover:bg-slate-200 transition font-medium"
+              >
+                Close
               </button>
             </div>
           </div>

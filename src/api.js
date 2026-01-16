@@ -121,4 +121,118 @@ api.interceptors.response.use(
   }
 );
 
+// =========================
+// SESSION MANAGEMENT FUNCTIONS
+// =========================
+
+// Device Fingerprint Generator
+function generateDeviceFingerprint() {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.textBaseline = "top";
+  ctx.font = '14px "Arial"';
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#f60";
+  ctx.fillRect(125, 1, 62, 20);
+  ctx.fillStyle = "#069";
+  ctx.fillText("Browser Fingerprint", 2, 15);
+  const canvasData = canvas.toDataURL();
+  return btoa(canvasData).substring(0, 32);
+}
+
+// Get Browser Name
+function getBrowserName() {
+  const userAgent = navigator.userAgent;
+  if (userAgent.includes("Chrome")) return "Chrome";
+  if (userAgent.includes("Safari")) return "Safari";
+  if (userAgent.includes("Firefox")) return "Firefox";
+  if (userAgent.includes("Edge")) return "Edge";
+  return "Unknown";
+}
+
+// Get IP Address (optional - backend can get from headers)
+async function getIpAddress() {
+  try {
+    const response = await fetch("https://api.ipify.org?format=json");
+    const data = await response.json();
+    return data.ip;
+  } catch {
+    return "unknown";
+  }
+}
+
+// ===================== SESSION API CALLS =====================
+
+// 1️⃣ Create Session (Login/Register qilganda chaqiriladi)
+export async function createSession() {
+  try {
+    const response = await api.post("/sessions/create", {
+      device_fingerprint: generateDeviceFingerprint(),
+      device_name: navigator.userAgent.substring(0, 100),
+      device_type: /mobile/i.test(navigator.userAgent) ? "mobile" : "web",
+      browser: getBrowserName(),
+      ip_address: await getIpAddress(),
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error creating session:", error);
+    throw error;
+  }
+}
+
+// 2️⃣ Get All User Sessions
+export async function getMyDevices() {
+  try {
+    const response = await api.get("/sessions/my-sessions?include_inactive=false");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching sessions:", error);
+    throw error;
+  }
+}
+
+// 3️⃣ Get Session Details
+export async function getSessionDetails(sessionId) {
+  try {
+    const response = await api.get(`/sessions/session/${sessionId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching session details:", error);
+    throw error;
+  }
+}
+
+// 4️⃣ Delete Single Session (Logout from specific device)
+export async function logoutDevice(sessionId) {
+  try {
+    const response = await api.delete(`/sessions/session/${sessionId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting session:", error);
+    throw error;
+  }
+}
+
+// 5️⃣ Logout from All Devices
+export async function logoutAllDevices(excludeCurrent = false) {
+  try {
+    const response = await api.delete(`/sessions/logout-all?exclude_current=${excludeCurrent}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error logging out from all devices:", error);
+    throw error;
+  }
+}
+
+// 6️⃣ Get Active Devices Count
+export async function getActiveDevicesCount() {
+  try {
+    const response = await api.get("/sessions/active-devices-count");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching active devices count:", error);
+    throw error;
+  }
+}
+
 export default api;

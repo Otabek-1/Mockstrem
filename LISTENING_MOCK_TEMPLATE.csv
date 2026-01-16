@@ -1,0 +1,55 @@
+[TITLE]
+CEFR Listening Mock Test 2024
+
+[AUDIOS]
+part_1|https://example.com/audio_part1.mp3
+part_2|https://example.com/audio_part2.mp3
+part_3|https://example.com/audio_part3.mp3
+part_4|https://example.com/audio_part4.mp3
+part_5|https://example.com/audio_part5.mp3
+part_6|https://example.com/audio_part6.mp3
+
+[PART1]
+options|Paris;London;Berlin|answer|A
+options|Monday;Tuesday;Wednesday|answer|B
+options|Coffee;Tea;Water|answer|C
+options|Option1;Option2;Option3|answer|A
+options|Option1;Option2;Option3|answer|B
+options|Option1;Option2;Option3|answer|C
+options|Option1;Option2;Option3|answer|A
+options|Option1;Option2;Option3|answer|B
+
+[PART2]
+label|Train departures|before|The next train to Manchester leaves at|after|and arrives at 14:30|answer|12:45
+label|Restaurant hours|before|We are open from|after|Monday to Friday|answer|11am
+label|Library closing|before|The library closes at|after|on weekends|answer|5pm
+label|Flight boarding|before|Flight BA205 is boarding at gate|after|immediately|answer|12
+label|Meeting room|before|The conference is in room|after|on the second floor|answer|204
+label|Store opening|before|We open at|after|every day|answer|9am
+
+[PART3]
+speakers|John;Mary;David;Sarah
+options|Working in IT;Teaching English;Managing a hotel;Selling cars;Writing books;Cooking professionally
+answers|A;B;C;D
+
+[PART4]
+mapUrl|https://example.com/map.jpg
+mapLabels|A;B;C;D;E;F;G;H;I
+question1|place|Museum|answer|A
+question2|place|Library|answer|B
+question3|place|Hospital|answer|C
+question4|place|Train Station|answer|D
+question5|place|Park|answer|E
+
+[PART5]
+extract1|text|Interview with a scientist|q1_question|What is the scientist's main research area?|q1_options|Climate change;Space exploration;Medicine|q1_answer|A|q2_question|How long has she been working in this field?|q2_options|5 years;10 years;15 years|q2_answer|B
+extract2|text|Business discussion|q1_question|What is the main topic?|q1_options|Marketing;Finance;Operations|q1_answer|B|q2_question|What is their plan?|q2_options|Expand;Reduce;Maintain|q2_answer|A
+extract3|text|Travel planning|q1_question|Where are they going?|q1_options|France;Spain;Italy|q1_answer|C|q2_question|When will they travel?|q2_options|Summer;Winter;Spring|q2_answer|A
+
+[PART6]
+before|The new policy will|after|all employees starting next month|answer|affect
+before|We must|after|our responsibilities seriously|answer|take
+before|The project has been|after|successfully for six months|answer|running
+before|Students should|after|more attention in class|answer|pay
+before|The company will|after|new products next year|answer|launch
+before|We need to|after|improve the current situation|answer|improve

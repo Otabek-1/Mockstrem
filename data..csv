@@ -1,0 +1,55 @@
+[TITLE]
+Multilevel UZ – Science Museum & Water Safety Listening
+
+[AUDIOS]
+part_1|https://archive.org/download/3-part-5-audio/%233%20part%201%20audio.mp3
+part_2|https://archive.org/download/3-part-5-audio/%233%20part%202%20audio.mp3
+part_3|https://archive.org/download/3-part-5-audio/%233%20part%203%20audio.mp3
+part_4|https://archive.org/download/3-part-5-audio/%233%20part%204%20audio.mp3
+part_5|https://archive.org/download/3-part-5-audio/%233%20part%205%20audio.mp3
+part_6|https://archive.org/download/3-part-5-audio/%233%20part%206%20audio.mp3
+
+[PART1]
+options|My mother is.;So do my parents.;So they do.|answer|C
+options|So is she.;My son does.;Ann did.|answer|B
+options|Yes, what can I do for you?;Are you crazy?;Nice to meet you.|answer|A
+options|Sure, here you are.;I’m fine, thank you.;You are welcome, please.|answer|A
+options|Don’t mention it.;Yes, please.;That’s OK.|answer|B
+options|About 2 weeks.;Yes, she has.;In Tashkent.|answer|A
+options|I like football.;Yes, I do.;Yes, I am.|answer|B
+options|Certainly, don’t mention it.;Certainly, here you are.;Certainly, please.|answer|B
+
+[PART2]
+label|Favourite room|before|Matilde’s favourite room contained displays about|after||answer|energy
+label|Closed exhibition|before|The|after|exhibition is currently closed|answer|health
+label|Activity|before|Matilde made a|after|at the museum|answer|rocket
+label|Shop|before|The shop had a really good range of|after||answer|chemistry
+label|Tour length|before|The guided tour lasts for|after|minutes|answer|80
+label|Entrance|before|Visitors must use the entrance on|after|Road|answer|Lockhart
+
+[PART3]
+speakers|Speaker 1;Speaker 2;Speaker 3;Speaker 4;Speaker 5
+options|Exactly as imagined;Too crowded;Better than expected;Hard to find your way;Overrated;Not as good as before
+answers|A;E;F;C;D
+
+[PART4]
+mapUrl|https://archive.org/download/l-m-5/L_M_5.png
+mapLabels|A;B;C;D;E;F;G;H;I
+question1|place|Kitchen garden|answer|I
+question2|place|Pear alley|answer|H
+question3|place|Mulberry garden|answer|F
+question4|place|Shop|answer|B
+question5|place|Tea room|answer|D
+
+[PART5]
+extract1|text|Two people talking about a football player|q1_question|What impresses the man about John Elliott?|q1_options|He keeps calm near goal;He prevents opponents;He scores many goals|q1_answer|A|q2_question|What do they disagree about?|q2_options|High price;Long-term prospects;Manager’s past mistakes|q2_answer|B
+extract2|text|Deanna talking about ecosystems|q1_question|What is the main cause of ecosystem changes?|q1_options|Overfishing;Sea temperature;Predators|q1_answer|B|q2_question|How do fishermen feel now?|q2_options|Unhappy;Pleased;Optimistic|q2_answer|C
+extract3|text|Woman talking about a book|q1_question|Why did she read it?|q1_options|Gift;Found by chance;Recommended|q1_answer|C|q2_question|What did it help her understand?|q2_options|Strange world;Enjoyable stories;How to become a writer|q2_answer|B
+
+[PART6]
+before|The speaker says a|after|may be dangerous for children|answer|pool
+before|The|after|of the Royal Lifesaving Society website is on the fact sheet|answer|address
+before|There should be one supervisor for every|after|children|answer|4
+before|Children must not go near the|after|without adults|answer|water
+before|There are more|after|in private pools|answer|accidents
+before|Put an alarm on the rear|after|at home|answer|door
