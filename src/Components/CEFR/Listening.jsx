@@ -13,9 +13,9 @@ const TestModeFeedbackModal = ({ showFeedback, score, navigate }) => {
     }
 
     const getEmoji = () => {
-        if (score >= 80) return <FaSmile className="text-6xl text-yellow-400 animate-bounce" />
-        if (score >= 50) return <FaMeh className="text-6xl text-blue-400 animate-bounce" />
-        return <FaFrown className="text-6xl text-orange-400 animate-bounce" />
+        if (score >= 80) return <FaSmile className="text-5xl text-yellow-400 animate-bounce" />
+        if (score >= 50) return <FaMeh className="text-5xl text-blue-400 animate-bounce" />
+        return <FaFrown className="text-5xl text-orange-400 animate-bounce" />
     }
 
     const getFeedbackText = () => {
@@ -27,64 +27,64 @@ const TestModeFeedbackModal = ({ showFeedback, score, navigate }) => {
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4">
-            <div className="bg-gradient-to-br from-white via-blue-50 to-cyan-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-600 rounded-3xl p-8 max-w-md w-full shadow-2xl border-2 border-cyan-300 dark:border-cyan-600 transform transition-all animate-in fade-in scale-95 duration-300">
+            <div className="bg-gradient-to-br from-white via-blue-50 to-cyan-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-600 rounded-2xl p-6 max-w-sm w-full shadow-2xl border-2 border-cyan-300 dark:border-cyan-600 transform transition-all animate-in fade-in scale-95 duration-300">
                 
                 {/* Header */}
-                <div className="text-center mb-8">
-                    <div className="flex justify-center mb-4">
+                <div className="text-center mb-6">
+                    <div className="flex justify-center mb-3">
                         {getEmoji()}
                     </div>
-                    <h2 className="text-4xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent mb-2">
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent mb-1">
                         Have you enjoyed?
                     </h2>
-                    <p className="text-gray-600 dark:text-gray-300 text-lg">Yoqdimi? 👀</p>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">Yoqdimi? 👀</p>
                 </div>
 
                 {/* Score Display */}
-                <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-6 text-white text-center mb-8 shadow-lg">
-                    <p className="text-sm opacity-90 mb-2">Your Score</p>
-                    <p className="text-5xl font-bold">{score}%</p>
-                    <p className="text-sm opacity-90 mt-2">
+                <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl p-4 text-white text-center mb-5 shadow-lg">
+                    <p className="text-xs opacity-90 mb-1">Your Score</p>
+                    <p className="text-4xl font-bold">{score}%</p>
+                    <p className="text-xs opacity-90 mt-1">
                         {score >= 80 ? "Excellent! 🌟" : score >= 60 ? "Good! 👍" : score >= 40 ? "Average 😊" : "Keep trying! 💪"}
                     </p>
                 </div>
 
                 {/* Feedback Text */}
-                <div className="bg-blue-100 dark:bg-blue-900/30 border-l-4 border-cyan-500 rounded-lg p-4 mb-8">
-                    <p className="text-slate-800 dark:text-slate-200 font-semibold text-center text-lg">
+                <div className="bg-blue-100 dark:bg-blue-900/30 border-l-4 border-cyan-500 rounded-lg p-3 mb-5">
+                    <p className="text-slate-800 dark:text-slate-200 font-semibold text-center text-sm">
                         {getFeedbackText()}
                     </p>
                 </div>
 
                 {/* Features Info */}
-                <div className="bg-white dark:bg-gray-700/50 rounded-xl p-4 mb-8 border border-gray-200 dark:border-gray-600">
-                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                        <FaLock className="inline mr-2 text-cyan-600" />
-                        <span className="font-semibold">To unlock more features:</span>
+                <div className="bg-white dark:bg-gray-700/50 rounded-lg p-3 mb-5 border border-gray-200 dark:border-gray-600">
+                    <p className="text-xs text-gray-700 dark:text-gray-300 mb-2 font-semibold">
+                        <FaLock className="inline mr-1 text-cyan-600" />
+                        Unlock more features:
                     </p>
-                    <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2 ml-6">
-                        <li>✅ Save your results</li>
-                        <li>✅ Track your progress</li>
-                        <li>✅ Detailed analytics</li>
-                        <li>✅ Premium content</li>
+                    <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1 ml-4">
+                        <li>✅ Save results</li>
+                        <li>✅ Track progress</li>
+                        <li>✅ Analytics</li>
+                        <li>✅ Premium</li>
                     </ul>
                 </div>
 
                 {/* Login Button */}
                 <button
                     onClick={handleLogin}
-                    className="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-2 text-lg"
+                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-2 text-sm"
                 >
-                    <FaArrowRight />
+                    <FaArrowRight size={14} />
                     Login Now
                 </button>
 
                 {/* Divider */}
-                <div className="relative my-6">
+                <div className="relative my-3">
                     <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
                     </div>
-                    <div className="relative flex justify-center text-sm">
+                    <div className="relative flex justify-center text-xs">
                         <span className="px-2 bg-gradient-to-br from-white via-blue-50 to-cyan-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-600 text-gray-500 dark:text-gray-400">
                             or
                         </span>
@@ -92,8 +92,8 @@ const TestModeFeedbackModal = ({ showFeedback, score, navigate }) => {
                 </div>
 
                 {/* Trial Info */}
-                <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                    Create account to unlock all features and save your progress 🚀
+                <p className="text-center text-xs text-gray-600 dark:text-gray-400">
+                    Create account to unlock all features 🚀
                 </p>
             </div>
         </div>
