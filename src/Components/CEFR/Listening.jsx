@@ -1,7 +1,104 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import api from '../../api'
+import { FaSmile, FaFrown, FaMeh, FaArrowRight, FaLock } from 'react-icons/fa'
 
+
+// 🧪 TEST MODE FEEDBACK MODAL
+const TestModeFeedbackModal = ({ showFeedback, score, navigate }) => {
+    if (!showFeedback) return null
+
+    const handleLogin = () => {
+        navigate('/auth')
+    }
+
+    const getEmoji = () => {
+        if (score >= 80) return <FaSmile className="text-6xl text-yellow-400 animate-bounce" />
+        if (score >= 50) return <FaMeh className="text-6xl text-blue-400 animate-bounce" />
+        return <FaFrown className="text-6xl text-orange-400 animate-bounce" />
+    }
+
+    const getFeedbackText = () => {
+        if (score >= 80) return "Amazing! You did great! 🎉"
+        if (score >= 60) return "Good job! Keep practicing! 💪"
+        if (score >= 40) return "Nice try! Keep improving! 🚀"
+        return "Keep practicing, you'll get better! 📚"
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4">
+            <div className="bg-gradient-to-br from-white via-blue-50 to-cyan-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-600 rounded-3xl p-8 max-w-md w-full shadow-2xl border-2 border-cyan-300 dark:border-cyan-600 transform transition-all animate-in fade-in scale-95 duration-300">
+                
+                {/* Header */}
+                <div className="text-center mb-8">
+                    <div className="flex justify-center mb-4">
+                        {getEmoji()}
+                    </div>
+                    <h2 className="text-4xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent mb-2">
+                        Have you enjoyed?
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-300 text-lg">Yoqdimi? 👀</p>
+                </div>
+
+                {/* Score Display */}
+                <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-6 text-white text-center mb-8 shadow-lg">
+                    <p className="text-sm opacity-90 mb-2">Your Score</p>
+                    <p className="text-5xl font-bold">{score}%</p>
+                    <p className="text-sm opacity-90 mt-2">
+                        {score >= 80 ? "Excellent! 🌟" : score >= 60 ? "Good! 👍" : score >= 40 ? "Average 😊" : "Keep trying! 💪"}
+                    </p>
+                </div>
+
+                {/* Feedback Text */}
+                <div className="bg-blue-100 dark:bg-blue-900/30 border-l-4 border-cyan-500 rounded-lg p-4 mb-8">
+                    <p className="text-slate-800 dark:text-slate-200 font-semibold text-center text-lg">
+                        {getFeedbackText()}
+                    </p>
+                </div>
+
+                {/* Features Info */}
+                <div className="bg-white dark:bg-gray-700/50 rounded-xl p-4 mb-8 border border-gray-200 dark:border-gray-600">
+                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                        <FaLock className="inline mr-2 text-cyan-600" />
+                        <span className="font-semibold">To unlock more features:</span>
+                    </p>
+                    <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2 ml-6">
+                        <li>✅ Save your results</li>
+                        <li>✅ Track your progress</li>
+                        <li>✅ Detailed analytics</li>
+                        <li>✅ Premium content</li>
+                    </ul>
+                </div>
+
+                {/* Login Button */}
+                <button
+                    onClick={handleLogin}
+                    className="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-2 text-lg"
+                >
+                    <FaArrowRight />
+                    Login Now
+                </button>
+
+                {/* Divider */}
+                <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-gradient-to-br from-white via-blue-50 to-cyan-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-600 text-gray-500 dark:text-gray-400">
+                            or
+                        </span>
+                    </div>
+                </div>
+
+                {/* Trial Info */}
+                <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                    Create account to unlock all features and save your progress 🚀
+                </p>
+            </div>
+        </div>
+    )
+}
 
 const Part1 = ({ data, answers, setAnswers }) => {
     const handleAnswerChange = (questionNum, optionIdx) => {
@@ -658,6 +755,14 @@ export default function Listening() {
     const [showBreak, setShowBreak] = useState(false)
     const [breakTimer, setBreakTimer] = useState(10)
     const [shouldPlay, setShouldPlay] = useState(false) // ✅ NEW: Audio play qilishni control qilish
+    const [showTestModeFeedback, setShowTestModeFeedback] = useState(false) // 🧪 Test mode feedback
+    const navigate = useNavigate()
+
+    // ✅ Check if test mode
+    const isTestMode = () => {
+        const params = new URLSearchParams(window.location.search)
+        return params.get("test") === "true"
+    }
 
     // ✅ Refs
     const audioRef = useRef(null)
@@ -816,6 +921,53 @@ export default function Listening() {
 
     // ✅ RESULTS PAGE
     if (showResults) {
+        // 🧪 Test mode - show feedback modal after results
+        if (isTestMode()) {
+            const results = calculateResults()
+            const percentage = Math.round((results.totalCorrect / results.totalQuestions) * 100)
+            
+            return (
+                <>
+                    <div className='w-full min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 flex flex-col items-center p-5'>
+                        <div className="w-full max-w-5xl mt-24">
+                            <div className="bg-white rounded-xl p-12 shadow-2xl">
+                                <h1 className='text-4xl font-bold text-center text-slate-800 mb-2'>Test Results</h1>
+                                <p className='text-center text-slate-600 mb-12 text-lg'>
+                                    {queryPart === "all" ? mockData?.title : `${mockData?.title} - Part ${currentPart}`}
+                                </p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                                    <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-8 text-white text-center shadow-lg">
+                                        <p className='text-sm opacity-90 mb-2'>Correct Answers</p>
+                                        <p className='text-6xl font-bold'>{results.totalCorrect}</p>
+                                        <p className='text-sm opacity-90 mt-2'>out of {results.totalQuestions}</p>
+                                    </div>
+
+                                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-8 text-white text-center shadow-lg">
+                                        <p className='text-sm opacity-90 mb-2'>Score</p>
+                                        <p className='text-6xl font-bold'>{percentage}%</p>
+                                        <p className='text-sm opacity-90 mt-2'>Percentage</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-blue-50 border-l-4 border-blue-400 p-5 rounded-lg mb-8">
+                                    <p className='text-blue-800 text-base'>
+                                        <FaLock className="inline mr-2" />
+                                        <span className='font-bold'>Login to save your results and track progress!</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <TestModeFeedbackModal 
+                        showFeedback={true}
+                        score={percentage}
+                        navigate={navigate}
+                    />
+                </>
+            )
+        }
+
         return <ResultPage mockData={mockData} answers={answers} correctAnswers={correctAnswers} queryPart={queryPart} currentPart={currentPart} />
     }
 
