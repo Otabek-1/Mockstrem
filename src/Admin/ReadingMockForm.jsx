@@ -2,6 +2,316 @@ import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://english-server-p7y6.onrender.com'; // O'zingizning API URL ini kiriting
 
+/* ===================== FILE PARSER ===================== */
+
+function parseFileContent(fileContent, fileName) {
+    try {
+        if (fileName.endsWith('.json')) {
+            return JSON.parse(fileContent);
+        } else if (fileName.endsWith('.csv')) {
+            // CSV parser - custom format
+            return parseCSV(fileContent);
+        } else {
+            alert("Faqat .json yoki .csv fayllar qabul qilinadi");
+            return null;
+        }
+    } catch (error) {
+        alert("Fayl parse qilishda xato: " + error.message);
+        return null;
+    }
+}
+
+function parseCSV(csvContent) {
+    const lines = csvContent.trim().split('\n');
+    const data = {
+        title: "",
+        part1: { task: 'Read the text. Fill in each gap with ONE word or number.', text: '' },
+        part2: { task: 'Read the statements and texts. Match them.', statements: Array(10).fill(''), texts: Array(7).fill('') },
+        part3: { task: 'Read the text and choose the correct heading for each paragraph.', text: '', headings: Array(8).fill(''), paragraphs: Array(6).fill('') },
+        part4: { task: 'Read the text and answer the questions.', text: '', multipleChoice: Array(4).fill(null).map(() => ({ question: '', options: ['', '', '', ''] })), trueFalse: Array(5).fill(null).map(() => ({ statement: '' })) },
+        part5: { task: 'Read the text and complete the exercise.', mainText: '', miniText: '', multipleChoice: Array(2).fill(null).map(() => ({ question: '', options: ['', '', '', ''] })) }
+    };
+
+    let i = 0;
+
+    while (i < lines.length) {
+        const line = lines[i].trim();
+        i++;
+
+        if (!line || line.startsWith('#')) continue;
+
+        if (line.startsWith('[TITLE]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const titleLine = lines[i].trim();
+                if (titleLine && !titleLine.startsWith('#')) {
+                    data.title = titleLine;
+                    i++;
+                    break;
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART1]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    // Format: text|Text with (1) (2) (3) etc|answers|word1;word2;word3;word4;word5;word6
+                    const parts = qLine.split('|');
+                    const parsed = {};
+                    for (let j = 0; j < parts.length; j += 2) {
+                        const key = parts[j].trim();
+                        const value = parts[j + 1]?.trim() || "";
+                        parsed[key] = value;
+                    }
+                    if (parsed.text) {
+                        data.part1.text = parsed.text;
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART1_ANSWERS]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const ansLine = lines[i].trim();
+                if (ansLine && !ansLine.startsWith('#')) {
+                    const answers = ansLine.split(';').map(a => a.trim());
+                    data.part1Answers = answers;
+                    i++;
+                    break;
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART2]')) {
+            let statementIdx = 0;
+            let textIdx = 0;
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    const parts = qLine.split('|');
+                    const parsed = {};
+                    for (let j = 0; j < parts.length; j += 2) {
+                        const key = parts[j].trim();
+                        const value = parts[j + 1]?.trim() || "";
+                        parsed[key] = value;
+                    }
+                    if (parsed.type === 'statement' && parsed.text) {
+                        if (statementIdx < 10) {
+                            data.part2.statements[statementIdx++] = parsed.text;
+                        }
+                    } else if (parsed.type === 'text' && parsed.text) {
+                        if (textIdx < 7) {
+                            data.part2.texts[textIdx++] = parsed.text;
+                        }
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART2_ANSWERS]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const ansLine = lines[i].trim();
+                if (ansLine && !ansLine.startsWith('#')) {
+                    const answers = ansLine.split(';').map(a => a.trim());
+                    data.part2Answers = answers;
+                    i++;
+                    break;
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART3]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    const parts = qLine.split('|');
+                    const parsed = {};
+                    for (let j = 0; j < parts.length; j += 2) {
+                        const key = parts[j].trim();
+                        const value = parts[j + 1]?.trim() || "";
+                        parsed[key] = value;
+                    }
+                    if (parsed.mainText) {
+                        data.part3.text = parsed.mainText;
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART3_HEADINGS]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const hLine = lines[i].trim();
+                if (hLine && !hLine.startsWith('#')) {
+                    const headings = hLine.split(';').map(h => h.trim()).slice(0, 8);
+                    for (let h = 0; h < headings.length; h++) {
+                        data.part3.headings[h] = headings[h];
+                    }
+                    i++;
+                    break;
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART3_PARAGRAPHS]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const pLine = lines[i].trim();
+                if (pLine && !pLine.startsWith('#')) {
+                    const paragraphs = pLine.split(';;;');
+                    for (let p = 0; p < paragraphs.length && p < 6; p++) {
+                        data.part3.paragraphs[p] = paragraphs[p].trim();
+                    }
+                    i++;
+                    break;
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART3_ANSWERS]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const ansLine = lines[i].trim();
+                if (ansLine && !ansLine.startsWith('#')) {
+                    const answers = ansLine.split(';').map(a => a.trim());
+                    data.part3Answers = answers;
+                    i++;
+                    break;
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART4]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    const parts = qLine.split('|');
+                    const parsed = {};
+                    for (let j = 0; j < parts.length; j += 2) {
+                        const key = parts[j].trim();
+                        const value = parts[j + 1]?.trim() || "";
+                        parsed[key] = value;
+                    }
+                    if (parsed.mainText) {
+                        data.part4.text = parsed.mainText;
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART4_MC]')) {
+            let qIdx = 0;
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    // Format: question|Q text|options|A;B;C;D
+                    const parts = qLine.split('|');
+                    const parsed = {};
+                    for (let j = 0; j < parts.length; j += 2) {
+                        const key = parts[j].trim();
+                        const value = parts[j + 1]?.trim() || "";
+                        parsed[key] = value;
+                    }
+                    if (parsed.question && parsed.options && qIdx < 4) {
+                        const opts = parsed.options.split(';').map(o => o.trim()).slice(0, 4);
+                        while (opts.length < 4) opts.push('');
+                        data.part4.multipleChoice[qIdx] = {
+                            question: parsed.question,
+                            options: opts
+                        };
+                        qIdx++;
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART4_TF]')) {
+            let sIdx = 0;
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const sLine = lines[i].trim();
+                if (sLine && !sLine.startsWith('#')) {
+                    if (sIdx < 5) {
+                        data.part4.trueFalse[sIdx] = { statement: sLine };
+                        sIdx++;
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART4_ANSWERS]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const ansLine = lines[i].trim();
+                if (ansLine && !ansLine.startsWith('#')) {
+                    const parts = ansLine.split(';').map(a => a.trim());
+                    data.part4MCAnswers = parts.slice(0, 4);
+                    data.part4TFAnswers = parts.slice(4, 9);
+                    i++;
+                    break;
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART5]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    const parts = qLine.split('|');
+                    const parsed = {};
+                    for (let j = 0; j < parts.length; j += 2) {
+                        const key = parts[j].trim();
+                        const value = parts[j + 1]?.trim() || "";
+                        parsed[key] = value;
+                    }
+                    if (parsed.mainText) {
+                        data.part5.mainText = parsed.mainText;
+                    }
+                    if (parsed.miniText) {
+                        data.part5.miniText = parsed.miniText;
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART5_MC]')) {
+            let qIdx = 0;
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const qLine = lines[i].trim();
+                if (qLine && !qLine.startsWith('#')) {
+                    const parts = qLine.split('|');
+                    const parsed = {};
+                    for (let j = 0; j < parts.length; j += 2) {
+                        const key = parts[j].trim();
+                        const value = parts[j + 1]?.trim() || "";
+                        parsed[key] = value;
+                    }
+                    if (parsed.question && parsed.options && qIdx < 2) {
+                        const opts = parsed.options.split(';').map(o => o.trim()).slice(0, 4);
+                        while (opts.length < 4) opts.push('');
+                        data.part5.multipleChoice[qIdx] = {
+                            question: parsed.question,
+                            options: opts
+                        };
+                        qIdx++;
+                    }
+                }
+                i++;
+            }
+        }
+        else if (line.startsWith('[PART5_ANSWERS]')) {
+            while (i < lines.length && !lines[i].startsWith('[')) {
+                const ansLine = lines[i].trim();
+                if (ansLine && !ansLine.startsWith('#')) {
+                    const parts = ansLine.split(';').map(a => a.trim());
+                    data.part5MiniAnswers = parts.slice(0, 5);
+                    data.part5MCAnswers = parts.slice(5, 7);
+                    i++;
+                    break;
+                }
+                i++;
+            }
+        }
+    }
+
+    return data;
+}
+
 export default function ReadingMockForm() {
   const [searchParams, setSearchParams] = useState({});
   const isEdit = searchParams.edit === 'true';
@@ -53,6 +363,79 @@ export default function ReadingMockForm() {
   const [loadingData, setLoadingData] = useState(false);
   const [answerId, setAnswerId] = useState(null);
   const [error, setError] = useState('');
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target.result;
+        const parsedData = parseFileContent(content, file.name);
+        
+        if (parsedData) {
+          // Update form data from parsed file
+          const newFormData = {
+            title: parsedData.title || formData.title,
+            part1: {
+              ...formData.part1,
+              text: parsedData.part1?.text || formData.part1.text
+            },
+            part2: {
+              ...formData.part2,
+              statements: parsedData.part2?.statements || formData.part2.statements,
+              texts: parsedData.part2?.texts || formData.part2.texts
+            },
+            part3: {
+              ...formData.part3,
+              text: parsedData.part3?.text || formData.part3.text,
+              headings: parsedData.part3?.headings || formData.part3.headings,
+              paragraphs: parsedData.part3?.paragraphs || formData.part3.paragraphs
+            },
+            part4: {
+              ...formData.part4,
+              text: parsedData.part4?.text || formData.part4.text,
+              multipleChoice: parsedData.part4?.multipleChoice || formData.part4.multipleChoice,
+              trueFalse: parsedData.part4?.trueFalse || formData.part4.trueFalse
+            },
+            part5: {
+              ...formData.part5,
+              mainText: parsedData.part5?.mainText || formData.part5.mainText,
+              miniText: parsedData.part5?.miniText || formData.part5.miniText,
+              multipleChoice: parsedData.part5?.multipleChoice || formData.part5.multipleChoice
+            }
+          };
+
+          setFormData(newFormData);
+
+          // Update answers if available
+          const newAnswers = { ...answers };
+          if (parsedData.part1Answers) newAnswers.part1 = parsedData.part1Answers;
+          if (parsedData.part2Answers) newAnswers.part2 = parsedData.part2Answers;
+          if (parsedData.part3Answers) newAnswers.part3 = parsedData.part3Answers;
+          if (parsedData.part4MCAnswers) newAnswers.part4MC = parsedData.part4MCAnswers;
+          if (parsedData.part4TFAnswers) newAnswers.part4TF = parsedData.part4TFAnswers;
+          if (parsedData.part5MiniAnswers) newAnswers.part5Mini = parsedData.part5MiniAnswers;
+          if (parsedData.part5MCAnswers) newAnswers.part5MC = parsedData.part5MCAnswers;
+          
+          setAnswers(newAnswers);
+          setShowAnswersSection(true);
+          setError('');
+          alert('✅ Fayl muvaffaqiyatli yuklandi! Barcha ma\'lumotlar to\'ldirildi.');
+        }
+      } catch (error) {
+        console.error('File upload error:', error);
+        setError(`❌ Fayl yuklashda xato: ${error.message}`);
+      }
+    };
+    
+    reader.onerror = () => {
+      setError('❌ Fayl o\'qilishda xato yuz berdi');
+    };
+    
+    reader.readAsText(file);
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -333,6 +716,34 @@ export default function ReadingMockForm() {
           {error}
         </div>
       )}
+
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900 dark:to-indigo-900 p-6 rounded-lg shadow-lg mb-6 border-2 border-blue-300 dark:border-blue-600">
+        <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white flex items-center gap-2">
+          <span>⚡</span> CSV/JSON dan ma'lumot yuklash
+        </h2>
+        <div className="flex gap-4 flex-wrap">
+          <label className="flex-1 min-w-xs relative cursor-pointer">
+            <span className="block w-full p-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 text-center transition shadow-md hover:shadow-lg transform hover:scale-105">
+              📁 CSV/JSON fayl tanlang
+            </span>
+            <input
+              type="file"
+              accept=".csv,.json"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </label>
+          <div className="text-sm text-gray-700 dark:text-gray-300 flex items-center px-3 py-2 bg-white dark:bg-gray-700 rounded-lg">
+            <span className="text-lg mr-2">ℹ️</span>
+            <span>Yoki qo'lda to'ldiring</span>
+          </div>
+        </div>
+        <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-800 rounded border-l-4 border-blue-600">
+          <p className="text-sm text-gray-700 dark:text-gray-200">
+            <strong>💡 Maslahat:</strong> READING_MOCK_TEMPLATE.csv yoki READING_MOCK_TEMPLATE.json fayllarini o'z ma'lumotingiz bilan to'ldiring va yuklayin.
+          </p>
+        </div>
+      </div>
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
 
