@@ -111,48 +111,109 @@ const Part1 = ({ data, answers, setAnswers }) => {
         }))
     }
 
+    const totalAnswered = Object.keys(answers.part_1 || {}).length
+    const total = 8
+
     return (
-        <div className='w-full h-max bg-white rounded-xl p-8'>
-            <div className="max-w-4xl mx-auto">
-                <h2 className='text-3xl font-bold text-slate-800 mb-2'>Part 1</h2>
-                <span className='text-xl text-slate-700 block mb-8'>
-                    You will hear some sentences. You will hear each sentence twice. Choose the correct reply to each sentence (A, B or C).
-                </span>
-
-                <div className="space-y-8">
-                    {data?.map((q, idx) => {
-                        const questionNum = idx + 1
-                        return (
-                            <div key={idx} className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                                <span className='text-xl font-bold text-slate-800 block mb-5'>{questionNum}.</span>
-
-                                <div className="flex flex-col gap-4 ml-6">
-                                    {q?.map((opt, optIdx) => (
-                                        <label key={optIdx} className="flex items-center gap-4 cursor-pointer p-3 rounded hover:bg-white transition-colors">
-                                            <input
-                                                type="radio"
-                                                name={`q1-${questionNum}`}
-                                                value={optIdx}
-                                                checked={answers.part_1?.[questionNum] === optIdx}
-                                                onChange={() => handleAnswerChange(questionNum, optIdx)}
-                                                className="w-5 h-5 accent-green-500 cursor-pointer"
-                                            />
-                                            <span className='text-green-600 font-bold min-w-[30px]'>
-                                                {String.fromCharCode(65 + optIdx)})
-                                            </span>
-                                            <span className='text-slate-800 text-lg'>{opt}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                        )
-                    })}
+        <div className='w-full h-max bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden'>
+            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-700 dark:to-cyan-700 px-6 sm:px-8 py-6 sm:py-8">
+                <div className="max-w-5xl mx-auto">
+                    <h2 className='text-2xl sm:text-4xl font-bold text-white mb-2 flex items-center gap-3'>
+                        <span className="bg-white/20 px-4 py-1 rounded-full text-lg">Part 1</span>
+                    </h2>
+                    <p className='text-blue-100 text-sm sm:text-base leading-relaxed'>
+                        You will hear some sentences. You will hear each sentence twice. Choose the correct reply to each sentence (A, B or C).
+                    </p>
                 </div>
+            </div>
 
-                <div className="mt-12 p-5 bg-blue-50 rounded-lg border border-blue-200">
-                    <span className='text-sm font-semibold text-blue-900'>
-                        Answered: {Object.keys(answers.part_1 || {}).length} / 8 questions
-                    </span>
+            <div className="px-6 sm:px-8 py-8 sm:py-12">
+                <div className="max-w-5xl mx-auto">
+                    <div className="mb-8 flex justify-between items-center">
+                        <h3 className='text-lg font-semibold text-slate-700 dark:text-slate-300'>Questions</h3>
+                        <div className="bg-blue-100 dark:bg-blue-900/30 px-4 py-2 rounded-full">
+                            <span className='text-sm font-bold text-blue-700 dark:text-blue-300'>
+                                {totalAnswered}/{total}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-5 sm:gap-6">
+                        {data?.map((q, idx) => {
+                            const questionNum = idx + 1
+                            const isAnswered = answers.part_1?.[questionNum] !== undefined
+                            
+                            return (
+                                <div key={idx} className={`group border-2 rounded-xl p-5 sm:p-6 transition-all duration-300 ${
+                                    isAnswered 
+                                        ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-600' 
+                                        : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500'
+                                }`}>
+                                    <div className="flex items-start gap-4 mb-4">
+                                        <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center text-white font-bold text-sm sm:text-base">
+                                            {questionNum}
+                                        </div>
+                                        <div className="flex-1">
+                                            {isAnswered && (
+                                                <span className='inline-block text-xs font-semibold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-3 py-1 rounded-full mb-2'>
+                                                    ✓ Answered
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-3 ml-0 sm:ml-2">
+                                        {q?.map((opt, optIdx) => {
+                                            const isSelected = answers.part_1?.[questionNum] === optIdx
+                                            
+                                            return (
+                                                <label key={optIdx} className={`flex items-center gap-3 sm:gap-4 cursor-pointer p-3 sm:p-4 rounded-lg transition-all duration-200 ${
+                                                    isSelected
+                                                        ? 'bg-white dark:bg-gray-600 border-2 border-green-500 shadow-md'
+                                                        : 'bg-white dark:bg-gray-600/50 border-2 border-transparent hover:bg-white/80 dark:hover:bg-gray-600'
+                                                }`}>
+                                                    <div className="flex-shrink-0 relative">
+                                                        <input
+                                                            type="radio"
+                                                            name={`q1-${questionNum}`}
+                                                            value={optIdx}
+                                                            checked={isSelected}
+                                                            onChange={() => handleAnswerChange(questionNum, optIdx)}
+                                                            className="w-5 h-5 accent-green-500 cursor-pointer"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-2 sm:gap-3 flex-1">
+                                                        <span className={`font-bold text-base sm:text-lg min-w-fit ${
+                                                            isSelected ? 'text-green-600' : 'text-slate-600 dark:text-slate-400'
+                                                        }`}>
+                                                            {String.fromCharCode(65 + optIdx)})
+                                                        </span>
+                                                        <span className='text-slate-800 dark:text-slate-200 text-sm sm:text-base leading-relaxed'>
+                                                            {opt}
+                                                        </span>
+                                                    </div>
+                                                </label>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mt-10 sm:mt-12">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className='text-sm font-semibold text-slate-600 dark:text-slate-400'>Progress</span>
+                            <span className='text-sm font-bold text-slate-700 dark:text-slate-300'>{Math.round((totalAnswered/total)*100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                            <div 
+                                className="bg-gradient-to-r from-blue-500 to-cyan-500 h-full rounded-full transition-all duration-500"
+                                style={{width: `${(totalAnswered/total)*100}%`}}
+                            ></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -170,44 +231,105 @@ const Part2 = ({ data, answers, setAnswers }) => {
         }))
     }
 
+    const totalFilled = Object.keys(answers.part_2 || {}).filter(k => answers.part_2[k]?.trim()).length
+    const total = 6
+
     return (
-        <div className='w-full h-max bg-white rounded-xl p-8'>
-            <div className="max-w-4xl mx-auto">
-                <h2 className='text-3xl font-bold text-slate-800 mb-2'>Part 2</h2>
-                <span className='text-xl text-slate-700 block mb-8'>
-                    You will hear someone giving a talk. For each question, fill in the missing information in the numbered space.
-                    <br /><br />
-                    <span className='font-semibold'>Write ONE WORD and/or A NUMBER for each answer.</span>
-                </span>
-
-                <div className="bg-green-100 border-l-4 border-green-500 p-6 rounded mb-10">
-                    <h3 className='text-3xl font-bold text-green-700 italic'>Win a 'dream night' at the theatre</h3>
+        <div className='w-full h-max bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden'>
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-700 dark:to-pink-700 px-6 sm:px-8 py-6 sm:py-8">
+                <div className="max-w-5xl mx-auto">
+                    <h2 className='text-2xl sm:text-4xl font-bold text-white mb-2 flex items-center gap-3'>
+                        <span className="bg-white/20 px-4 py-1 rounded-full text-lg">Part 2</span>
+                    </h2>
+                    <p className='text-purple-100 text-sm sm:text-base leading-relaxed'>
+                        You will hear someone giving a talk. For each question, fill in the missing information in the numbered space.
+                    </p>
                 </div>
+            </div>
 
-                <div className="space-y-6">
-                    {data?.map((q, idx) => (
-                        <div key={idx} className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                            <div className="flex items-baseline gap-2 flex-wrap">
-                                <span className='text-xl font-bold text-slate-800'>{9 + idx}.</span>
-                                <span className='text-lg font-semibold text-slate-800'>{q?.label}:</span>
-                                <span className='text-lg text-slate-800'>{q?.before}</span>
-                                <input
-                                    type="text"
-                                    className="border-b-2 border-green-500 focus:outline-none focus:border-green-700 px-2 py-1 min-w-[100px] bg-transparent text-slate-800 font-medium"
-                                    value={answers.part_2?.[idx] || ''}
-                                    onChange={(e) => handleInputChange(idx, e.target.value)}
-                                    maxLength="20"
-                                />
-                                {q?.after && <span className='text-lg text-slate-800'>{q.after}</span>}
-                            </div>
+            <div className="px-6 sm:px-8 py-8 sm:py-12">
+                <div className="max-w-5xl mx-auto">
+                    <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-600 rounded-xl p-4 sm:p-6 mb-8">
+                        <p className='text-sm font-semibold text-purple-700 dark:text-purple-300 mb-1'>Important:</p>
+                        <p className='text-sm sm:text-base text-purple-800 dark:text-purple-200'>
+                            Write ONE WORD and/or A NUMBER for each answer.
+                        </p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 border-l-4 border-purple-600 rounded-lg p-5 sm:p-6 mb-8">
+                        <h3 className='text-2xl sm:text-3xl font-bold text-purple-700 dark:text-purple-300 italic'>
+                            {data?.[0]?.before || "Win a 'dream night' at the theatre"}
+                        </h3>
+                    </div>
+
+                    <div className="mb-8 flex justify-between items-center">
+                        <h3 className='text-lg font-semibold text-slate-700 dark:text-slate-300'>Questions</h3>
+                        <div className="bg-purple-100 dark:bg-purple-900/30 px-4 py-2 rounded-full">
+                            <span className='text-sm font-bold text-purple-700 dark:text-purple-300'>
+                                {totalFilled}/{total}
+                            </span>
                         </div>
-                    ))}
-                </div>
+                    </div>
 
-                <div className="mt-12 p-5 bg-blue-50 rounded-lg border border-blue-200">
-                    <span className='text-sm font-semibold text-blue-900'>
-                        Filled: {Object.keys(answers.part_2 || {}).filter(k => answers.part_2[k]?.trim()).length} / 6 questions
-                    </span>
+                    <div className="grid gap-4 sm:gap-5">
+                        {data?.map((q, idx) => {
+                            const isFilled = answers.part_2?.[idx]?.trim()
+                            
+                            return (
+                                <div key={idx} className={`group border-2 rounded-xl p-4 sm:p-5 transition-all duration-300 ${
+                                    isFilled 
+                                        ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-600' 
+                                        : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-purple-300 dark:hover:border-purple-500'
+                                }`}>
+                                    <div className="flex items-start gap-3 sm:gap-4">
+                                        <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-white font-bold text-sm sm:text-base">
+                                            {9 + idx}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            {isFilled && (
+                                                <span className='inline-block text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/40 px-3 py-1 rounded-full mb-2'>
+                                                    ✓ Filled
+                                                </span>
+                                            )}
+                                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                <span className='text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-200 flex-shrink-0'>
+                                                    {q?.label}:
+                                                </span>
+                                                <span className='text-sm sm:text-base text-slate-700 dark:text-slate-300'>
+                                                    {q?.before}
+                                                </span>
+                                                <input
+                                                    type="text"
+                                                    className="flex-shrink-0 border-b-2 border-purple-500 focus:outline-none focus:border-purple-700 px-2 py-1 min-w-[80px] sm:min-w-[100px] bg-transparent text-slate-800 dark:text-slate-200 font-semibold text-sm sm:text-base"
+                                                    value={answers.part_2?.[idx] || ''}
+                                                    onChange={(e) => handleInputChange(idx, e.target.value)}
+                                                    maxLength="20"
+                                                    placeholder="..."
+                                                />
+                                                <span className='text-sm sm:text-base text-slate-700 dark:text-slate-300 flex-shrink-0'>
+                                                    {q?.after}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mt-10 sm:mt-12">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className='text-sm font-semibold text-slate-600 dark:text-slate-400'>Progress</span>
+                            <span className='text-sm font-bold text-slate-700 dark:text-slate-300'>{Math.round((totalFilled/total)*100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                            <div 
+                                className="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all duration-500"
+                                style={{width: `${(totalFilled/total)*100}%`}}
+                            ></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -216,10 +338,6 @@ const Part2 = ({ data, answers, setAnswers }) => {
 
 const Part3 = ({ data, answers, setAnswers }) => {
     const [selections, setSelections] = useState({})
-    const speakerRefs = useRef({})
-    const optionRefs = useRef({})
-    const [lines, setLines] = useState([])
-    const svgRef = useRef(null)
 
     const handleSelect = (speakerIdx, optionIdx) => {
         setSelections(prev => ({
@@ -233,127 +351,90 @@ const Part3 = ({ data, answers, setAnswers }) => {
                 [speakerIdx]: optionIdx
             }
         }))
-        setTimeout(drawLines, 0)
     }
 
-    const drawLines = () => {
-        if (!svgRef.current) return
-
-        const newLines = []
-        Object.entries(selections).forEach(([speakerIdx, optionIdx]) => {
-            const speakerIdx_num = parseInt(speakerIdx)
-            const speakerEl = speakerRefs.current[speakerIdx_num]
-            const optionEl = optionRefs.current[optionIdx]
-
-            if (speakerEl && optionEl) {
-                const speakerRect = speakerEl.getBoundingClientRect()
-                const optionRect = optionEl.getBoundingClientRect()
-                const svgRect = svgRef.current.getBoundingClientRect()
-
-                const x1 = speakerRect.right - svgRect.left
-                const y1 = speakerRect.top - svgRect.top + speakerRect.height / 2
-                const x2 = optionRect.left - svgRect.left
-                const y2 = optionRect.top - svgRect.top + optionRect.height / 2
-
-                newLines.push({ x1, y1, x2, y2, id: `${speakerIdx_num}-${optionIdx}` })
-            }
-        })
-
-        setLines(newLines)
-    }
-
-    useEffect(() => {
-        window.addEventListener('resize', drawLines)
-        drawLines()
-        return () => window.removeEventListener('resize', drawLines)
-    }, [selections])
+    const totalMatched = Object.keys(selections).length
+    const total = data?.speakers?.length || 4
 
     return (
-        <div className='w-full h-max bg-white rounded-xl p-8'>
-            <div className="max-w-5xl mx-auto">
-                <h2 className='text-3xl font-bold text-slate-800 mb-2'>Part 3</h2>
-                <span className='text-xl text-slate-700 block mb-8'>
-                    You will hear people talking. Match each speaker (15-18) to the subjects (A-F). There are TWO EXTRA places which you do not need to use.
-                </span>
+        <div className='w-full h-max bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden'>
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-700 dark:to-emerald-700 px-6 sm:px-8 py-6 sm:py-8">
+                <div className="max-w-5xl mx-auto">
+                    <h2 className='text-2xl sm:text-4xl font-bold text-white mb-2 flex items-center gap-3'>
+                        <span className="bg-white/20 px-4 py-1 rounded-full text-lg">Part 3</span>
+                    </h2>
+                    <p className='text-green-100 text-sm sm:text-base leading-relaxed'>
+                        You will hear people talking. Match each speaker (15-18) to the subjects (A-F). There are TWO EXTRA places which you do not need to use.
+                    </p>
+                </div>
+            </div>
 
-                <div className="relative mt-10 px-10">
-                    <svg
-                        ref={svgRef}
-                        className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                        style={{ minHeight: '500px' }}
-                    >
-                        {lines.map(line => (
-                            <line
-                                key={line.id}
-                                x1={line.x1}
-                                y1={line.y1}
-                                x2={line.x2}
-                                y2={line.y2}
-                                stroke="#10b981"
-                                strokeWidth="2"
-                                strokeDasharray="5,5"
-                            />
-                        ))}
-                    </svg>
-
-                    <div className="flex gap-32 relative z-10">
-                        <div className="flex flex-col gap-6">
-                            <span className='text-lg font-bold text-slate-800 mb-2'>Speakers:</span>
-                            {data?.speakers?.map((speaker, idx) => (
-                                <div
-                                    key={idx}
-                                    ref={el => speakerRefs.current[idx] = el}
-                                    className='text-lg font-semibold text-slate-800 px-4 py-3 bg-blue-100 rounded-lg whitespace-nowrap'
-                                >
-                                    {speaker}
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="flex flex-col gap-6">
-                            <span className='text-lg font-bold text-slate-800 mb-2'>Topics:</span>
-                            {data?.options?.map((option, idx) => (
-                                <div
-                                    key={idx}
-                                    className="flex items-center gap-3"
-                                >
-                                    <span className='text-lg font-semibold text-green-600 min-w-[30px]'>
-                                        {String.fromCharCode(65 + idx)})
-                                    </span>
-                                    <div
-                                        ref={el => optionRefs.current[idx] = el}
-                                        className={`text-lg font-medium text-slate-800 px-4 py-3 rounded-lg cursor-pointer transition-all ${Object.values(selections).includes(idx)
-                                            ? 'bg-green-200 border-2 border-green-500'
-                                            : 'bg-gray-100 border-2 border-gray-300 hover:bg-gray-200'
-                                            }`}
-                                    >
-                                        {option}
-                                    </div>
-                                </div>
-                            ))}
+            <div className="px-6 sm:px-8 py-8 sm:py-12">
+                <div className="max-w-5xl mx-auto">
+                    <div className="mb-8 flex justify-between items-center">
+                        <h3 className='text-lg font-semibold text-slate-700 dark:text-slate-300'>Matches</h3>
+                        <div className="bg-green-100 dark:bg-green-900/30 px-4 py-2 rounded-full">
+                            <span className='text-sm font-bold text-green-700 dark:text-green-300'>
+                                {totalMatched}/{total}
+                            </span>
                         </div>
                     </div>
 
-                    <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-                        <span className='text-sm text-slate-600 block mb-3'>Select topic for each speaker:</span>
-                        <div className="flex flex-wrap gap-3">
-                            {data?.speakers?.map((speaker, speakerIdx) => (
-                                <div key={speakerIdx} className="flex gap-2 items-center bg-white p-2 rounded border border-gray-300">
-                                    <span className='font-semibold text-slate-700 text-sm'>{speaker}:</span>
-                                    <select
-                                        value={selections[speakerIdx] ?? ''}
-                                        onChange={(e) => handleSelect(speakerIdx, parseInt(e.target.value))}
-                                        className='px-2 py-1 border border-green-400 rounded text-sm focus:outline-none focus:border-green-600'
-                                    >
-                                        <option value="">Select</option>
-                                        {data?.options?.map((_, optIdx) => (
-                                            <option key={optIdx} value={optIdx}>
-                                                {String.fromCharCode(65 + optIdx)}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            ))}
+                    {/* Select interface */}
+                    <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-600 rounded-xl p-4 sm:p-6 mb-8">
+                        <p className='text-sm font-semibold text-green-800 dark:text-green-300 mb-4'>Select topic for each speaker:</p>
+                        <div className="space-y-3">
+                            {data?.speakers?.map((speaker, speakerIdx) => {
+                                const isMatched = selections[speakerIdx] !== undefined
+                                
+                                return (
+                                    <div key={speakerIdx} className={`border-2 rounded-xl p-3 sm:p-4 transition-all duration-300 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${
+                                        isMatched 
+                                            ? 'bg-white dark:bg-gray-700 border-green-400 dark:border-green-600' 
+                                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600'
+                                    }`}>
+                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center text-white font-bold text-sm sm:text-base">
+                                                {15 + speakerIdx}
+                                            </div>
+                                            <span className='text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-300 flex-shrink-0'>
+                                                {speaker}:
+                                            </span>
+                                        </div>
+                                        <select
+                                            value={selections[speakerIdx] ?? ''}
+                                            onChange={(e) => handleSelect(speakerIdx, parseInt(e.target.value))}
+                                            className='flex-1 sm:flex-0 sm:min-w-[150px] px-3 sm:px-4 py-2 text-sm sm:text-base border-2 border-green-400 dark:border-green-600 rounded-lg focus:outline-none focus:border-green-600 dark:focus:border-green-400 bg-white dark:bg-gray-600 text-slate-800 dark:text-slate-200 font-medium'
+                                        >
+                                            <option value="">Select topic</option>
+                                            {data?.options?.map((option, optIdx) => (
+                                                <option key={optIdx} value={optIdx}>
+                                                    {String.fromCharCode(65 + optIdx)}) {option}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {isMatched && (
+                                            <span className='text-xs font-semibold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-3 py-1 rounded-full flex-shrink-0'>
+                                                ✓ {String.fromCharCode(65 + selections[speakerIdx])}
+                                            </span>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mt-10 sm:mt-12">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className='text-sm font-semibold text-slate-600 dark:text-slate-400'>Progress</span>
+                            <span className='text-sm font-bold text-slate-700 dark:text-slate-300'>{Math.round((totalMatched/total)*100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                            <div 
+                                className="bg-gradient-to-r from-green-500 to-emerald-500 h-full rounded-full transition-all duration-500"
+                                style={{width: `${(totalMatched/total)*100}%`}}
+                            ></div>
                         </div>
                     </div>
                 </div>
@@ -373,45 +454,77 @@ const Part4 = ({ data, answers, setAnswers }) => {
         }))
     }
 
+    const totalAnswered = Object.keys(answers.part_4 || {}).filter(k => answers.part_4[k]).length
+    const total = data?.questions?.length || 5
+
     return (
-        <div className='w-full h-max bg-white rounded-xl p-8'>
-            <div className="max-w-4xl mx-auto">
-                <h2 className='text-3xl font-bold text-slate-800 mb-2'>Part 4</h2>
-                <span className='text-xl text-slate-700 block mb-8'>
-                    You will hear someone giving a talk. Label the places (19-23) on the map (A-I). There are extra options which you do not need to use.
-                </span>
-
-                <div className="mt-8 flex flex-col items-center gap-4">
-                    <div className="w-full max-w-2xl flex justify-center">
-                        <img
-                            src={data?.mapUrl}
-                            alt="Map"
-                            className="w-full h-auto rounded-lg border-2 border-gray-300 shadow-lg"
-                        />
-                    </div>
-
-                    <div className="flex gap-3 flex-wrap justify-center mt-4">
-                        {data?.mapLabels?.map(label => (
-                            <div key={label} className="px-3 py-1 bg-blue-100 rounded-full border-2 border-blue-400">
-                                <span className="font-bold text-blue-700">{label}</span>
-                            </div>
-                        ))}
-                    </div>
+        <div className='w-full h-max bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden'>
+            <div className="bg-gradient-to-r from-orange-600 to-red-600 dark:from-orange-700 dark:to-red-700 px-6 sm:px-8 py-6 sm:py-8">
+                <div className="max-w-5xl mx-auto">
+                    <h2 className='text-2xl sm:text-4xl font-bold text-white mb-2 flex items-center gap-3'>
+                        <span className="bg-white/20 px-4 py-1 rounded-full text-lg">Part 4</span>
+                    </h2>
+                    <p className='text-orange-100 text-sm sm:text-base leading-relaxed'>
+                        You will hear someone giving a talk. Label the places (19-23) on the map (A-I). There are extra options which you do not need to use.
+                    </p>
                 </div>
+            </div>
 
-                <div className="mt-10 max-w-2xl mx-auto">
-                    <span className='text-lg font-semibold text-slate-800 block mb-6'>Answer the questions:</span>
+            <div className="px-6 sm:px-8 py-8 sm:py-12">
+                <div className="max-w-5xl mx-auto">
+                    {/* Map */}
+                    <div className="mb-8 sm:mb-10 flex flex-col items-center gap-4">
+                        <div className="w-full max-w-3xl flex justify-center">
+                            <div className="rounded-xl border-4 border-orange-300 dark:border-orange-600 shadow-xl overflow-hidden">
+                                <img
+                                    src={data?.mapUrl}
+                                    alt="Map"
+                                    className="w-full h-auto"
+                                />
+                            </div>
+                        </div>
 
-                    <div className="flex flex-col gap-6">
-                        {data?.questions?.map((q, idx) => (
-                            <div key={idx} className="flex items-center gap-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                <span className='text-xl font-bold text-slate-800 min-w-[60px]'>{q?.num}.</span>
-                                <div className="flex items-center gap-4 flex-1">
-                                    <span className='text-lg text-slate-700'>{q?.place}</span>
+                        {/* Map Labels */}
+                        <div className="flex gap-2 flex-wrap justify-center mt-4">
+                            {data?.mapLabels?.map(label => (
+                                <div key={label} className="px-3 sm:px-4 py-1 sm:py-2 bg-orange-100 dark:bg-orange-900/30 rounded-full border-2 border-orange-400 dark:border-orange-600">
+                                    <span className="font-bold text-orange-700 dark:text-orange-300 text-sm sm:text-base">{label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="mb-8 flex justify-between items-center">
+                        <h3 className='text-lg font-semibold text-slate-700 dark:text-slate-300'>Places to identify</h3>
+                        <div className="bg-orange-100 dark:bg-orange-900/30 px-4 py-2 rounded-full">
+                            <span className='text-sm font-bold text-orange-700 dark:text-orange-300'>
+                                {totalAnswered}/{total}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:gap-4">
+                        {data?.questions?.map((q, idx) => {
+                            const isAnswered = answers.part_4?.[idx]
+                            
+                            return (
+                                <div key={idx} className={`group border-2 rounded-xl p-4 sm:p-5 transition-all duration-300 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${
+                                    isAnswered 
+                                        ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-600' 
+                                        : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-orange-300 dark:hover:border-orange-500'
+                                }`}>
+                                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                                        <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center text-white font-bold text-sm sm:text-base">
+                                            {q?.num}
+                                        </div>
+                                        <span className='text-sm sm:text-base text-slate-700 dark:text-slate-300 font-medium flex-shrink-0'>
+                                            {q?.place}:
+                                        </span>
+                                    </div>
                                     <select
                                         value={answers.part_4?.[idx] || ''}
                                         onChange={(e) => handleInputChange(idx, e.target.value)}
-                                        className='px-4 py-2 border-2 border-green-400 rounded-lg focus:outline-none focus:border-green-600 bg-white text-slate-800 font-medium'
+                                        className='flex-1 sm:flex-0 sm:min-w-[120px] px-3 sm:px-4 py-2 text-sm sm:text-base border-2 border-orange-400 dark:border-orange-600 rounded-lg focus:outline-none focus:border-orange-600 dark:focus:border-orange-400 bg-white dark:bg-gray-600 text-slate-800 dark:text-slate-200 font-medium'
                                     >
                                         <option value="">Select location</option>
                                         {data?.mapLabels?.map(label => (
@@ -420,16 +533,29 @@ const Part4 = ({ data, answers, setAnswers }) => {
                                             </option>
                                         ))}
                                     </select>
+                                    {isAnswered && (
+                                        <span className='text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/40 px-3 py-1 rounded-full flex-shrink-0'>
+                                            ✓ {isAnswered}
+                                        </span>
+                                    )}
                                 </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
-                </div>
 
-                <div className="mt-12 p-5 bg-blue-50 rounded-lg border border-blue-200">
-                    <span className='text-sm font-semibold text-blue-900'>
-                        Answered: {Object.keys(answers.part_4 || {}).filter(k => answers.part_4[k]).length} / 5 questions
-                    </span>
+                    {/* Progress Bar */}
+                    <div className="mt-10 sm:mt-12">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className='text-sm font-semibold text-slate-600 dark:text-slate-400'>Progress</span>
+                            <span className='text-sm font-bold text-slate-700 dark:text-slate-300'>{Math.round((totalAnswered/total)*100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                            <div 
+                                className="bg-gradient-to-r from-orange-500 to-red-500 h-full rounded-full transition-all duration-500"
+                                style={{width: `${(totalAnswered/total)*100}%`}}
+                            ></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -448,58 +574,125 @@ const Part5 = ({ data, answers, setAnswers }) => {
         }))
     }
 
+    const totalAnswered = Object.keys(answers.part_5 || {}).length
+    const total = 6
+
     return (
-        <div className='w-full h-max bg-white rounded-xl p-8'>
-            <div className="max-w-4xl mx-auto">
-                <h2 className='text-3xl font-bold text-slate-800 mb-2'>Part 5</h2>
-                <span className='text-xl text-slate-700 block mb-8'>
-                    You will hear three extracts. Choose the correct answer (A, B or C) for each question (24-29). There are TWO questions for each extract.
-                </span>
-
-                <div className="flex flex-col gap-12">
-                    {data?.map((extract, extractIdx) => (
-                        <div key={extractIdx} className="border-l-4 border-green-500 pl-6">
-                            <div className="inline-block bg-green-200 px-4 py-2 rounded-full mb-6">
-                                <span className='font-bold text-green-700 text-lg'>{extract?.name}</span>
-                            </div>
-
-                            <div className="flex flex-col gap-8">
-                                {extract?.questions?.map((q, questionIdx) => (
-                                    <div key={questionIdx} className="bg-gray-50 p-5 rounded-lg">
-                                        <div className="mb-5">
-                                            <span className='text-lg font-bold text-slate-800'>{24 + extractIdx * 2 + questionIdx}. </span>
-                                            <span className='text-lg text-slate-800'>{q?.text}</span>
-                                        </div>
-
-                                        <div className="flex flex-col gap-3 ml-8">
-                                            {q?.options?.map((option, optIdx) => (
-                                                <label key={optIdx} className="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-white transition-colors">
-                                                    <input
-                                                        type="radio"
-                                                        name={`q5-${extractIdx}-${questionIdx}`}
-                                                        value={optIdx}
-                                                        checked={answers.part_5?.[`${extractIdx}-${questionIdx}`] === optIdx}
-                                                        onChange={() => handleAnswerChange(extractIdx, questionIdx, optIdx)}
-                                                        className="w-5 h-5 accent-green-500 cursor-pointer"
-                                                    />
-                                                    <span className='text-green-600 font-bold min-w-[25px]'>
-                                                        {String.fromCharCode(65 + optIdx)})
-                                                    </span>
-                                                    <span className='text-slate-800 text-base'>{option}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+        <div className='w-full h-max bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden'>
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-700 dark:to-purple-700 px-6 sm:px-8 py-6 sm:py-8">
+                <div className="max-w-5xl mx-auto">
+                    <h2 className='text-2xl sm:text-4xl font-bold text-white mb-2 flex items-center gap-3'>
+                        <span className="bg-white/20 px-4 py-1 rounded-full text-lg">Part 5</span>
+                    </h2>
+                    <p className='text-indigo-100 text-sm sm:text-base leading-relaxed'>
+                        You will hear three extracts. Choose the correct answer (A, B or C) for each question (24-29). There are TWO questions for each extract.
+                    </p>
                 </div>
+            </div>
 
-                <div className="mt-12 p-5 bg-blue-50 rounded-lg border border-blue-200">
-                    <span className='text-sm font-semibold text-blue-900'>
-                        Answered: {Object.keys(answers.part_5 || {}).length} / 6 questions
-                    </span>
+            <div className="px-6 sm:px-8 py-8 sm:py-12">
+                <div className="max-w-5xl mx-auto">
+                    <div className="mb-8 flex justify-between items-center">
+                        <h3 className='text-lg font-semibold text-slate-700 dark:text-slate-300'>Answers</h3>
+                        <div className="bg-indigo-100 dark:bg-indigo-900/30 px-4 py-2 rounded-full">
+                            <span className='text-sm font-bold text-indigo-700 dark:text-indigo-300'>
+                                {totalAnswered}/{total}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-8">
+                        {data?.map((extract, extractIdx) => {
+                            const extractAnswered = Object.keys(answers.part_5 || {})
+                                .filter(k => k.startsWith(extractIdx + '-')).length
+
+                            return (
+                                <div key={extractIdx} className="border-l-4 border-indigo-500 pl-6 sm:pl-8">
+                                    <div className="inline-block bg-gradient-to-r from-indigo-200 to-purple-200 dark:from-indigo-900/40 dark:to-purple-900/40 px-4 sm:px-5 py-2 sm:py-3 rounded-full mb-6 border-2 border-indigo-400 dark:border-indigo-600">
+                                        <span className='font-bold text-indigo-700 dark:text-indigo-300 text-sm sm:text-lg'>
+                                            {extract?.name}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex flex-col gap-5 sm:gap-6">
+                                        {extract?.questions?.map((q, questionIdx) => {
+                                            const isAnswered = answers.part_5?.[`${extractIdx}-${questionIdx}`] !== undefined
+                                            
+                                            return (
+                                                <div key={questionIdx} className={`group border-2 rounded-xl p-4 sm:p-6 transition-all duration-300 ${
+                                                    isAnswered 
+                                                        ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-600' 
+                                                        : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-500'
+                                                }`}>
+                                                    <div className="flex items-start gap-3 sm:gap-4 mb-4">
+                                                        <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-sm sm:text-base">
+                                                            {24 + extractIdx * 2 + questionIdx}
+                                                        </div>
+                                                        <span className='text-sm sm:text-base text-slate-800 dark:text-slate-200 flex-1'>
+                                                            {q?.text}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex flex-col gap-2 sm:gap-3 ml-0 sm:ml-2">
+                                                        {q?.options?.map((option, optIdx) => {
+                                                            const isSelected = answers.part_5?.[`${extractIdx}-${questionIdx}`] === optIdx
+                                                            
+                                                            return (
+                                                                <label key={optIdx} className={`flex items-center gap-3 sm:gap-4 cursor-pointer p-3 sm:p-4 rounded-lg transition-all duration-200 ${
+                                                                    isSelected
+                                                                        ? 'bg-white dark:bg-gray-600 border-2 border-purple-500 shadow-md'
+                                                                        : 'bg-white dark:bg-gray-600/50 border-2 border-transparent hover:bg-white/80 dark:hover:bg-gray-600'
+                                                                }`}>
+                                                                    <div className="flex-shrink-0 relative">
+                                                                        <input
+                                                                            type="radio"
+                                                                            name={`q5-${extractIdx}-${questionIdx}`}
+                                                                            value={optIdx}
+                                                                            checked={isSelected}
+                                                                            onChange={() => handleAnswerChange(extractIdx, questionIdx, optIdx)}
+                                                                            className="w-5 h-5 accent-purple-500 cursor-pointer"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 sm:gap-3 flex-1">
+                                                                        <span className={`font-bold text-base sm:text-lg min-w-fit ${
+                                                                            isSelected ? 'text-purple-600' : 'text-slate-600 dark:text-slate-400'
+                                                                        }`}>
+                                                                            {String.fromCharCode(65 + optIdx)})
+                                                                        </span>
+                                                                        <span className='text-slate-800 dark:text-slate-200 text-sm sm:text-base'>
+                                                                            {option}
+                                                                        </span>
+                                                                    </div>
+                                                                </label>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+
+                                    {extractIdx < data.length - 1 && (
+                                        <div className="mt-6 sm:mt-8 h-1 bg-gradient-to-r from-indigo-200 to-transparent dark:from-indigo-900/30 rounded-full"></div>
+                                    )}
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mt-10 sm:mt-12">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className='text-sm font-semibold text-slate-600 dark:text-slate-400'>Progress</span>
+                            <span className='text-sm font-bold text-slate-700 dark:text-slate-300'>{Math.round((totalAnswered/total)*100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                            <div 
+                                className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
+                                style={{width: `${(totalAnswered/total)*100}%`}}
+                            ></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -517,43 +710,102 @@ const Part6 = ({ data, answers, setAnswers }) => {
         }))
     }
 
+    const totalFilled = Object.keys(answers.part_6 || {}).filter(k => answers.part_6[k]?.trim()).length
+    const total = data?.questions?.length || 6
+
     return (
-        <div className='w-full h-max bg-white rounded-xl p-8'>
-            <div className="max-w-4xl mx-auto">
-                <h2 className='text-3xl font-bold text-slate-800 mb-2'>Part 6</h2>
-                <span className='text-xl text-slate-700 block mb-8'>
-                    You will hear a part of a lecture. For each question, fill in the missing information in the numbered space.
-                    <br /><br />
-                    <span className='font-semibold'>Write no more than ONE WORD for each answer.</span>
-                </span>
-
-                <div className="bg-green-100 border-l-4 border-green-500 p-5 rounded mb-10">
-                    <h3 className='text-3xl font-semibold text-green-700 italic'>{data?.title}</h3>
+        <div className='w-full h-max bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden'>
+            <div className="bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-700 dark:to-cyan-700 px-6 sm:px-8 py-6 sm:py-8">
+                <div className="max-w-5xl mx-auto">
+                    <h2 className='text-2xl sm:text-4xl font-bold text-white mb-2 flex items-center gap-3'>
+                        <span className="bg-white/20 px-4 py-1 rounded-full text-lg">Part 6</span>
+                    </h2>
+                    <p className='text-teal-100 text-sm sm:text-base leading-relaxed'>
+                        You will hear a part of a lecture. For each question, fill in the missing information in the numbered space.
+                    </p>
                 </div>
+            </div>
 
-                <div className="space-y-6">
-                    {data?.questions?.map((q, idx) => (
-                        <div key={idx} className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                            <div className="flex items-baseline gap-2 flex-wrap">
-                                <span className='text-lg font-bold text-slate-800'>{q?.num}.</span>
-                                <span className='text-base text-slate-800'>{q?.before}</span>
-                                <input
-                                    type="text"
-                                    value={answers.part_6?.[idx] || ''}
-                                    onChange={(e) => handleInputChange(idx, e.target.value)}
-                                    maxLength="20"
-                                    className='border-b-2 border-green-500 focus:outline-none focus:border-green-700 px-2 py-1 min-w-[100px] bg-transparent text-slate-800 font-medium'
-                                />
-                                <span className='text-base text-slate-800'>{q?.after}</span>
-                            </div>
+            <div className="px-6 sm:px-8 py-8 sm:py-12">
+                <div className="max-w-5xl mx-auto">
+                    <div className="bg-teal-50 dark:bg-teal-900/20 border-l-4 border-teal-600 rounded-lg p-5 sm:p-6 mb-8">
+                        <p className='text-sm font-semibold text-teal-700 dark:text-teal-300 mb-1'>Important:</p>
+                        <p className='text-sm sm:text-base text-teal-800 dark:text-teal-200'>
+                            Write no more than ONE WORD for each answer.
+                        </p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/20 dark:to-cyan-900/20 border-l-4 border-teal-600 rounded-lg p-5 sm:p-6 mb-8">
+                        <h3 className='text-2xl sm:text-3xl font-bold text-teal-700 dark:text-teal-300 italic'>
+                            {data?.title}
+                        </h3>
+                    </div>
+
+                    <div className="mb-8 flex justify-between items-center">
+                        <h3 className='text-lg font-semibold text-slate-700 dark:text-slate-300'>Questions</h3>
+                        <div className="bg-teal-100 dark:bg-teal-900/30 px-4 py-2 rounded-full">
+                            <span className='text-sm font-bold text-teal-700 dark:text-teal-300'>
+                                {totalFilled}/{total}
+                            </span>
                         </div>
-                    ))}
-                </div>
+                    </div>
 
-                <div className="mt-12 p-5 bg-blue-50 rounded-lg border border-blue-200">
-                    <span className='text-sm font-semibold text-blue-900'>
-                        Filled: {Object.keys(answers.part_6 || {}).filter(k => answers.part_6[k]?.trim()).length} / 6 questions
-                    </span>
+                    <div className="grid gap-4 sm:gap-5">
+                        {data?.questions?.map((q, idx) => {
+                            const isFilled = answers.part_6?.[idx]?.trim()
+                            
+                            return (
+                                <div key={idx} className={`group border-2 rounded-xl p-4 sm:p-5 transition-all duration-300 ${
+                                    isFilled 
+                                        ? 'bg-teal-50 dark:bg-teal-900/20 border-teal-300 dark:border-teal-600' 
+                                        : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-teal-300 dark:hover:border-teal-500'
+                                }`}>
+                                    <div className="flex items-start gap-3 sm:gap-4">
+                                        <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg flex items-center justify-center text-white font-bold text-sm sm:text-base">
+                                            {q?.num}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            {isFilled && (
+                                                <span className='inline-block text-xs font-semibold text-teal-600 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/40 px-3 py-1 rounded-full mb-2'>
+                                                    ✓ Filled
+                                                </span>
+                                            )}
+                                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                <span className='text-sm sm:text-base text-slate-700 dark:text-slate-300'>
+                                                    {q?.before}
+                                                </span>
+                                                <input
+                                                    type="text"
+                                                    value={answers.part_6?.[idx] || ''}
+                                                    onChange={(e) => handleInputChange(idx, e.target.value)}
+                                                    maxLength="20"
+                                                    className='flex-shrink-0 border-b-2 border-teal-500 focus:outline-none focus:border-teal-700 px-2 py-1 min-w-[80px] sm:min-w-[100px] bg-transparent text-slate-800 dark:text-slate-200 font-semibold text-sm sm:text-base'
+                                                    placeholder="..."
+                                                />
+                                                <span className='text-sm sm:text-base text-slate-700 dark:text-slate-300 flex-shrink-0'>
+                                                    {q?.after}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mt-10 sm:mt-12">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className='text-sm font-semibold text-slate-600 dark:text-slate-400'>Progress</span>
+                            <span className='text-sm font-bold text-slate-700 dark:text-slate-300'>{Math.round((totalFilled/total)*100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                            <div 
+                                className="bg-gradient-to-r from-teal-500 to-cyan-500 h-full rounded-full transition-all duration-500"
+                                style={{width: `${(totalFilled/total)*100}%`}}
+                            ></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1095,24 +1347,29 @@ export default function Listening() {
     }
 
     return (
-        <div className='w-full min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 flex flex-col items-center p-5 gap-5'>
+        <div className='w-full min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex flex-col items-center pt-24 pb-10 px-3 sm:px-5'>
             {/* START MODAL */}
             {showStartModal && (
                 <>
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" />
-                    <div className="fixed inset-0 z-50 flex items-center justify-center">
-                        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm text-center shadow-xl">
-                            <h2 className="text-xl font-bold text-slate-800 mb-2">
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-40 animate-in fade-in duration-300" />
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in scale-95 duration-300">
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 sm:p-8 w-full max-w-sm text-center shadow-2xl border-2 border-blue-100 dark:border-blue-900">
+                            <div className="mb-6">
+                                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full mb-4">
+                                    <span className="text-2xl">🎧</span>
+                                </div>
+                            </div>
+                            <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white mb-3">
                                 Ready to start listening?
                             </h2>
-                            <p className="text-gray-600 dark:text-gray-400 mb-6">
-                                Audio will start immediately after you click the button.
+                            <p className="text-slate-600 dark:text-slate-400 mb-8 text-sm sm:text-base">
+                                Audio will start immediately after you click the button below.
                             </p>
                             <button
                                 onClick={startMock}
-                                className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+                                className="w-full py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold text-base sm:text-lg rounded-xl transition-all transform hover:scale-105 shadow-lg"
                             >
-                                ▶ Start mock
+                                ▶ Start Mock Test
                             </button>
                         </div>
                     </div>
@@ -1127,28 +1384,45 @@ export default function Listening() {
             />
 
             {/* HEADER */}
-            <div className="w-full  fixed top-0 left-0 right-0 bg-gradient-to-r from-green-500 to-cyan-500 rounded-b-xl flex p-4 items-center justify-between text-white text-2xl font-bold z-30">
-                <span>CEFR Listening Test</span>
-                <div className="flex items-center gap-4">
-                    <span>Part {currentPart}/6</span>
-                    {queryPart === "all" && (
-                        <button
-                            onClick={handleNextPart}
-                            className="px-6 py-2 bg-white text-green-600 font-bold rounded-lg hover:bg-gray-100 transition-all"
-                        >
-                            {currentPart === 6 ? 'Finish' : 'Next Part'}
-                        </button>
-                    )}
+            <div className="w-full fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 dark:from-blue-700 dark:via-cyan-700 dark:to-teal-700 shadow-lg z-30">
+                <div className="px-4 sm:px-6 py-3 sm:py-4">
+                    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                        <div className="flex-1">
+                            <h1 className='text-lg sm:text-2xl font-bold text-white flex items-center gap-2'>
+                                <span>🎯 CEFR Listening</span>
+                            </h1>
+                        </div>
+                        <div className="flex items-center gap-3 sm:gap-6 w-full sm:w-auto">
+                            <div className="bg-white/20 backdrop-blur-sm px-3 sm:px-4 py-2 rounded-lg">
+                                <span className='text-sm sm:text-base font-bold text-white'>
+                                    Part <span className="text-xl">{currentPart}</span>/<span className="text-lg">6</span>
+                                </span>
+                            </div>
+                            {queryPart === "all" && (
+                                <button
+                                    onClick={handleNextPart}
+                                    className="px-4 sm:px-6 py-2 sm:py-2.5 bg-white text-blue-600 font-bold rounded-lg hover:bg-slate-100 transition-all transform hover:scale-105 text-sm sm:text-base shadow-md"
+                                >
+                                    {currentPart === 6 ? '✓ Finish' : 'Next →'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {/* CONTENT */}
-            <div className="w-full max-w-5xl mt-24 mb-10">
+            <div className="w-full max-w-5xl">
                 {showBreak ? (
-                    <div className="bg-white rounded-xl p-12 flex flex-col items-center justify-center gap-6 shadow-2xl">
-                        <h2 className='text-4xl font-bold text-slate-800'>Break Time</h2>
-                        <div className='text-6xl font-bold text-green-500'>{breakTimer}</div>
-                        <p className='text-xl text-slate-600'>Part {currentPart + 1} starts in a moment...</p>
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 sm:p-12 flex flex-col items-center justify-center gap-6 sm:gap-8 shadow-2xl border-2 border-slate-100 dark:border-slate-700">
+                        <div className="text-5xl sm:text-7xl animate-bounce">⏸</div>
+                        <h2 className='text-3xl sm:text-5xl font-bold text-slate-800 dark:text-white text-center'>Take a Break!</h2>
+                        <div className='text-6xl sm:text-7xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent animate-pulse'>
+                            {breakTimer}
+                        </div>
+                        <p className='text-lg sm:text-xl text-slate-600 dark:text-slate-400 text-center'>
+                            Part {currentPart + 1} will start shortly...
+                        </p>
                     </div>
                 ) : (
                     renderCurrentPart()
