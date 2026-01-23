@@ -668,7 +668,7 @@ export default function CERFSpeakingExam() {
     const progressPercent = totalTime ? ((totalTime - timeLeft) / totalTime) * 100 : 0
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 mt-5">
         <div className="bg-white rounded-xl shadow-lg p-4 mb-4">
           <div className="flex justify-between items-center mb-4">
             <div className="flex gap-2">

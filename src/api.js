@@ -24,12 +24,12 @@ const api = axios.create({
 // =========================
 
 function getAccessToken() {
-  // 🧪 If test mode, return test token
   if (isTestMode()) {
     return TEST_TOKEN;
   }
   return localStorage.getItem("access_token");
 }
+
 
 function getRefreshToken() {
   return localStorage.getItem("refresh_token");
