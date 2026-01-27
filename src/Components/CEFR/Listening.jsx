@@ -17,7 +17,7 @@ export default function ListeningExamInterface() {
     const [currentPart, setCurrentPart] = useState(1)
     const [answers, setAnswers] = useState({
         part1: Array(8).fill(''),
-        part2: Array(6).fill(''),
+        part2: Array(6).fill(''),   
         part3: Array(4).fill(''),
         part4: Array(5).fill(''),
         part5: Array(6).fill(''),
@@ -518,7 +518,7 @@ export default function ListeningExamInterface() {
             <audio ref={audioRef} preload="auto" />
 
             {/* Header */}
-            <div className="sticky top-0 z-40 bg-gradient-to-r from-teal-600 to-emerald-600 shadow-lg">
+            <div className="sticky pt-10 top-0 z-40 bg-gradient-to-r from-teal-600 to-emerald-600 shadow-lg">
                 <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-3">
                         <BookOpen className="w-7 h-7 text-white" />
