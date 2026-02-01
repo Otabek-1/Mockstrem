@@ -1,6 +1,267 @@
 import React, { useState, useEffect } from 'react';
 
-const API_BASE_URL = 'https://english-server-p7y6.onrender.com'; // O'zingizning API URL ini kiriting
+const API_BASE_URL = 'https://english-server-p7y6.onrender.com';
+
+/* ===================== CONVERTER: CEFR TEST DATA → FORM DATA ===================== */
+
+/**
+ * Converts data from cefr-reading-test-01.js format to ReadingMockForm format
+ * Only extracts fields that have corresponding inputs in the form
+ */
+function convertCEFRTestToFormData(cefrTestData) {
+  if (!cefrTestData || !cefrTestData.parts) {
+    console.error('Invalid CEFR test data structure');
+    return null;
+  }
+
+  const formData = {
+    title: cefrTestData.testInfo?.title || '',
+    part1: { task: 'Read the text. Fill in each gap with ONE word or number.', text: '' },
+    part2: { task: 'Read the statements and texts. Match them.', statements: Array(10).fill(''), texts: Array(7).fill('') },
+    part3: { task: 'Read the text and choose the correct heading for each paragraph.', text: '', headings: Array(8).fill(''), paragraphs: Array(6).fill('') },
+    part4: { task: 'Read the text and answer the questions.', text: '', multipleChoice: Array(4).fill(null).map(() => ({ question: '', options: ['', '', '', ''] })), trueFalse: Array(5).fill(null).map(() => ({ statement: '' })) },
+    part5: { task: 'Read the text and complete the exercise.', mainText: '', miniText: '', multipleChoice: Array(2).fill(null).map(() => ({ question: '', options: ['', '', '', ''] })) }
+  };
+
+  const answers = {
+    part1: Array(6).fill(''),
+    part2: Array(10).fill(''),
+    part3: Array(6).fill(''),
+    part4MC: Array(4).fill(''),
+    part4TF: Array(5).fill(''),
+    part5Mini: Array(5).fill(''),
+    part5MC: Array(2).fill('')
+  };
+
+  // Process each part
+  cefrTestData.parts.forEach(part => {
+    switch (part.partNumber) {
+      case 1: // Gap Fill from Text
+        if (part.passage?.content) {
+          // Clean HTML tags and keep gap markers (1), (2), etc
+          let text = part.passage.content
+            .replace(/<p>/g, '\n\n')
+            .replace(/<\/p>/g, '')
+            // Replace <span class="gap" data-gap="1">_____(1)_____</span> with just (1)
+            .replace(/<span[^>]*class="gap"[^>]*>.*?\((\d+)\).*?<\/span>/g, '($1)')
+            // Remove any remaining HTML tags
+            .replace(/<[^>]+>/g, '');
+          formData.part1.text = text.trim();
+          
+          // Extract answers
+          if (part.answers) {
+            Object.keys(part.answers).forEach((key, index) => {
+              if (index < 6) {
+                answers.part1[index] = part.answers[key][0] || '';
+              }
+            });
+          }
+        }
+        break;
+
+      case 2: // Matching
+        if (part.statements && part.texts) {
+          // Extract statements (up to 10)
+          part.statements.forEach((stmt, index) => {
+            if (index < 10) {
+              formData.part2.statements[index] = stmt.text || '';
+            }
+          });
+
+          // Extract texts (up to 7) - renumber from 7-14 to 1-7
+          part.texts.forEach((txt, index) => {
+            if (index < 7) {
+              formData.part2.texts[index] = txt.content || '';
+            }
+          });
+
+          // Extract answers - convert letter answers to text numbers
+          if (part.answers) {
+            const questionKeys = Object.keys(part.answers).sort((a, b) => parseInt(a) - parseInt(b));
+            questionKeys.forEach((key, index) => {
+              if (index < 10) {
+                // Map text number (7-14) to index (1-7)
+                const textNumber = parseInt(key);
+                const textIndex = textNumber - 7 + 1; // Convert 7→1, 8→2, etc.
+                answers.part2[index] = textIndex.toString();
+              }
+            });
+          }
+        }
+        break;
+
+      case 3: // Headings & Paragraphs
+        // Extract main text (title) if available
+        if (part.passage?.title) {
+          formData.part3.text = part.passage.title;
+        } else if (part.passage?.content) {
+          formData.part3.text = part.passage.content
+            .replace(/<p>/g, '\n\n')
+            .replace(/<\/p>/g, '')
+            .replace(/<[^>]+>/g, '')
+            .trim();
+        }
+
+        // Extract headings
+        if (part.headings) {
+          part.headings.forEach((heading, index) => {
+            if (index < 8) {
+              formData.part3.headings[index] = heading.text || '';
+            }
+          });
+        }
+
+        // Extract paragraphs from passage.paragraphs array
+        if (part.passage?.paragraphs) {
+          part.passage.paragraphs.forEach((para, index) => {
+            if (index < 6) {
+              // Clean paragraph content
+              let content = para.content || '';
+              if (content) {
+                content = content
+                  .replace(/<p>/g, '')
+                  .replace(/<\/p>/g, '\n')
+                  .replace(/<[^>]+>/g, '')
+                  .trim();
+              }
+              formData.part3.paragraphs[index] = content;
+            }
+          });
+        } else if (part.paragraphs) {
+          // Fallback: if paragraphs is a direct array
+          part.paragraphs.forEach((para, index) => {
+            if (index < 6) {
+              formData.part3.paragraphs[index] = para.content
+                .replace(/<p>/g, '')
+                .replace(/<\/p>/g, '\n')
+                .replace(/<[^>]+>/g, '')
+                .trim();
+            }
+          });
+        }
+
+        // Extract answers
+        if (part.answers) {
+          Object.keys(part.answers).slice(0, 6).forEach((key, index) => {
+            answers.part3[index] = part.answers[key][0] || '';
+          });
+        }
+        break;
+
+      case 4: // MC + True/False
+        if (part.passage?.content) {
+          formData.part4.text = part.passage.content
+            .replace(/<p>/g, '\n\n')
+            .replace(/<\/p>/g, '')
+            .replace(/<[^>]+>/g, '')
+            .trim();
+        }
+
+        // Process question sections
+        if (part.questionSections) {
+          part.questionSections.forEach(section => {
+            if (section.type === 'mcq' && section.questions) {
+              // Multiple Choice Questions (up to 4)
+              section.questions.forEach((q, qIndex) => {
+                if (qIndex < 4) {
+                  formData.part4.multipleChoice[qIndex] = {
+                    question: q.text || '',
+                    options: q.options ? q.options.map(opt => opt.text || '') : ['', '', '', '']
+                  };
+                  
+                  // Extract MC answers
+                  const qId = q.id;
+                  if (part.answers && part.answers[qId]) {
+                    answers.part4MC[qIndex] = part.answers[qId][0] || '';
+                  }
+                }
+              });
+            } else if (section.type === 'tfni' && section.questions) {
+              // True/False Questions (up to 5)
+              section.questions.forEach((q, qIndex) => {
+                if (qIndex < 5) {
+                  formData.part4.trueFalse[qIndex] = {
+                    statement: q.text || ''
+                  };
+                  
+                  // Extract TF answers
+                  const qId = q.id;
+                  if (part.answers && part.answers[qId]) {
+                    const answer = part.answers[qId][0];
+                    // Convert to T/F/NG format
+                    if (answer === 'True') answers.part4TF[qIndex] = 'T';
+                    else if (answer === 'False') answers.part4TF[qIndex] = 'F';
+                    else if (answer === 'No Information') answers.part4TF[qIndex] = 'NG';
+                    else answers.part4TF[qIndex] = answer;
+                  }
+                }
+              });
+            }
+          });
+        }
+        break;
+
+      case 5: // Gap Fill + MCQ
+        if (part.passage?.content) {
+          formData.part5.mainText = part.passage.content
+            .replace(/<p>/g, '\n\n')
+            .replace(/<\/p>/g, '')
+            .replace(/<[^>]+>/g, '')
+            .trim();
+        }
+
+        if (part.questionSections) {
+          part.questionSections.forEach(section => {
+            if (section.type === 'gap-fill' && section.summaryText) {
+              // Extract mini text with gaps
+              formData.part5.miniText = section.summaryText
+                .replace(/<p>/g, '')
+                .replace(/<\/p>/g, '\n')
+                .replace(/<span class="gap-input"[^>]*>___\(\d+\)___<\/span>/g, (match) => {
+                  const num = match.match(/\((\d+)\)/)[1];
+                  // Renumber from 30-33 to 1-4
+                  const newNum = parseInt(num) - 29;
+                  return `(${newNum})`;
+                })
+                .replace(/<[^>]+>/g, '')
+                .trim();
+
+              // Extract gap fill answers (questions 30-33 → indices 0-3, but we need 5 total)
+              if (part.answers) {
+                [30, 31, 32, 33].forEach((qId, index) => {
+                  if (part.answers[qId]) {
+                    answers.part5Mini[index] = part.answers[qId][0] || '';
+                  }
+                });
+              }
+            } else if (section.type === 'mcq' && section.questions) {
+              // Multiple Choice Questions (up to 2)
+              section.questions.forEach((q, qIndex) => {
+                if (qIndex < 2) {
+                  formData.part5.multipleChoice[qIndex] = {
+                    question: q.text || '',
+                    options: q.options ? q.options.map(opt => opt.text || '') : ['', '', '', '']
+                  };
+                  
+                  // Extract MC answers
+                  const qId = q.id;
+                  if (part.answers && part.answers[qId]) {
+                    answers.part5MC[qIndex] = part.answers[qId][0] || '';
+                  }
+                }
+              });
+            }
+          });
+        }
+        break;
+
+      default:
+        console.log(`Unknown part number: ${part.partNumber}`);
+    }
+  });
+
+  return { formData, answers };
+}
 
 /* ===================== FILE PARSER ===================== */
 
@@ -9,14 +270,56 @@ function parseFileContent(fileContent, fileName) {
         if (fileName.endsWith('.json')) {
             return JSON.parse(fileContent);
         } else if (fileName.endsWith('.csv')) {
-            // CSV parser - custom format
             return parseCSV(fileContent);
+        } else if (fileName.endsWith('.js')) {
+            // Handle .js file with CEFR test data
+            try {
+              // Extract the object literal from the JS file
+              // Look for window.CEFR_READING_TEST = { ... };
+              const match = fileContent.match(/window\.CEFR_READING_TEST\s*=\s*(\{[\s\S]*\});?\s*$/m);
+              
+              if (!match) {
+                alert("JS faylda CEFR_READING_TEST topilmadi");
+                return null;
+              }
+
+              // Clean the extracted string - remove trailing semicolon and whitespace
+              let objectString = match[1].trim();
+              if (objectString.endsWith(';')) {
+                objectString = objectString.slice(0, -1);
+              }
+
+              // Parse as JSON (with some preprocessing for JS object notation)
+              // Replace single quotes with double quotes for JSON compatibility
+              objectString = objectString
+                .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?\s*:/g, '"$2":') // keys to double quotes
+                .replace(/:\s*'([^']*)'/g, ': "$1"') // single quote values to double quotes
+                .replace(/,(\s*[}\]])/g, '$1'); // remove trailing commas
+
+              try {
+                const cefrData = JSON.parse(objectString);
+                return convertCEFRTestToFormData(cefrData);
+              } catch (parseError) {
+                // If JSON parse fails, try eval as last resort (in a safe way)
+                console.error('JSON parse failed, trying alternative method:', parseError);
+                
+                // Create an isolated function to extract the data
+                const extractData = new Function('return ' + match[1]);
+                const cefrData = extractData();
+                return convertCEFRTestToFormData(cefrData);
+              }
+            } catch (error) {
+              console.error('Error parsing JS file:', error);
+              alert("JS fayl formatida xatolik: " + error.message);
+              return null;
+            }
         } else {
-            alert("Faqat .json yoki .csv fayllar qabul qilinadi");
+            alert("Faqat .json, .csv yoki .js fayllar qabul qilinadi");
             return null;
         }
     } catch (error) {
         alert("Fayl parse qilishda xato: " + error.message);
+        console.error('Parse error:', error);
         return null;
     }
 }
@@ -55,7 +358,6 @@ function parseCSV(csvContent) {
             while (i < lines.length && !lines[i].startsWith('[')) {
                 const qLine = lines[i].trim();
                 if (qLine && !qLine.startsWith('#')) {
-                    // Format: text|Text with (1) (2) (3) etc|answers|word1;word2;word3;word4;word5;word6
                     const parts = qLine.split('|');
                     const parsed = {};
                     for (let j = 0; j < parts.length; j += 2) {
@@ -201,7 +503,6 @@ function parseCSV(csvContent) {
             while (i < lines.length && !lines[i].startsWith('[')) {
                 const qLine = lines[i].trim();
                 if (qLine && !qLine.startsWith('#')) {
-                    // Format: question|Q text|options|A;B;C;D
                     const parts = qLine.split('|');
                     const parsed = {};
                     for (let j = 0; j < parts.length; j += 2) {
@@ -375,7 +676,17 @@ export default function ReadingMockForm() {
         const parsedData = parseFileContent(content, file.name);
         
         if (parsedData) {
-          // Update form data from parsed file
+          // Check if it's from convertCEFRTestToFormData (has formData & answers)
+          if (parsedData.formData && parsedData.answers) {
+            setFormData(parsedData.formData);
+            setAnswers(parsedData.answers);
+            setShowAnswersSection(true);
+            setError('');
+            alert('✅ CEFR test fayli muvaffaqiyatli yuklandi! Barcha ma\'lumotlar to\'ldirildi.');
+            return;
+          }
+
+          // Otherwise it's CSV/JSON format
           const newFormData = {
             title: parsedData.title || formData.title,
             part1: {
@@ -614,7 +925,7 @@ export default function ReadingMockForm() {
     newAnswers[part][index] = value;
     setAnswers(newAnswers);
   };
-  // Function qo'shildi
+
   const getAuthHeaders = () => {
     const token = localStorage.getItem('access_token')
     return {
@@ -622,6 +933,7 @@ export default function ReadingMockForm() {
       ...(token && { 'Authorization': `Bearer ${token}` })
     }
   }
+
   const handleSubmit = async () => {
     setLoading(true);
     setError('');
@@ -719,16 +1031,16 @@ export default function ReadingMockForm() {
 
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900 dark:to-indigo-900 p-6 rounded-lg shadow-lg mb-6 border-2 border-blue-300 dark:border-blue-600">
         <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white flex items-center gap-2">
-          <span>⚡</span> CSV/JSON dan ma'lumot yuklash
+          <span>⚡</span> CSV/JSON/JS dan ma'lumot yuklash
         </h2>
         <div className="flex gap-4 flex-wrap">
           <label className="flex-1 min-w-xs relative cursor-pointer">
             <span className="block w-full p-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 text-center transition shadow-md hover:shadow-lg transform hover:scale-105">
-              📁 CSV/JSON fayl tanlang
+              📁 CSV/JSON/JS fayl tanlang
             </span>
             <input
               type="file"
-              accept=".csv,.json"
+              accept=".csv,.json,.js"
               onChange={handleFileUpload}
               className="hidden"
             />
@@ -740,7 +1052,7 @@ export default function ReadingMockForm() {
         </div>
         <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-800 rounded border-l-4 border-blue-600">
           <p className="text-sm text-gray-700 dark:text-gray-200">
-            <strong>💡 Maslahat:</strong> READING_MOCK_TEMPLATE.csv yoki READING_MOCK_TEMPLATE.json fayllarini o'z ma'lumotingiz bilan to'ldiring va yuklayin.
+            <strong>💡 Maslahat:</strong> cefr-reading-test-01.js, CSV yoki JSON fayllarini o'z ma'lumotingiz bilan to'ldiring va yuklayin.
           </p>
         </div>
       </div>
