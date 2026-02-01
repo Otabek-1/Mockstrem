@@ -3,6 +3,9 @@ import logo from "./assets/logo.jpg"
 import { Link } from 'react-router-dom'
 import Aos from 'aos';
 import "aos/dist/aos.css";
+import { BookOpen, ChartArea, Command, GraduationCap, MessageCircle, Target, Trophy } from 'lucide-react';
+import { SiCoursera } from 'react-icons/si';
+import { GiTargetArrows } from 'react-icons/gi';
 
 export default function App() {
   const [dirx, setDirx] = useState(0);
@@ -460,37 +463,37 @@ export default function App() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {[
               {
-                icon: "🎯",
+                icon: <GiTargetArrows className='text-white'/>,
                 title: "Interactive Lessons",
                 description: "Engaging lessons that adapt to your learning style and progress with AI-powered personalization.",
                 gradient: "from-indigo-500 to-purple-600"
               },
               {
-                icon: "📚",
+                icon: <BookOpen className='text-white'/>,
                 title: "Practice Exercises",
                 description: "Thousands of exercises for grammar, reading, listening, and speaking with instant feedback.",
                 gradient: "from-pink-500 to-rose-600"
               },
               {
-                icon: "📊",
+                icon: <ChartArea className='text-white'/>,
                 title: "Progress Tracking",
                 description: "Track your improvements and achieve your goals faster with detailed analytics and insights.",
                 gradient: "from-green-500 to-teal-600"
               },
               {
-                icon: "🎓",
+                icon: <GraduationCap className='text-white text-xl'/>,
                 title: "Expert Content",
                 description: "Learn from professionally designed courses created by language experts and educators.",
                 gradient: "from-orange-500 to-yellow-600"
               },
               {
-                icon: "💬",
+                icon: <MessageCircle className='text-white' />,
                 title: "Community Support",
                 description: "Connect with learners worldwide, practice together, and get motivated by shared success.",
                 gradient: "from-blue-500 to-cyan-600"
               },
               {
-                icon: "🏆",
+                icon: <Trophy className='text-yellow-200' />,
                 title: "Certification Ready",
                 description: "Prepare for CEFR, IELTS, and other certifications with targeted practice and mock tests.",
                 gradient: "from-purple-500 to-indigo-600"
@@ -504,6 +507,7 @@ export default function App() {
               >
                 <div className={`w-16 h-16 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center mb-6 text-3xl`}>
                   {feature.icon}
+                  
                 </div>
                 <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4">{feature.title}</h3>
                 <p className="text-slate-600 leading-relaxed">{feature.description}</p>
