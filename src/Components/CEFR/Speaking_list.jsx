@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from "../../api";
 
 export default function SpeakingList({ isPremium = false }) {
+  const navigate = useNavigate();
   const [mockData, setMockData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -55,14 +56,26 @@ export default function SpeakingList({ isPremium = false }) {
 
         {!loading && mockData.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockData.map((mock) => (
+            {mockData.map((mock,index) => {
+              const canAccess = isPremium || index < 4;
+              return (
               <Link
                 key={mock.id}
                 to={`/mock/cefr/speaking/${mock.id}`}
-                className="block p-5 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer border border-gray-200 dark:border-gray-700 hover:scale-[1.02] transform"
+                onClick={(e) => {
+                  if (!canAccess) {
+                    e.preventDefault();
+                    alert("Premium mock. Please upgrade to access this mock.");
+                    navigate("/plans");
+                  }
+                }}
+                className={[
+                  "block p-5 bg-white dark:bg-gray-800 rounded-lg shadow-md transition-all border border-gray-200 dark:border-gray-700",
+                  canAccess ? "hover:shadow-lg cursor-pointer hover:scale-[1.02] transform" : "opacity-60 cursor-not-allowed",
+                ].join(" ")}
               >
                 <h5 className="font-semibold text-gray-800 dark:text-white text-lg">
-                  {mock.title || `Speaking Mock ${mock.id}`}
+                  {mock.title || `Speaking Mock ${index}`}
                 </h5>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                   {mock.questions?.["1.1"]?.[0]?.question_text
@@ -73,9 +86,12 @@ export default function SpeakingList({ isPremium = false }) {
                   <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full font-medium">
                     {mock.questions ? "8 Questions" : "Loading..."}
                   </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {canAccess ? "Free" : "Premium"}
+                  </span>
                 </div>
               </Link>
-            ))}
+            )})}
           </div>
         )}
       </div>

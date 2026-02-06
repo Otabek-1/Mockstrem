@@ -135,6 +135,12 @@ export default function Dashboard() {
     setOpenMenu((prev) => (prev === name ? null : name));
   };
 
+  const closeSidebarOnMobile = () => {
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  };
+
   // ─── Data fetch ─────────────────────────────────────────────
   useEffect(() => {
     setTheme("light");
@@ -236,7 +242,7 @@ export default function Dashboard() {
           "fixed z-50 md:z-30 md:static h-screen",
           sidebarOpen ? "w-72" : "w-0 md:w-20",
           "transition-all duration-300 ease-out",
-          "bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800",
+          "bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl md:backdrop-blur-none md:bg-gradient-to-b md:from-white md:to-gray-50 md:dark:from-gray-900 md:dark:to-gray-800",
           "shadow-2xl flex flex-col justify-between overflow-hidden",
           "border-r border-gray-200 dark:border-gray-700",
         ].join(" ")}
@@ -305,7 +311,10 @@ export default function Dashboard() {
                     } else {
                       setOpenMenu(null);
                     }
-                    if (item.name === "Home") setActive("home");
+                    if (item.name === "Home") {
+                      setActive("home");
+                      closeSidebarOnMobile();
+                    }
                   }}
                 >
                   {/* Left active pill */}
@@ -378,6 +387,7 @@ export default function Dashboard() {
                     setActive={(key) => {
                       setActive(key);
                       setFloatingMenu(null);
+                      closeSidebarOnMobile();
                     }}
                     toggleTheme={toggleTheme}
                     theme={theme}
@@ -422,6 +432,7 @@ export default function Dashboard() {
                               onClick={() => {
                                 setActive(key);
                                 setOpenMenu(null);
+                                closeSidebarOnMobile();
                               }}
                             >
                               {/* sub active dot */}

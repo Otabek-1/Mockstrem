@@ -84,8 +84,13 @@ export default function WritingList({ isPremium = false }) {
 
   const selectRandomTask = () => {
     if (mockData.length === 0) return
-    const randomIndex = Math.floor(Math.random() * mockData.length)
-    openTaskModal(mockData[randomIndex].id)
+    const accessibleMocks = isPremium ? mockData : mockData.slice(0, 4)
+    if (accessibleMocks.length === 0) {
+      alert("Premium mocks are locked. Please upgrade to access more.")
+      return
+    }
+    const randomIndex = Math.floor(Math.random() * accessibleMocks.length)
+    openTaskModal(accessibleMocks[randomIndex].id)
   }
 
   const closeMockModal = () => {
@@ -241,14 +246,26 @@ export default function WritingList({ isPremium = false }) {
 
           {!loading && mockData.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {mockData.map((mock) => (
+              {mockData.map((mock, index) => (
                 <div
-                  onClick={() => openTaskModal(mock.id)}
+                  onClick={() => {
+                    const canAccess = isPremium || index < 4
+                    if (!canAccess) {
+                      alert("Premium mock. Please upgrade to access this mock.")
+                      return
+                    }
+                    openTaskModal(mock.id)
+                  }}
                   key={mock.id}
-                  className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer border border-gray-200 dark:border-gray-700 hover:scale-105 transform"
+                  className={[
+                    "p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md transition-all border border-gray-200 dark:border-gray-700",
+                    isPremium || index < 4
+                      ? "hover:shadow-lg cursor-pointer hover:scale-105 transform"
+                      : "opacity-60 cursor-not-allowed",
+                  ].join(" ")}
                 >
                   <h5 className="font-semibold text-gray-800 dark:text-white">
-                    {mock.task1?.title || `Writing Task ${mock.id}`}
+                    {mock.task1?.title || `Writing Task ${index +1}`}
                   </h5>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                     {mock.task1?.description || "Complete this writing exercise"}
@@ -259,7 +276,9 @@ export default function WritingList({ isPremium = false }) {
                     >
                       {mock.task1?.difficulty || "Medium"}
                     </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Not solved</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {isPremium || index < 4 ? "Free" : "Premium"}
+                    </span>
                   </div>
                 </div>
               ))}

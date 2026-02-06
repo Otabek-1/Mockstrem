@@ -47,7 +47,12 @@ export default function ListeningList({ isPremium = false }) {
 
   const selectRandomMock = () => {
     if (!mocks.length) return
-    const random = mocks[Math.floor(Math.random() * mocks.length)]
+    const accessibleMocks = isPremium ? mocks : mocks.slice(0, 4)
+    if (!accessibleMocks.length) {
+      alert("Premium mocks are locked. Please upgrade to access more.")
+      return
+    }
+    const random = accessibleMocks[Math.floor(Math.random() * accessibleMocks.length)]
     openMock(random)
   }
 
@@ -96,11 +101,23 @@ export default function ListeningList({ isPremium = false }) {
 
       {!loading && !error && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {mocks.map((mock) => (
+          {mocks.map((mock, index) => (
             <div
               key={mock.id}
-              onClick={() => openMock(mock)}
-              className="cursor-pointer p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow hover:shadow-lg transition"
+              onClick={() => {
+                const canAccess = isPremium || index < 4
+                if (!canAccess) {
+                  alert("Premium mock. Please upgrade to access this mock.")
+                  return
+                }
+                openMock(mock)
+              }}
+              className={[
+                "p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow transition",
+                isPremium || index < 4
+                  ? "cursor-pointer hover:shadow-lg"
+                  : "opacity-60 cursor-not-allowed",
+              ].join(" ")}
             >
               <div className="flex items-center gap-3">
                 <FaVolumeUp className="text-blue-600 text-xl" />
@@ -110,6 +127,9 @@ export default function ListeningList({ isPremium = false }) {
                   </h3>
                   <p className="text-sm text-gray-500">
                     {getParts(mock).length} parts available
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {isPremium || index < 4 ? "Free" : "Premium"}
                   </p>
                 </div>
               </div>

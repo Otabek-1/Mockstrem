@@ -15,9 +15,13 @@ export default function WritingExam() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [leftPanelWidth, setLeftPanelWidth] = useState(50)
   const [isDragging, setIsDragging] = useState(false)
+  const [mobileSplit, setMobileSplit] = useState(52)
+  const [isMobileDragging, setIsMobileDragging] = useState(false)
+  const [activeTask, setActiveTask] = useState(null)
   const [expandedTask, setExpandedTask] = useState(null)
   const [user, setUser] = useState(null)
   const containerRef = useRef(null)
+  const mobileContainerRef = useRef(null)
   const nav = useNavigate()
   const { id } = useParams()
 
@@ -95,6 +99,50 @@ export default function WritingExam() {
     }
   }, [isDragging])
 
+  // Drag to resize panels on mobile (vertical)
+  useEffect(() => {
+    const handleMove = (clientY) => {
+      const container = mobileContainerRef.current
+      if (!container) return
+
+      const rect = container.getBoundingClientRect()
+      const newHeight = ((clientY - rect.top) / rect.height) * 100
+
+      if (newHeight > 25 && newHeight < 75) {
+        setMobileSplit(newHeight)
+      }
+    }
+
+    const handleMouseMove = (e) => {
+      if (!isMobileDragging) return
+      handleMove(e.clientY)
+    }
+
+    const handleTouchMove = (e) => {
+      if (!isMobileDragging || e.touches.length === 0) return
+      e.preventDefault()
+      handleMove(e.touches[0].clientY)
+    }
+
+    const handleEnd = () => {
+      setIsMobileDragging(false)
+    }
+
+    if (isMobileDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleEnd)
+      document.addEventListener('touchmove', handleTouchMove, { passive: false })
+      document.addEventListener('touchend', handleEnd)
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleEnd)
+      document.removeEventListener('touchmove', handleTouchMove)
+      document.removeEventListener('touchend', handleEnd)
+    }
+  }, [isMobileDragging])
+
   // Timer
   useEffect(() => {
     if (!examStarted || submitted || timeLeft === 0) return
@@ -139,6 +187,17 @@ export default function WritingExam() {
     })
   }
 
+  useEffect(() => {
+    if (activeTask) return
+    if (part === 2) {
+      setActiveTask('t2')
+      return
+    }
+    if (part === 1 || isFullMock) {
+      setActiveTask('t11')
+    }
+  }, [part, isFullMock, activeTask])
+
   // Expanded textarea modal component
   const ExpandedTextarea = ({ taskId, title, value, onClose, onSave }) => {
     return (
@@ -174,6 +233,168 @@ export default function WritingExam() {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  const isMobile = window.innerWidth < 1024
+
+  const availableTasks = () => {
+    if (isFullMock) return [
+      { id: 't11', label: '1.1' },
+      { id: 't12', label: '1.2' },
+      { id: 't2', label: '2' },
+    ]
+    if (part === 1) return [
+      { id: 't11', label: '1.1' },
+      { id: 't12', label: '1.2' },
+    ]
+    return [{ id: 't2', label: '2' }]
+  }
+
+  const renderMobileTaskContent = () => {
+    if (activeTask === 't2') {
+      return (
+        <div className={`rounded-2xl shadow-xl overflow-hidden transition-colors ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+          <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6">
+            <h2 className="text-2xl font-bold">âœï¸ PART 2</h2>
+            <p className="text-purple-100">Write a blog post.</p>
+          </div>
+          <div className="p-6">
+            <h3 className={`text-xl font-bold mb-3 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Post Topic</h3>
+            <p className={`p-4 rounded-lg border-l-4 border-purple-500 transition-colors ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-50 text-gray-700'}`}>
+              {mockData.task2.task2}
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className={`rounded-2xl shadow-xl overflow-hidden transition-colors ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
+          <h2 className="text-2xl font-bold">ğŸ“‹ PART 1</h2>
+          <p className="text-blue-100">Write two tasks.</p>
+        </div>
+        <div className="p-6 space-y-6">
+          <div className={`border-l-4 p-4 rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-blue-600' : 'bg-blue-50 border-blue-600'}`}>
+            <h3 className={`font-bold mb-2 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>ğŸ“Œ Scenario Context:</h3>
+            <p className={`leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-800'}`}>
+              {mockData.task1.scenario}
+            </p>
+          </div>
+
+          {activeTask === 't11' && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Task 1.1 - Note</h3>
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full transition-colors ${isDarkMode ? 'bg-purple-900 text-purple-200' : 'bg-purple-100 text-purple-700'}`}>~50 words</span>
+              </div>
+              <p className={`p-4 rounded-lg border-l-4 border-purple-500 transition-colors ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-50 text-gray-700'}`}>
+                {mockData.task1.task11}
+              </p>
+            </div>
+          )}
+
+          {activeTask === 't12' && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Task 1.2 - Letter</h3>
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full transition-colors ${isDarkMode ? 'bg-purple-900 text-purple-200' : 'bg-purple-100 text-purple-700'}`}>120-150 words</span>
+              </div>
+              <p className={`p-4 rounded-lg border-l-4 border-purple-500 transition-colors ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-50 text-gray-700'}`}>
+                {mockData.task1.task12}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const renderMobileWritingArea = () => {
+    if (activeTask === 't2') {
+      return (
+        <div className={`rounded-2xl shadow-xl overflow-hidden transition-colors ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+          <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-5">
+            <h2 className="text-xl font-bold">âœï¸ PART 2 - Writing</h2>
+          </div>
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Blog Post</h3>
+              <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <strong>Words:</strong> {wordCount(answers.t2)}/200
+              </span>
+            </div>
+            <textarea
+              value={answers.t2}
+              onChange={(e) => handleAnswerChange('t2', e.target.value)}
+              onContextMenu={(e) => e.preventDefault()}
+              className={`w-full h-48 p-4 border-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none resize-none font-serif transition-colors ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'border-gray-300'}`}
+              placeholder="Start typing your blog post here..."
+            />
+            <div className="mt-2 flex justify-end">
+              {wordCount(answers.t2) >= 180 && wordCount(answers.t2) <= 200 && (
+                <span className="text-sm text-green-600 font-semibold">âœ“ Within target</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className={`rounded-2xl shadow-xl overflow-hidden transition-colors ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-5">
+          <h2 className="text-xl font-bold">âœï¸ PART 1 - Writing</h2>
+        </div>
+        <div className="p-5">
+          {activeTask === 't11' && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`text-lg font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Task 1.1</h3>
+                <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <strong>Words:</strong> {wordCount(answers.t11)}/50
+                </span>
+              </div>
+              <textarea
+                value={answers.t11}
+                onChange={(e) => handleAnswerChange('t11', e.target.value)}
+                onContextMenu={(e) => e.preventDefault()}
+                className={`w-full h-40 p-4 border-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none resize-none font-serif transition-colors ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'border-gray-300'}`}
+                placeholder="Start typing your informal note here..."
+              />
+              <div className="mt-2 flex justify-end">
+                {wordCount(answers.t11) >= 45 && wordCount(answers.t11) <= 55 && (
+                  <span className="text-sm text-green-600 font-semibold">âœ“ Within target</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTask === 't12' && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`text-lg font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Task 1.2</h3>
+                <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <strong>Words:</strong> {wordCount(answers.t12)}/150
+                </span>
+              </div>
+              <textarea
+                value={answers.t12}
+                onChange={(e) => handleAnswerChange('t12', e.target.value)}
+                onContextMenu={(e) => e.preventDefault()}
+                className={`w-full h-48 p-4 border-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none resize-none font-serif transition-colors ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'border-gray-300'}`}
+                placeholder="Start typing your formal letter here..."
+              />
+              <div className="mt-2 flex justify-end">
+                {wordCount(answers.t12) >= 120 && wordCount(answers.t12) <= 150 && (
+                  <span className="text-sm text-green-600 font-semibold">âœ“ Within target</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -306,7 +527,51 @@ export default function WritingExam() {
 
       {/* Main Content */}
       <div className="flex-1 max-w-full mx-auto w-full px-4 py-8 overflow-hidden" ref={containerRef}>
-        <div className="flex gap-4 h-full flex-col lg:flex-row">
+        {isMobile ? (
+          <div className="flex flex-col gap-4 h-full" ref={mobileContainerRef}>
+            {/* Mobile Task Switcher */}
+            <div className="flex items-center gap-3">
+              {availableTasks().map((task) => (
+                <button
+                  key={task.id}
+                  onClick={() => setActiveTask(task.id)}
+                  className={`flex-1 py-3 rounded-xl font-bold border-2 transition ${activeTask === task.id
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg'
+                    : isDarkMode
+                      ? 'bg-gray-800 text-gray-200 border-gray-700'
+                      : 'bg-white text-gray-700 border-gray-200'
+                    }`}
+                >
+                  {task.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-3 flex-1 min-h-[60vh]">
+              <div
+                className="overflow-y-auto"
+                style={{ flex: `0 0 ${mobileSplit}%` }}
+              >
+                {renderMobileTaskContent()}
+              </div>
+
+              <div
+                onMouseDown={() => setIsMobileDragging(true)}
+                onTouchStart={() => setIsMobileDragging(true)}
+                className={`h-2 rounded-full cursor-row-resize transition-colors ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'}`}
+                title="Drag to resize"
+              />
+
+              <div
+                className="overflow-y-auto"
+                style={{ flex: `0 0 ${100 - mobileSplit}%` }}
+              >
+                {renderMobileWritingArea()}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-4 h-full flex-col lg:flex-row">
           {/* Left Panel - Tasks */}
           <div
             className={`overflow-y-auto transition-all duration-300`}
@@ -504,6 +769,7 @@ export default function WritingExam() {
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Expanded Textarea Modal */}
