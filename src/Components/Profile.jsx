@@ -239,10 +239,13 @@ export default function Profile() {
     try {
       setSessionLoading(true)
       const data = await getMyDevices()
-      setSessions(data)
+      // Ensure we have an array (empty or with sessions)
+      setSessions(Array.isArray(data) ? data : [])
     } catch (error) {
-      console.log("Error fetching sessions:", error)
-      alert("Failed to load active sessions")
+      console.error("Error fetching sessions:", error)
+      // Show alert but keep modal open so user can try again
+      alert("Failed to load active sessions. Please try again.")
+      setSessions([])  // Show empty state
     } finally {
       setSessionLoading(false)
     }

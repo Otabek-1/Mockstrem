@@ -51,7 +51,8 @@ export default function Auth() {
         try {
           await createSession();
         } catch (sessionErr) {
-          console.log("Session creation failed (non-critical):", sessionErr);
+          console.warn("Session creation failed - user may not appear in device list:", sessionErr);
+          // Non-critical: user is authenticated even if session wasn't tracked
         }
 
         nav("/dashboard");
@@ -72,7 +73,8 @@ export default function Auth() {
         try {
           await createSession();
         } catch (sessionErr) {
-          console.log("Session creation failed (non-critical):", sessionErr);
+          console.warn("Session creation failed - user may not appear in device list:", sessionErr);
+          // Non-critical: user is authenticated even if session wasn't tracked
         }
 
         nav("/dashboard");

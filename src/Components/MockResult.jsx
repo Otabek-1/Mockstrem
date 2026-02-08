@@ -19,7 +19,7 @@ export default function MockResult() {
       try {
         setLoading(true)
         // Result fetch - API response structure: { user_id, mock_id, task1, task2, created_at, id, result: {...} }
-        const resRes = await api.get(`/mock/writing/result/${resultId}?token=${localStorage.getItem("acces_token")}`)
+        const resRes = await api.get(`/mock/writing/result/${resultId}?token=${localStorage.getItem("access_token")}`)
         const fullResultData = resRes.data.mock
         setResult(fullResultData)
         

@@ -122,7 +122,7 @@ export default function Dashboard_admin() {
 
         {/* Logout */}
         <div className="absolute bottom-0 w-full p-4 border-t border-gray-700">
-          <div onClick={()=>{localStorage.removeItem("acces_token"); nav("/auth")}} className="flex items-center gap-3 hover:bg-red-600 p-3 rounded-lg cursor-pointer">
+          <div onClick={()=>{localStorage.removeItem("access_token"); nav("/auth")}} className="flex items-center gap-3 hover:bg-red-600 p-3 rounded-lg cursor-pointer">
             <FaSignOutAlt size={20} />
             {sidebarOpen && <span>Logout</span>}
           </div>

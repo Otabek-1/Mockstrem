@@ -315,12 +315,24 @@ export default function Users() {
       setSessionsLoading(true)
       // Backend should have endpoint: GET /sessions/user/{userId} 
       // va bu endpoint user sessions qaytaradi
-      const response = await api.get(`/sessions/user/${userId}`)
-      setUserSessions(response.data || [])
+      const response = await api.get(`/sessions/user/${userId}?token=${window.localStorage.getItem('access_token')}`)
+      setUserSessions(Array.isArray(response.data) ? response.data : [])
       setShowSessionsModal(true)
     } catch (error) {
-      console.log("Error fetching user sessions:", error)
-      alert("Failed to load user sessions")
+      console.error("Error fetching user sessions:", error)
+      
+      // Helpful error message for different cases
+      let errorMsg = "Failed to load user sessions."
+      if (error.response?.status === 404) {
+        errorMsg += " Endpoint /sessions/user/{id} not yet implemented in backend."
+        errorMsg += " Ask backend team to implement admin sessions endpoint."
+      } else if (error.response?.status === 403) {
+        errorMsg += " You don't have permission to view this user's sessions."
+      }
+      
+      alert(errorMsg)
+      setUserSessions([])
+      setShowSessionsModal(true)  // Still show modal so user can see error context
     } finally {
       setSessionsLoading(false)
     }
@@ -328,6 +340,7 @@ export default function Users() {
 
   // ✅ View user sessions
   const handleViewSessions = (user) => {
+    setSelectedUser(user)
     fetchUserSessions(user.id)
   }
 
@@ -656,8 +669,21 @@ export default function Users() {
                     </div>
                   </div>
                 ))
-              ) : (
+              ) : userSessions?.length === 0 ? (
                 <p className="text-center text-slate-500 py-8">No active sessions</p>
+              ) : (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                  <p className="font-semibold text-yellow-800">⚠️ Cannot Load Sessions</p>
+                  <p className="text-sm text-yellow-700 mt-2">
+                    The backend endpoint for viewing user sessions is not yet implemented.
+                  </p>
+                  <p className="text-sm text-yellow-700 mt-2">
+                    Backend team: See BACKEND_ENDPOINT_MISSING.md for implementation guide.
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-3">
+                    Endpoint needed: GET /sessions/user/{selectedUser?.id}
+                  </p>
+                </div>
               )}
             </div>
 

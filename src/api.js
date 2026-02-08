@@ -40,6 +40,13 @@ function setAccessToken(token) {
 }
 
 function logoutUser() {
+  // Try to notify backend about logout (best effort)
+  try {
+    api.delete("/sessions/logout").catch(() => {});
+  } catch (err) {
+    console.warn("Could not notify backend of logout", err);
+  }
+  
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
   window.location.href = "/auth"; // redirect
