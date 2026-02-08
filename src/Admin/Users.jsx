@@ -315,7 +315,7 @@ export default function Users() {
       setSessionsLoading(true)
       // Backend should have endpoint: GET /sessions/user/{userId} 
       // va bu endpoint user sessions qaytaradi
-      const response = await api.get(`/sessions/user/${userId}?token=${window.localStorage.getItem('access_token')}`)
+      const response = await api.get(`/sessions/user/${userId}`)
       setUserSessions(Array.isArray(response.data) ? response.data : [])
       setShowSessionsModal(true)
     } catch (error) {
