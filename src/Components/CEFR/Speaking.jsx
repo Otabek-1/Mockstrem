@@ -3,6 +3,7 @@ import { Mic, Play, Volume2, CheckCircle, Clock, AlertCircle, Download, Settings
 import api from '../../api'
 import JSZip from 'jszip'
 import { useParams } from 'react-router-dom'
+import AISpeakingResults from './AISpeakingResults'
 
 export default function CERFSpeakingExam() {
   const { id } = useParams("id")
@@ -46,6 +47,10 @@ export default function CERFSpeakingExam() {
   const micTestAudioChunksRef = useRef([])
   const recordedBlobsRef = useRef({})
 
+  // Premium & User states
+  const [isPremium, setIsPremium] = useState(false)
+  const [userInfo, setUserInfo] = useState(null)
+
   const enterFullscreen = () => {
     const elem = document.documentElement
 
@@ -67,11 +72,51 @@ export default function CERFSpeakingExam() {
   useEffect(() => {
     if (screen === 'results') {
       exitFullscreen()
+      // Fetch premium status when results screen is shown
+      const fetchUserInfo = async () => {
+        try {
+          const response = await api.get('/user/me')
+          console.log('📡 API Response:', response)
+          
+          // Handle different response structures
+          let userData = response.data?.userData || response.data?.data || response.data
+          
+          if (userData && typeof userData === 'object') {
+            console.log('👤 Full User Data:', userData)
+            setUserInfo(userData)
+            
+            // Check premium_duration field - PRIMARY METHOD
+            let isPrem = false
+            
+            if (userData.premium_duration) {
+              const expiryDate = new Date(userData.premium_duration)
+              const now = new Date()
+              isPrem = expiryDate > now
+              
+              console.log('⏰ PREMIUM_DURATION CHECK:')
+              console.log('   Expiry Date:', expiryDate.toISOString())
+              console.log('   Now:', now.toISOString())
+              console.log('   Is Premium?:', isPrem, '(Expiry > Now?)')
+              console.log('   Remaining:', Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24)), 'days')
+            } else {
+              console.log('⏰ PREMIUM_DURATION: NULL/UNDEFINED → FREE USER')
+            }
+            
+            console.log('✅ FINAL Premium Status:', isPrem ? '🟢 PREMIUM' : '🔴 FREE')
+            setIsPremium(isPrem)
+          } else {
+            console.error('❌ userData invalid:', userData)
+            setIsPremium(false)
+          }
+        } catch (err) {
+          console.error('❌ Error fetching user info:', err)
+          setIsPremium(false)
+        }
+      }
+      
+      fetchUserInfo()
     }
   }, [screen])
-
-
-  // ===== FETCH MOCKS =====
   useEffect(() => {
     const fetchMocks = async () => {
       try {
@@ -799,6 +844,19 @@ export default function CERFSpeakingExam() {
               </div>
             </div>
           )}
+
+          {/* AI Analysis Component - Premium Feature */}
+          <div className="mb-8">
+            <AISpeakingResults 
+              recordings={recordings}
+              mockData={mockData}
+              isPremium={isPremium}
+              currentPart={currentPart}
+              onResultsGenerated={(report) => {
+                console.log('AI Results Generated:', report)
+              }}
+            />
+          </div>
 
           {/* Recordings Grid - 8 Audio Items */}
           <div className="bg-white rounded-2xl shadow-2xl p-8 mb-8">
