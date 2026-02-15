@@ -39,7 +39,7 @@ You asked for **AI-powered Speaking exam scoring** with specific requirements:
 - Scoring based on IELTS standards
 - Error detection (grammar, spelling, vocab, non-English)
 - Feedback generation
-- API Key: `AIzaSyBrpcBmq46roJ5kRu3xa-zVrOUUt-zP8Bc`
+
 
 ---
 
@@ -159,7 +159,7 @@ You asked for **AI-powered Speaking exam scoring** with specific requirements:
 
 ### API Key (Already Set):
 ```
-API_KEY: AIzaSyBrpcBmq46roJ5kRu3xa-zVrOUUt-zP8Bc
+
 Model: gemini-1.5-flash
 Endpoint: Real-time transcription & scoring
 ```

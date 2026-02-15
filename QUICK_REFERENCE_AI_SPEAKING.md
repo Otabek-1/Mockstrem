@@ -89,7 +89,7 @@ const report = await generateSpeakingReport(score1, score2, score3)
 
 ## Environment Variables
 ```
-VITE_GEMINI_API_KEY=AIzaSyBrpcBmq46roJ5kRu3xa-zVrOUUt-zP8Bc
+
 VITE_API_BASE_URL=https://english-server-p7y6.onrender.com
 ```
 

@@ -164,7 +164,7 @@ const response = await axios.post(
 
 ```javascript
 // Already configured in geminiService.js
-const GEMINI_API_KEY = 'AIzaSyBrpcBmq46roJ5kRu3xa-zVrOUUt-zP8Bc'
+
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
 ```
 
