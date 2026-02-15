@@ -1,6 +1,28 @@
 // Gemini AI Service for Speaking Exam Scoring
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+let GEMINI_API_KEY = null;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const BACKEND_KEY_URL = 'https://davirbek.alwaysdata.net/key?model=gemini';
+
+/**
+ * Fetch Gemini API key from backend
+ */
+const getGeminiKeyFromBackend = async () => {
+  if (GEMINI_API_KEY) return GEMINI_API_KEY; // Return cached key if available
+  try {
+    const response = await fetch(BACKEND_KEY_URL, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!response.ok) throw new Error(`Backend error: ${response.status}`);
+    const data = await response.json();
+    GEMINI_API_KEY = data.key;
+    if (!GEMINI_API_KEY) throw new Error('No API key received from backend');
+    return GEMINI_API_KEY;
+  } catch (error) {
+    console.error('Failed to fetch Gemini API key from backend:', error);
+    throw new Error('Could not retrieve API key from backend: ' + error.message);
+  }
+};
 
 /**
  * Convert audio blob to base64
@@ -22,10 +44,11 @@ export const blobToBase64 = async (blob) => {
  */
 export const transcribeAudio = async (audioBlob) => {
   try {
+    const key = await getGeminiKeyFromBackend();
     const base64Audio = await blobToBase64(audioBlob);
     
     const response = await fetch(
-      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+      `${GEMINI_API_URL}?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,6 +99,7 @@ export const scoreSpeakingTask = async (
   scenarioInfo = ''
 ) => {
   try {
+    const key = await getGeminiKeyFromBackend();
     const prompt = `You are an expert IELTS Speaking examiner following STRICT scoring rules.
 
 ⚠️ SCORING RULES - USE WHOLE NUMBERS ONLY:
@@ -135,7 +159,7 @@ Analyze this response and respond in THIS EXACT JSON FORMAT:
 }`;
 
     const response = await fetch(
-      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+      `${GEMINI_API_URL}?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
