@@ -334,9 +334,24 @@ export default function CERFSpeakingExam() {
   }
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-    }
+    return new Promise((resolve) => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        const recorder = mediaRecorderRef.current
+        
+        // Setup onstop handler before stopping
+        const originalOnStop = recorder.onstop
+        recorder.onstop = (e) => {
+          // Call original onstop handler
+          if (originalOnStop) originalOnStop.call(recorder, e)
+          // Resolve promise after blob is saved
+          resolve()
+        }
+        
+        recorder.stop()
+      } else {
+        resolve()
+      }
+    })
   }
 
   // ===== MIC TEST FUNCTIONS =====
@@ -421,9 +436,11 @@ export default function CERFSpeakingExam() {
               startRecording(q2.id)
             }
           } else if (stage === 'speaking') {
-            stopRecording()
-            playLongBeep()
-            moveToNext()
+            (async () => {
+              await stopRecording()
+              playLongBeep()
+              moveToNext()
+            })()
           }
           return 0
         }
@@ -505,9 +522,11 @@ export default function CERFSpeakingExam() {
         e.preventDefault()
         if (screen === 'exam' && mockData) {
           if (stage === 'speaking') {
-            stopRecording()
-            playLongBeep()
-            setTimeout(() => moveToNext(), 100)
+            (async () => {
+              await stopRecording()
+              playLongBeep()
+              moveToNext()
+            })()
           } else if (stage === 'idle' || stage === 'reading' || stage === 'preparing') {
             moveToNext()
           }
