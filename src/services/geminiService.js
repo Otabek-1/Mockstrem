@@ -1,5 +1,5 @@
 // Gemini AI Service for Speaking Exam Scoring
-const GEMINI_API_KEY = 'AIzaSyBrpcBmq46roJ5kRu3xa-zVrOUUt-zP8Bc';
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 /**
