@@ -131,7 +131,7 @@ export default function Main() {
                         <div
                             key={slide.id}
                             onClick={() => goToSlide(index)}
-                            className={`p-6 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 ${
+                            className={`p-6 rounded-xl cursor-pointer max-h-30 overflow-hidden transition-all duration-300 transform hover:scale-105 ${
                                 index === currentSlide
                                     ? 'bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 text-white shadow-2xl'
                                     : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white hover:shadow-lg'
