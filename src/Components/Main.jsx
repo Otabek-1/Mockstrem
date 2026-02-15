@@ -56,10 +56,11 @@ export default function Main() {
                 {/* Carousel Container */}
                 <div className="relative w-full h-96 rounded-2xl overflow-hidden shadow-2xl dark:shadow-cyan-500/20 group">
                     {/* Slides */}
-                    <div className="relative w-full h-full">
+                    <div className="relative w-full h-full z-0">
                         {slides.map((slide, index) => (
-                            <div
+                            <Link
                                 key={slide.id}
+                                to={`/news/${slide.slug}`}
                                 className={`absolute w-full h-full transition-all duration-1000 ease-in-out ${
                                     index === currentSlide 
                                         ? 'opacity-100 scale-100' 
@@ -67,12 +68,12 @@ export default function Main() {
                                 }`}
                             >
                                 {/* Gradient Background - Chiroyli */}
-                                <div className='w-full h-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 dark:from-blue-700 dark:via-purple-800 dark:to-pink-700' />
+                                <div className='absolute inset-0 w-full h-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 dark:from-blue-700 dark:via-purple-800 dark:to-pink-700 z-0' />
 
                                 {/* Content */}
-                                <div className="absolute inset-0 flex flex-col justify-between p-8 text-white">
+                                <div className="absolute inset-0 flex flex-col justify-between p-8 text-white z-20 overflow-hidden">
                                     {/* Top Section */}
-                                    <div className="flex justify-between items-start">
+                                    <div className="flex justify-between items-start flex-shrink-0">
                                         <div>
                                             <p className="text-sm font-semibold text-cyan-200 uppercase tracking-wider">📰 Featured News</p>
                                         </div>
@@ -82,35 +83,32 @@ export default function Main() {
                                     </div>
 
                                     {/* Bottom Section */}
-                                    <div className="space-y-3 animate-fade-in">
-                                        <h2 className="text-5xl font-bold leading-tight drop-shadow-lg">{slide.title}</h2>
-                                        <div className="text-lg text-blue-100 drop-shadow-md line-clamp-3" dangerouslySetInnerHTML={{ __html: slide.body }}></div>
-                                        <Link to={`/news/${slide.slug}`} className="mt-6 px-8 py-3 bg-white text-purple-600 rounded-lg font-bold hover:shadow-lg hover:shadow-white/50 transition-all duration-300 w-fit hover:scale-105 transform">
-                                            Read more
-                                        </Link>
+                                    <div className="space-y-3 animate-fade-in flex flex-col">
+                                        <h2 className="text-5xl font-bold leading-tight drop-shadow-lg flex-shrink-0">{slide.title}</h2>
+                                        <div className="text-lg text-blue-100 drop-shadow-md line-clamp-3 flex-shrink-0" dangerouslySetInnerHTML={{ __html: slide.body }}></div>
                                     </div>
                                 </div>
-                            </div>
+                            </Link>
                         ))}
                     </div>
 
                     {/* Navigation Arrows */}
                     <button
                         onClick={prevSlide}
-                        className="absolute left-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white p-3 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100"
+                        className="absolute left-4 top-1/2 transform -translate-y-1/2 z-50 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white p-3 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100"
                     >
                         <FaChevronLeft size={20} />
                     </button>
 
                     <button
                         onClick={nextSlide}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white p-3 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100"
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 z-50 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white p-3 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100"
                     >
                         <FaChevronRight size={20} />
                     </button>
 
                     {/* Pagination Dots */}
-                    <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-20 flex gap-3">
+                    <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex gap-3">
                         {slides.map((_, index) => (
                             <button
                                 key={index}
