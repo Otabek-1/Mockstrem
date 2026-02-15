@@ -3,7 +3,6 @@ import { Mic, Play, Volume2, CheckCircle, Clock, AlertCircle, Download, Settings
 import api from '../../api'
 import JSZip from 'jszip'
 import { useParams } from 'react-router-dom'
-import AISpeakingResults from './AISpeakingResults'
 
 export default function CERFSpeakingExam() {
   const { id } = useParams("id")
@@ -876,17 +875,10 @@ export default function CERFSpeakingExam() {
             </p>
           </div>
 
-          {/* AI Analysis Component - Premium Feature */}
-          <div className="mb-8">
-            <AISpeakingResults 
-              recordings={recordings}
-              mockData={mockData}
-              isPremium={isPremium}
-              currentPart={currentPart}
-              onResultsGenerated={(report) => {
-                console.log('AI Results Generated:', report)
-              }}
-            />
+          {/* AI Analysis Component - Coming Soon */}
+          <div className="mb-8 bg-blue-50 border-2 border-blue-300 rounded-2xl p-8 text-center">
+            <h3 className="text-2xl font-bold text-blue-900 mb-2">🚀 AI Analysis - Coming Soon</h3>
+            <p className="text-blue-700">Detailed AI-powered feedback and scoring will be available soon!</p>
           </div>
 
           {/* Recordings Grid - 8 Audio Items */}
