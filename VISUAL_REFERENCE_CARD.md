@@ -411,7 +411,7 @@ Requires:
 Required:
 ═════════════════════════════════════════════════════
 
-GEMINI_API_KEY = "AIzaSyBrpcBmq46roJ5kRu3xa-zVrOUUt-zP8Bc"
+
 API_BASE_URL = "https://english-server-p7y6.onrender.com"
 
 Optional (For production):
@@ -431,7 +431,7 @@ NODE_ENV = "production"
 npm list axios
 
 # Test Gemini API
-curl -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyBrpcBmq46roJ5kRu3xa-zVrOUUt-zP8Bc" \
+curl -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?
   -H "Content-Type: application/json" \
   -d '{"contents":[{"parts":[{"text":"Hello"}]}]}'
 
