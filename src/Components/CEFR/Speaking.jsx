@@ -821,6 +821,28 @@ export default function CERFSpeakingExam() {
 
   // ===== RENDER: RESULTS SCREEN =====
   if (screen === 'results') {
+    // Show full loading screen while uploading
+    if (uploading) {
+      return (
+        <div className="min-h-screen bg-white flex items-center justify-center p-4">
+          <div className="text-center max-w-md">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+              <h3 className="text-xl font-bold text-slate-800">
+                Your results are being received, please wait
+              </h3>
+            </div>
+            <p className="text-slate-600 mb-8">(It can take up to 1 minute)</p>
+            <div className="space-y-2">
+              <p className="text-sm text-slate-500">• Uploading your recordings...</p>
+              <p className="text-sm text-slate-500">• Processing your submission...</p>
+              <p className="text-sm text-slate-500">• Sending to the backend...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 py-8">
         <div className="max-w-6xl mx-auto">
@@ -831,19 +853,9 @@ export default function CERFSpeakingExam() {
             <h2 className="text-4xl font-bold text-white mb-2">Exam Completed!</h2>
             <p className="text-slate-300 mb-2">Thank you for taking the CEFR Speaking Exam</p>
             <p className="text-slate-400 text-sm">
-              {uploading ? 'Uploading your recordings...' : 'Your performance has been recorded'}
+              Your performance has been recorded
             </p>
           </div>
-
-          {/* Uploading Indicator */}
-          {uploading && (
-            <div className="bg-blue-50 border border-blue-400 rounded-lg p-4 mb-6 max-w-2xl mx-auto">
-              <div className="flex items-center gap-3 justify-center">
-                <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                <span className="text-blue-700">Processing your submission...</span>
-              </div>
-            </div>
-          )}
 
           {/* AI Analysis Component - Premium Feature */}
           <div className="mb-8">

@@ -212,10 +212,10 @@ export default function AISpeakingResults({
           <div className="flex items-center justify-center gap-3 mb-6">
             <Loader className="w-8 h-8 text-blue-600 animate-spin" />
             <h3 className="text-xl font-bold text-slate-800">
-              Analyzing your speaking responses...
+              Your results are being received, please wait
             </h3>
           </div>
-          <p className="text-slate-600 mb-4">This may take a minute as we transcribe and score each part</p>
+          <p className="text-slate-600 mb-4">(It can take up to 1 minute)</p>
           <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
             <div
               className="bg-blue-600 h-2 transition-all duration-500"
