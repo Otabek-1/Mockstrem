@@ -634,7 +634,7 @@ export default function WritingExam() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 max-w-full mx-auto w-full px-4 py-8 overflow-hidden" ref={containerRef}>
+      <div className={`flex-1 max-w-full mx-auto w-full px-4 py-8 overflow-hidden ${isMobile ? 'pb-28' : ''}`} ref={containerRef}>
         {isMobile ? (
           <div className="flex flex-col gap-4 h-full" ref={mobileContainerRef}>
             {/* Mobile Task Switcher */}
@@ -677,6 +677,17 @@ export default function WritingExam() {
                 {renderMobileWritingArea()}
               </div>
             </div>
+
+            {timeLeft <= 300 && (
+              <div className={`rounded-xl p-4 border-l-4 animate-pulse transition-colors ${isDarkMode ? 'bg-red-900/20 border-red-600' : 'bg-red-50 border-red-600'}`}>
+                <h3 className={`font-bold mb-1 flex items-center gap-2 ${isDarkMode ? 'text-red-300' : 'text-red-800'}`}>
+                  <span>Time Alert</span>
+                </h3>
+                <p className={`text-sm ${isDarkMode ? 'text-red-200' : 'text-red-700'}`}>
+                  Less than 5 minutes remaining. Review your answers and submit!
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex gap-4 h-full flex-col lg:flex-row">
@@ -880,6 +891,17 @@ export default function WritingExam() {
         )}
       </div>
 
+      {isMobile && (
+        <div className={`fixed bottom-0 left-0 right-0 border-t p-4 shadow-2xl z-40 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <button
+            onClick={handleSubmit}
+            className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold text-lg rounded-xl shadow-lg transition-all duration-300"
+          >
+            Submit Exam
+          </button>
+        </div>
+      )}
+
       {/* Expanded Textarea Modal */}
       {expandedTask === 't11' && (
         <ExpandedTextarea
@@ -927,4 +949,3 @@ export default function WritingExam() {
     </div>
   )
 }
-
