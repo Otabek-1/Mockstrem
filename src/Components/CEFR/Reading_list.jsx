@@ -304,7 +304,7 @@ export default function ReadingList({ isPremium = false }) {
                   ].join(" ")}
                 >
                   <h5 className="font-semibold text-gray-800 dark:text-white">
-                    {mock.part1?.title || `Reading Task ${mock.id}`}
+                    { `Reading Task ${index+1}`}
                   </h5>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                     {mock.part1?.description || "Complete this reading exercise"}

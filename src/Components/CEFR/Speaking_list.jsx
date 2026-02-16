@@ -75,7 +75,7 @@ export default function SpeakingList({ isPremium = false }) {
                 ].join(" ")}
               >
                 <h5 className="font-semibold text-gray-800 dark:text-white text-lg">
-                  {mock.title || `Speaking Mock ${index}`}
+                  {`Speaking Mock ${index+1}`}
                 </h5>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                   {mock.questions?.["1.1"]?.[0]?.question_text
