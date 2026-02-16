@@ -3,6 +3,7 @@ import { Mic, Play, Volume2, CheckCircle, Clock, AlertCircle, Download, Settings
 import api from '../../api'
 import JSZip from 'jszip'
 import { useParams } from 'react-router-dom'
+import { runSpeakingGeminiAnalysis, transcribeAudioWithGemini } from '../../services/geminiService'
 
 export default function CERFSpeakingExam() {
   const { id } = useParams("id")
@@ -36,6 +37,11 @@ export default function CERFSpeakingExam() {
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiStatus, setAiStatus] = useState('')
+  const [aiError, setAiError] = useState('')
+  const [aiResult, setAiResult] = useState('')
+  const [aiTranscriptions, setAiTranscriptions] = useState([])
 
   // Refs
   const mediaRecorderRef = useRef(null)
@@ -45,10 +51,42 @@ export default function CERFSpeakingExam() {
   const micTestStreamRef = useRef(null)
   const micTestAudioChunksRef = useRef([])
   const recordedBlobsRef = useRef({})
+  const aiRequestedRef = useRef(false)
 
   // Premium & User states
   const [isPremium, setIsPremium] = useState(false)
   const [userInfo, setUserInfo] = useState(null)
+  const parsePremiumExpiry = (rawPremiumDuration) => {
+    if (rawPremiumDuration === null || rawPremiumDuration === undefined || rawPremiumDuration === '') {
+      return null
+    }
+
+    let dateValue = null
+
+    if (rawPremiumDuration instanceof Date) {
+      dateValue = rawPremiumDuration
+    } else if (typeof rawPremiumDuration === 'number') {
+      const ms = rawPremiumDuration < 1000000000000 ? rawPremiumDuration * 1000 : rawPremiumDuration
+      dateValue = new Date(ms)
+    } else if (typeof rawPremiumDuration === 'string') {
+      const trimmed = rawPremiumDuration.trim()
+      if (!trimmed) return null
+
+      if (/^\d+$/.test(trimmed)) {
+        const num = Number(trimmed)
+        const ms = num < 1000000000000 ? num * 1000 : num
+        dateValue = new Date(ms)
+      } else {
+        dateValue = new Date(trimmed)
+      }
+    }
+
+    if (!dateValue || Number.isNaN(dateValue.getTime())) {
+      return null
+    }
+
+    return dateValue
+  }
 
   const enterFullscreen = () => {
     const elem = document.documentElement
@@ -69,52 +107,29 @@ export default function CERFSpeakingExam() {
   }
 
   useEffect(() => {
-    if (screen === 'results') {
-      exitFullscreen()
-      // Fetch premium status when results screen is shown
-      const fetchUserInfo = async () => {
-        try {
-          const response = await api.get('/user/me')
-          console.log('📡 API Response:', response)
-          
-          // Handle different response structures
-          let userData = response.data?.userData || response.data?.data || response.data
-          
-          if (userData && typeof userData === 'object') {
-            console.log('👤 Full User Data:', userData)
-            setUserInfo(userData)
-            
-            // Check premium_duration field - PRIMARY METHOD
-            let isPrem = false
-            
-            if (userData.premium_duration) {
-              const expiryDate = new Date(userData.premium_duration)
-              const now = new Date()
-              isPrem = expiryDate > now
-              
-              console.log('⏰ PREMIUM_DURATION CHECK:')
-              console.log('   Expiry Date:', expiryDate.toISOString())
-              console.log('   Now:', now.toISOString())
-              console.log('   Is Premium?:', isPrem, '(Expiry > Now?)')
-              console.log('   Remaining:', Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24)), 'days')
-            } else {
-              console.log('⏰ PREMIUM_DURATION: NULL/UNDEFINED → FREE USER')
-            }
-            
-            console.log('✅ FINAL Premium Status:', isPrem ? '🟢 PREMIUM' : '🔴 FREE')
-            setIsPremium(isPrem)
-          } else {
-            console.error('❌ userData invalid:', userData)
-            setIsPremium(false)
-          }
-        } catch (err) {
-          console.error('❌ Error fetching user info:', err)
+    if (screen !== 'results') return
+
+    exitFullscreen()
+    const fetchUserInfo = async () => {
+      try {
+        const response = await api.get('/user/me')
+        const userData = response.data?.userData || response.data?.data || response.data
+
+        if (userData && typeof userData === 'object') {
+          setUserInfo(userData)
+          const expiryDate = parsePremiumExpiry(userData.premium_duration)
+          const now = new Date()
+          const isPrem = !!expiryDate && expiryDate.getTime() > now.getTime()
+          setIsPremium(isPrem)
+        } else {
           setIsPremium(false)
         }
+      } catch (err) {
+        setIsPremium(false)
       }
-      
-      fetchUserInfo()
     }
+
+    fetchUserInfo()
   }, [screen])
   useEffect(() => {
     const fetchMocks = async () => {
@@ -474,6 +489,113 @@ export default function CERFSpeakingExam() {
     }
   }
 
+  const orderedParts = ['1.1', '1.2', '2', '3']
+
+  const getOrderedQuestions = () => {
+    if (!mockData) return []
+    return orderedParts.flatMap(part => (mockData[part] || []))
+  }
+
+  const buildQuestionPromptText = (question, idx) => {
+    const number = idx + 1
+    const baseText = question?.question_text || `Question ${number}`
+    const bullets = Array.isArray(question?.bullets) ? question.bullets : []
+    const forPoints = Array.isArray(question?.for_points) ? question.for_points : []
+    const againstPoints = Array.isArray(question?.against_points) ? question.against_points : []
+
+    if (bullets.length > 0) return `Question ${number}: ${baseText}. ${bullets.join(' ')}`
+    if (forPoints.length > 0 || againstPoints.length > 0) {
+      return `Question ${number}: ${baseText}. FOR: ${forPoints.join('; ')}. AGAINST: ${againstPoints.join('; ')}`
+    }
+    return `Question ${number}: ${baseText}`
+  }
+
+  const fetchImageBlobsForAnalysis = async (questions) => {
+    const imageUrls = []
+    questions.forEach((question) => {
+      const urls = []
+      if (Array.isArray(question?.images)) urls.push(...question.images)
+      if (question?.image_url) urls.push(question.image_url)
+
+      urls.forEach((url) => {
+        if (url && typeof url === 'string' && !imageUrls.includes(url)) imageUrls.push(url)
+      })
+    })
+
+    const blobs = []
+    for (const url of imageUrls) {
+      try {
+        const response = await fetch(url)
+        if (response.ok) blobs.push(await response.blob())
+      } catch (e) {
+        // ignore image fetch failures
+      }
+    }
+    return blobs
+  }
+
+  const parseAiScores = (text) => {
+    if (!text) return null
+    const part11 = text.match(/Part\s*1\.1\s*\(Q1-3\)\s*:\s*([0-9]+)\s*\/\s*5/i)?.[1] || '-'
+    const part12 = text.match(/Part\s*1\.2\s*\(Q4-6\)\s*:\s*([0-9]+)\s*\/\s*5/i)?.[1] || '-'
+    const part2 = text.match(/Part\s*2\s*\(Q7\)\s*:\s*([0-9]+)\s*\/\s*5/i)?.[1] || '-'
+    const part3 = text.match(/Part\s*3\s*\(Q8\)\s*:\s*([0-9]+)\s*\/\s*6/i)?.[1] || '-'
+    const raw = text.match(/TOTAL\s*RAW\s*SCORE\s*:\s*([0-9]+)\s*\/\s*21/i)?.[1] || '-'
+    const certificate = text.match(/CERTIFICATE\s*SCORE\s*:\s*([0-9]+)\s*\/\s*75/i)?.[1] || '-'
+    const cefr = text.match(/CEFR\s*LEVEL\s*:\s*([A-Za-z0-9\s-]+)/i)?.[1]?.trim() || '-'
+    return { part11, part12, part2, part3, raw, certificate, cefr }
+  }
+
+  const runAiAnalysis = async () => {
+    if (!mockData) return
+    const questions = getOrderedQuestions()
+    if (!questions.length) return
+
+    setAiLoading(true)
+    setAiError('')
+    setAiResult('')
+    setAiTranscriptions([])
+
+    try {
+      setAiStatus('Preparing questions...')
+      const candidateName = userInfo?.full_name || userInfo?.name || userInfo?.username || userInfo?.email || 'Candidate'
+      const questionTexts = questions.map((q, idx) => buildQuestionPromptText(q, idx))
+      const transcriptions = []
+
+      for (let i = 0; i < questions.length; i += 1) {
+        const q = questions[i]
+        const blob = recordedBlobsRef.current[`q${q.id}`]
+        const qNum = i + 1
+        setAiStatus(`Transcribing Q${qNum} (${qNum}/${questions.length})...`)
+
+        if (!blob) {
+          transcriptions.push({ questionNum: qNum, text: '[No recording found]' })
+          continue
+        }
+
+        try {
+          const text = await transcribeAudioWithGemini(blob, blob.type || 'audio/webm')
+          transcriptions.push({ questionNum: qNum, text: text || '[No speech detected]' })
+        } catch (e) {
+          transcriptions.push({ questionNum: qNum, text: '[Transcription failed]' })
+        }
+      }
+
+      setAiTranscriptions(transcriptions)
+      setAiStatus('Loading image context...')
+      const imageBlobs = await fetchImageBlobsForAnalysis(questions)
+      setAiStatus('Analyzing with Gemini...')
+      const analysisText = await runSpeakingGeminiAnalysis({ transcriptions, questionTexts, candidateName, imageBlobs })
+      if (!analysisText) throw new Error('Empty AI response')
+      setAiResult(analysisText)
+      setAiStatus('Completed')
+    } catch (analysisError) {
+      setAiError(analysisError?.message || 'AI analysis failed')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   const startQuestion = async () => {
     const q = getCurrentQuestion()
     if (!q) return
@@ -514,6 +636,17 @@ export default function CERFSpeakingExam() {
     }
   }, [])
 
+  useEffect(() => {
+    if (screen !== 'results') {
+      aiRequestedRef.current = false
+      return
+    }
+    if (!isPremium || uploading) return
+    if (aiRequestedRef.current) return
+    aiRequestedRef.current = true
+    runAiAnalysis()
+  }, [screen, mockData, isPremium, uploading])
+
   // ===== DEV SHORTCUT: Ctrl+Alt+P =====
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -544,6 +677,7 @@ export default function CERFSpeakingExam() {
     try {
       setUploading(true)
       setError('')
+      setScreen('results')
 
       // Calculate total duration
       let total = 0
@@ -565,20 +699,18 @@ export default function CERFSpeakingExam() {
 
       // console.log('📤 Submitting exam with', Object.keys(recordedBlobsRef.current).length, 'audios')
 
-      const response = await api.post('/mock/speaking/submit', formData, {
+      await api.post('/mock/speaking/submit', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       })
 
-      // console.log('✅ Exam submitted successfully:', response.data)
-      setScreen('results')
       setUploading(false)
     } catch (err) {
       const errorMsg = err.response?.data?.detail || err.response?.data?.message || err.message
       setError('Failed to submit exam: ' + errorMsg)
-      // console.error('Submit error:', err)
       setUploading(false)
+      setScreen('exam')
     }
   }
 
@@ -839,6 +971,8 @@ export default function CERFSpeakingExam() {
 
   // ===== RENDER: RESULTS SCREEN =====
   if (screen === 'results') {
+    const parsedScores = parseAiScores(aiResult)
+
     // Show full loading screen while uploading
     if (uploading) {
       return (
@@ -875,12 +1009,73 @@ export default function CERFSpeakingExam() {
             </p>
           </div>
 
-          {/* AI Analysis Component - Coming Soon */}
-          <div className="mb-8 bg-blue-50 border-2 border-blue-300 rounded-2xl p-8 text-center">
-            <h3 className="text-2xl font-bold text-blue-900 mb-2">🚀 AI Analysis - Coming Soon</h3>
-            <p className="text-blue-700">Detailed AI-powered feedback and scoring will be available soon!</p>
-          </div>
+          {/* AI Analysis */}
+          <div className="mb-8 bg-blue-50 border-2 border-blue-300 rounded-2xl p-6">
+            <h3 className="text-2xl font-bold text-blue-900 mb-2">AI Analysis</h3>
 
+            {!isPremium && (
+              <div className="bg-white border border-blue-200 rounded-xl p-5 text-center">
+                <p className="text-sm md:text-base text-slate-700 font-medium">
+                  Subscribe for AI analysis or contact to check your speaking by real teacher: @DavirbekKhasanov
+                </p>
+              </div>
+            )}
+
+            {isPremium && aiLoading && (
+              <div className="bg-white border border-blue-200 rounded-xl p-4">
+                <p className="font-semibold text-blue-900 mb-1">Processing...</p>
+                <p className="text-sm text-blue-700">{aiStatus || 'Working on your responses...'}</p>
+              </div>
+            )}
+
+            {isPremium && aiError && (
+              <div className="bg-red-100 border border-red-300 rounded-xl p-4">
+                <p className="font-semibold text-red-800">AI analysis failed</p>
+                <p className="text-sm text-red-700">{aiError}</p>
+                <button
+                  onClick={() => {
+                    aiRequestedRef.current = false
+                    runAiAnalysis()
+                  }}
+                  className="mt-3 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-lg"
+                >
+                  Retry AI Analysis
+                </button>
+              </div>
+            )}
+
+            {isPremium && !aiLoading && !aiError && aiResult && (
+              <div className="space-y-4">
+                {parsedScores && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-white rounded-lg p-3 border border-blue-100"><p className="text-xs text-slate-500">Part 1.1</p><p className="text-lg font-bold text-slate-800">{parsedScores.part11} / 5</p></div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-100"><p className="text-xs text-slate-500">Part 1.2</p><p className="text-lg font-bold text-slate-800">{parsedScores.part12} / 5</p></div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-100"><p className="text-xs text-slate-500">Part 2</p><p className="text-lg font-bold text-slate-800">{parsedScores.part2} / 5</p></div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-100"><p className="text-xs text-slate-500">Part 3</p><p className="text-lg font-bold text-slate-800">{parsedScores.part3} / 6</p></div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-100"><p className="text-xs text-slate-500">Raw</p><p className="text-lg font-bold text-slate-800">{parsedScores.raw} / 21</p></div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-100"><p className="text-xs text-slate-500">Certificate</p><p className="text-lg font-bold text-slate-800">{parsedScores.certificate} / 75</p></div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-100 col-span-2"><p className="text-xs text-slate-500">CEFR</p><p className="text-lg font-bold text-slate-800">{parsedScores.cefr}</p></div>
+                  </div>
+                )}
+
+                {aiTranscriptions.length > 0 && (
+                  <div className="bg-white rounded-xl p-4 border border-blue-100">
+                    <p className="font-semibold text-slate-800 mb-3">Transcriptions</p>
+                    <div className="max-h-52 overflow-y-auto space-y-2">
+                      {aiTranscriptions.map((item) => (
+                        <div key={`t-${item.questionNum}`} className="text-sm text-slate-700"><span className="font-semibold">Q{item.questionNum}:</span> {item.text}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-white rounded-xl p-4 border border-blue-100">
+                  <p className="font-semibold text-slate-800 mb-2">Full AI Report</p>
+                  <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans leading-6 max-h-[480px] overflow-y-auto">{aiResult}</pre>
+                </div>
+              </div>
+            )}
+          </div>
           {/* Recordings Grid - 8 Audio Items */}
           <div className="bg-white rounded-2xl shadow-2xl p-8 mb-8">
             <h3 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
@@ -1086,3 +1281,4 @@ export default function CERFSpeakingExam() {
   }
   return null
 }
+

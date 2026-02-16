@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { FaClock, FaCheck, FaPlus, FaMinus, FaMoon, FaSun } from 'react-icons/fa'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import api from '../../api'
+import { evaluateWritingWithGemini } from '../../services/geminiService'
 
 export default function WritingExam() {
   const [examStarted, setExamStarted] = useState(false)
@@ -20,10 +21,45 @@ export default function WritingExam() {
   const [activeTask, setActiveTask] = useState(null)
   const [expandedTask, setExpandedTask] = useState(null)
   const [user, setUser] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submissionError, setSubmissionError] = useState('')
+  const [aiEvaluating, setAiEvaluating] = useState(false)
+  const [aiEvalError, setAiEvalError] = useState('')
+  const [aiEvaluation, setAiEvaluation] = useState(null)
   const containerRef = useRef(null)
   const mobileContainerRef = useRef(null)
   const nav = useNavigate()
   const { id } = useParams()
+
+  const parsePremiumExpiry = (rawPremiumDuration) => {
+    if (rawPremiumDuration === null || rawPremiumDuration === undefined || rawPremiumDuration === '') {
+      return null
+    }
+
+    let dateValue = null
+    if (rawPremiumDuration instanceof Date) {
+      dateValue = rawPremiumDuration
+    } else if (typeof rawPremiumDuration === 'number') {
+      const ms = rawPremiumDuration < 1000000000000 ? rawPremiumDuration * 1000 : rawPremiumDuration
+      dateValue = new Date(ms)
+    } else if (typeof rawPremiumDuration === 'string') {
+      const trimmed = rawPremiumDuration.trim()
+      if (!trimmed) return null
+      if (/^\d+$/.test(trimmed)) {
+        const num = Number(trimmed)
+        const ms = num < 1000000000000 ? num * 1000 : num
+        dateValue = new Date(ms)
+      } else {
+        dateValue = new Date(trimmed)
+      }
+    }
+
+    if (!dateValue || Number.isNaN(dateValue.getTime())) return null
+    return dateValue
+  }
+
+  const premiumExpiry = parsePremiumExpiry(user?.premium_duration)
+  const isPremiumActive = !!premiumExpiry && premiumExpiry.getTime() > Date.now()
 
   // BIRINCHI: User ma'lumotlarini olish
   useEffect(() => {
@@ -42,7 +78,7 @@ export default function WritingExam() {
     const params = new URLSearchParams(window.location.search)
     const partParam = params.get('part')
     
-    if (partParam === 'all' && user.premium_duration && new Date(user.premium_duration) > new Date()) {
+    if (partParam === 'all' && isPremiumActive) {
       setIsFullMock(true)
       setPart('all')
       setTimeLeft(3600) // 60 minutes
@@ -66,7 +102,7 @@ export default function WritingExam() {
       alert("Error in getting mock. Reload page or contact to support.")
       console.error(err)
     })
-  }, [user, id, nav])
+  }, [user, id, nav, isPremiumActive])
 
   // Drag to resize panels
   useEffect(() => {
@@ -172,19 +208,47 @@ export default function WritingExam() {
     setAnswers(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleSubmit = () => {
-    api.post(`/mock/writing/submit?token=${localStorage.getItem("access_token")}`, { 
-      mock_id: id, 
-      task1: `${answers.t11} ---TASK--- ${answers.t12}`, 
-      task2: answers.t2 
-    }).then(res => {
-      if (res.status) {
-        setSubmitted(true)
+  const handleSubmit = async () => {
+    setSubmitted(true)
+    setIsSubmitting(true)
+    setSubmissionError('')
+    setAiEvaluating(false)
+    setAiEvalError('')
+    setAiEvaluation(null)
+
+    try {
+      await api.post(`/mock/writing/submit?token=${localStorage.getItem("access_token")}`, {
+        mock_id: id,
+        task1: `${answers.t11} ---TASK--- ${answers.t12}`,
+        task2: answers.t2
+      })
+
+      setIsSubmitting(false)
+
+      if (isPremiumActive && isFullMock) {
+        setAiEvaluating(true)
+        try {
+          const result = await evaluateWritingWithGemini({
+            contextT1: mockData?.task1?.context || mockData?.task1?.scenario || 'N/A',
+            scenarioT1: mockData?.task1?.scenario || mockData?.task1?.context || 'N/A',
+            promptT11: mockData?.task1?.task11 || 'N/A',
+            promptT12: mockData?.task1?.task12 || 'N/A',
+            promptT2: mockData?.task2?.task2 || 'N/A',
+            t11: answers.t11,
+            t12: answers.t12,
+            t2: answers.t2
+          })
+          setAiEvaluation(result)
+        } catch (aiErr) {
+          setAiEvalError(aiErr?.message || 'Failed to generate AI evaluation')
+        } finally {
+          setAiEvaluating(false)
+        }
       }
-    }).catch(err => {
-      alert("Error in submitting, before reload page, make sure you've copied your writings :)")
-      console.error(err)
-    })
+    } catch (err) {
+      setIsSubmitting(false)
+      setSubmissionError(err?.response?.data?.detail || err?.message || 'Submission failed')
+    }
   }
 
   useEffect(() => {
@@ -403,40 +467,85 @@ export default function WritingExam() {
   if (submitted) {
     return (
       <div className={`min-h-screen flex items-center justify-center p-6 transition-colors ${isDarkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-green-50 to-blue-50'}`}>
-        <div className={`rounded-2xl p-12 shadow-2xl max-w-2xl text-center border-4 border-green-500 transition-colors ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
-          <div className="text-7xl mb-6 animate-bounce">✅</div>
+        <div className={`rounded-2xl p-12 shadow-2xl max-w-3xl w-full text-center border-4 border-green-500 transition-colors ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
+          <div className="text-7xl mb-6 animate-bounce">?</div>
           <h1 className="text-4xl font-bold text-green-600 mb-4">Exam Submitted Successfully!</h1>
 
           <div className={`border-2 border-green-300 rounded-lg p-8 mb-8 transition-colors ${isDarkMode ? 'bg-gray-700 border-green-600' : 'bg-green-50'}`}>
-            <p className={`text-lg mb-6 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-              Your exam has been received and is being processed.
-            </p>
+            {isSubmitting && (
+              <div className="text-center py-6">
+                <div className="w-10 h-10 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Submitting your exam...</p>
+              </div>
+            )}
 
-            <div className="space-y-4 text-left mb-8">
-              <div className={`flex items-center gap-3 text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                <FaCheck className="text-green-600 text-2xl" />
-                <span><strong>Status:</strong> Submitted for evaluation</span>
+            {!isSubmitting && submissionError && (
+              <div className="text-center py-4">
+                <p className="text-red-600 font-semibold mb-3">Submission failed</p>
+                <p className={`${isDarkMode ? 'text-red-300' : 'text-red-700'} text-sm mb-4`}>{submissionError}</p>
+                <button
+                  onClick={() => setSubmitted(false)}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold"
+                >
+                  Back to Exam
+                </button>
               </div>
-              <div className={`flex items-center gap-3 text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                <FaCheck className="text-green-600 text-2xl" />
-                <span><strong>Processing Time:</strong> Maximum 24 hours</span>
-              </div>
-              <div className={`flex items-center gap-3 text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                <FaCheck className="text-green-600 text-2xl" />
-                <span><strong>Notification:</strong> Email will be sent</span>
-              </div>
-            </div>
+            )}
 
-            <div className={`border-l-4 p-6 rounded-lg text-left ${isDarkMode ? 'bg-gray-600 border-blue-400' : 'bg-blue-50 border-blue-600'}`}>
-              <p className={`font-bold mb-3 text-lg ${isDarkMode ? 'text-blue-200' : 'text-blue-900'}`}>📧 What's Next?</p>
-              <ul className={`space-y-2 text-base ${isDarkMode ? 'text-blue-100' : 'text-blue-800'}`}>
-                <li>✓ AI-powered evaluation of your writing</li>
-                <li>✓ Expert human review and feedback</li>
-                <li>✓ Detailed band scores for each section</li>
-                <li>✓ CEFR level assessment</li>
-                <li>✓ Personalized improvement recommendations</li>
-              </ul>
-            </div>
+            {!isSubmitting && !submissionError && (
+              <>
+                <div className="space-y-4 text-left mb-6">
+                  <div className={`flex items-center gap-3 text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <FaCheck className="text-green-600 text-2xl" />
+                    <span><strong>Status:</strong> Submitted successfully</span>
+                  </div>
+                  {isPremiumActive && isFullMock && (
+                    <div className={`flex items-center gap-3 text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                      <FaCheck className="text-green-600 text-2xl" />
+                      <span><strong>AI:</strong> Evaluation is processing</span>
+                    </div>
+                  )}
+                </div>
+
+                {isPremiumActive && isFullMock && aiEvaluating && (
+                  <div className={`border-l-4 p-6 rounded-lg text-left mb-4 ${isDarkMode ? 'bg-gray-600 border-blue-400' : 'bg-blue-50 border-blue-600'}`}>
+                    <p className={`font-bold mb-3 text-lg ${isDarkMode ? 'text-blue-200' : 'text-blue-900'}`}>AI is analyzing your writing...</p>
+                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+
+                {isPremiumActive && isFullMock && aiEvalError && (
+                  <div className="border-l-4 border-red-500 bg-red-50 p-4 rounded text-left mb-4">
+                    <p className="font-semibold text-red-700">AI evaluation failed</p>
+                    <p className="text-sm text-red-600">{aiEvalError}</p>
+                  </div>
+                )}
+
+                {isPremiumActive && isFullMock && aiEvaluation && (
+                  <div className={`border-l-4 p-6 rounded-lg text-left ${isDarkMode ? 'bg-gray-600 border-blue-400' : 'bg-blue-50 border-blue-600'}`}>
+                    <p className={`font-bold mb-3 text-lg ${isDarkMode ? 'text-blue-200' : 'text-blue-900'}`}>AI Evaluation Result</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                      <div className="bg-white rounded p-3 border"><p className="text-xs text-gray-500">Raw Score</p><p className="text-xl font-bold text-gray-900">{aiEvaluation.raw_score ?? '-'}</p></div>
+                      <div className="bg-white rounded p-3 border"><p className="text-xs text-gray-500">Certificate</p><p className="text-xl font-bold text-gray-900">{aiEvaluation.certificate_score ?? '-'}</p></div>
+                      <div className="bg-white rounded p-3 border"><p className="text-xs text-gray-500">CEFR</p><p className="text-xl font-bold text-gray-900">{aiEvaluation.cefr_level ?? '-'}</p></div>
+                    </div>
+                    <div className="bg-white rounded p-4 border">
+                      <p className="text-sm text-gray-500 mb-1">Overall feedback</p>
+                      <p className="text-sm text-gray-800">{aiEvaluation.overall_feedback || 'No feedback returned.'}</p>
+                    </div>
+                  </div>
+                )}
+
+                {(!isPremiumActive || !isFullMock) && (
+                  <div className={`border-l-4 p-6 rounded-lg text-left ${isDarkMode ? 'bg-gray-600 border-blue-400' : 'bg-blue-50 border-blue-600'}`}>
+                    <p className={`font-bold mb-3 text-lg ${isDarkMode ? 'text-blue-200' : 'text-blue-900'}`}>What's Next?</p>
+                    <p className={`text-base ${isDarkMode ? 'text-blue-100' : 'text-blue-800'}`}>
+                      AI evaluation is available for premium full mock submissions.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           <Link
@@ -444,13 +553,12 @@ export default function WritingExam() {
             onClick={() => window.history.back()}
             className="w-full px-10 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-xl rounded-xl hover:shadow-lg transition-all block"
           >
-            ← Back to Courses
+            � Back to Courses
           </Link>
         </div>
       </div>
     )
   }
-
   if (!mockData || !user) {
     return (
       <div className={`min-h-screen flex items-center justify-center transition-colors ${isDarkMode ? 'bg-gray-900' : 'bg-gray-900'}`}>
@@ -819,3 +927,4 @@ export default function WritingExam() {
     </div>
   )
 }
+

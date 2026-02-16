@@ -63,8 +63,8 @@ export default function Main() {
                                 to={`/news/${slide.slug}`}
                                 className={`absolute w-full h-full transition-all duration-1000 ease-in-out ${
                                     index === currentSlide 
-                                        ? 'opacity-100 scale-100' 
-                                        : 'opacity-0 scale-95'
+                                        ? 'opacity-100 scale-100 z-20 pointer-events-auto' 
+                                        : 'opacity-0 scale-95 z-0 pointer-events-none'
                                 }`}
                             >
                                 {/* Gradient Background - Chiroyli */}
