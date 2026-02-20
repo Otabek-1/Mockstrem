@@ -128,6 +128,7 @@ export default function Dashboard() {
   const [isPremium, setIsPremium] = useState(false);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackHoverRating, setFeedbackHoverRating] = useState(0);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [feedbackSummary, setFeedbackSummary] = useState({
@@ -921,32 +922,40 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-5">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rate your experience</p>
-              <div className="flex gap-2">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">How did you like MockStream?</p>
+              <div
+                className="flex items-center gap-1"
+                onMouseLeave={() => setFeedbackHoverRating(0)}
+              >
                 {[1, 2, 3, 4, 5].map((value) => (
                   <button
                     key={value}
                     type="button"
+                    onMouseEnter={() => setFeedbackHoverRating(value)}
                     onClick={() => setFeedbackRating(value)}
                     className={[
-                      "w-10 h-10 rounded-lg border font-semibold transition-colors",
-                      feedbackRating === value
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-400",
+                      "text-3xl leading-none transition-transform duration-200 hover:scale-110",
+                      value <= (feedbackHoverRating || feedbackRating)
+                        ? "text-amber-400"
+                        : "text-gray-300 dark:text-gray-600",
                     ].join(" ")}
+                    aria-label={`${value} stars`}
                   >
-                    {value}
+                    {"\u2605"}
                   </button>
                 ))}
+                <span className="ml-2 text-sm font-semibold text-gray-600 dark:text-gray-300">
+                  {feedbackHoverRating || feedbackRating}/5
+                </span>
               </div>
             </div>
 
             <div className="mt-4">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Feedback</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Fikringiz</label>
               <textarea
                 value={feedbackText}
                 onChange={(e) => setFeedbackText(e.target.value)}
-                placeholder="Nima yaxshilansa platforma sizga yanada foydali bo'ladi?"
+                placeholder="Fikringizni yozib qoldiring..."
                 className="mt-2 w-full min-h-28 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
