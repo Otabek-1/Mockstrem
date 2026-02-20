@@ -602,13 +602,7 @@ export default function App() {
                 MockStream
               </span>
             </h2>
-            <p
-              data-aos="fade-up"
-              data-aos-delay="200"
-              className="text-slate-300 text-base sm:text-lg max-w-3xl mx-auto"
-            >
-              Every review below comes from users inside the platform after real usage and mock submissions.
-            </p>
+            
           </div>
 
           {feedbacks.length > 0 ? (
