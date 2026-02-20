@@ -35,8 +35,6 @@ export default function App() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [feedbacks, setFeedbacks] = useState([]);
-  const [activeReview, setActiveReview] = useState(0);
-  const [isReviewTransitioning, setIsReviewTransitioning] = useState(false);
 
   function parallax(e) {
     setDirx(Math.floor(e.clientX / 100));
@@ -48,7 +46,7 @@ export default function App() {
       duration: 1200,
       offset: 100,
       easing: "ease-out-cubic",
-      once: false,
+      once: true,
     });
 
     const handleScroll = () => {
@@ -67,33 +65,13 @@ export default function App() {
         setFeedbacks(items.length ? items : FALLBACK_FEEDBACKS);
       } catch (error) {
         setFeedbacks(FALLBACK_FEEDBACKS);
+      } finally {
+        setTimeout(() => Aos.refresh(), 100);
       }
     };
 
     fetchFeedbacks();
   }, []);
-
-  const goToReview = (nextIndex) => {
-    if (feedbacks.length === 0) return;
-    if (isReviewTransitioning || nextIndex === activeReview) return;
-
-    setIsReviewTransitioning(true);
-    setTimeout(() => {
-      setActiveReview(nextIndex);
-      requestAnimationFrame(() => setIsReviewTransitioning(false));
-    }, 180);
-  };
-
-  useEffect(() => {
-    if (feedbacks.length <= 1 || isReviewTransitioning) return;
-
-    const timer = setInterval(() => {
-      const nextIndex = (activeReview + 1) % feedbacks.length;
-      goToReview(nextIndex);
-    }, 3600);
-
-    return () => clearInterval(timer);
-  }, [activeReview, feedbacks.length, isReviewTransitioning]);
 
   return (
     <div className='w-full min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-x-hidden'>
@@ -638,95 +616,32 @@ export default function App() {
           </div>
 
           {feedbacks.length > 0 ? (
-            <div
-              data-aos="zoom-in-up"
-              className="relative w-full"
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-                <div className="hidden lg:flex lg:col-span-3">
-                  {feedbacks.length > 1 && (
-                    <div
-                      className={[
-                        "review-card w-full rounded-3xl p-5 bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-500",
-                        isReviewTransitioning ? "opacity-55 translate-y-1 scale-[0.99]" : "opacity-70 translate-y-0 scale-100",
-                      ].join(" ")}
-                    >
-                      <p className="text-xs uppercase tracking-[0.25em] text-slate-400 mb-3">Previous</p>
-                      <p className="font-semibold text-white text-lg">{feedbacks[(activeReview - 1 + feedbacks.length) % feedbacks.length].username}</p>
-                      <p className="text-slate-300 mt-3 text-sm line-clamp-6">
-                        {feedbacks[(activeReview - 1 + feedbacks.length) % feedbacks.length].text}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="lg:col-span-6 relative">
-                  <div className="review-glow"></div>
+            <div className="relative w-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 py-3">
+                {feedbacks.map((item, index) => (
                   <article
-                    className={[
-                      "review-card review-quote relative rounded-3xl p-7 sm:p-9 bg-gradient-to-br from-white via-slate-100 to-slate-200 shadow-2xl min-h-[320px] flex flex-col justify-between transition-all duration-500",
-                      isReviewTransitioning ? "opacity-70 translate-y-1 scale-[0.995]" : "opacity-100 translate-y-0 scale-100",
-                    ].join(" ")}
+                    key={`${item.id}-${index}`}
+                    data-aos="fade-up"
+                    data-aos-delay={index * 80}
+                    className="review-card rounded-3xl p-6 bg-white/8 border border-white/15 backdrop-blur-lg shadow-xl hover:-translate-y-1 transition-all"
                   >
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 mb-5">Featured Review</p>
-                      <p className="text-slate-700 text-base sm:text-lg leading-relaxed pl-8">
-                        {feedbacks[activeReview].text}
-                      </p>
-                    </div>
-
-                    <div className="mt-8 border-t border-slate-300 pt-5 flex flex-col gap-2">
-                      <p className="text-slate-900 font-extrabold text-xl">{feedbacks[activeReview].username}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-white font-bold text-lg">{item.username}</p>
                       <div className="flex items-center gap-1">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <span
                             key={star}
-                            className={[
-                              "text-2xl leading-none",
-                              star <= feedbacks[activeReview].rating ? "text-amber-500" : "text-slate-300",
-                            ].join(" ")}
+                            className={star <= item.rating ? "text-amber-400 text-lg" : "text-slate-500 text-lg"}
                           >
-                            {"\\u2605"}
+                            {"\u2605"}
                           </span>
                         ))}
-                        <span className="ml-2 text-sm font-semibold text-slate-600">
-                          {feedbacks[activeReview].rating}/5
-                        </span>
                       </div>
                     </div>
+                    <p className="text-slate-200 leading-relaxed text-sm sm:text-base">
+                      {item.text}
+                    </p>
                   </article>
-                </div>
-
-                <div className="hidden lg:flex lg:col-span-3">
-                  {feedbacks.length > 1 && (
-                    <div
-                      className={[
-                        "review-card w-full rounded-3xl p-5 bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-500",
-                        isReviewTransitioning ? "opacity-55 translate-y-1 scale-[0.99]" : "opacity-70 translate-y-0 scale-100",
-                      ].join(" ")}
-                    >
-                      <p className="text-xs uppercase tracking-[0.25em] text-slate-400 mb-3">Next</p>
-                      <p className="font-semibold text-white text-lg">{feedbacks[(activeReview + 1) % feedbacks.length].username}</p>
-                      <p className="text-slate-300 mt-3 text-sm line-clamp-6">
-                        {feedbacks[(activeReview + 1) % feedbacks.length].text}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-8 flex justify-center items-center gap-2">
-                {feedbacks.map((_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => goToReview(index)}
-                    className={[
-                      "h-2.5 rounded-full transition-all duration-300",
-                      activeReview === index ? "w-10 bg-white" : "w-2.5 bg-white/35 hover:bg-white/60",
-                    ].join(" ")}
-                    aria-label={`Go to review ${index + 1}`}
-                  />
                 ))}
               </div>
             </div>
