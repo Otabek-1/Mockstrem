@@ -299,7 +299,7 @@ export default function ReadingList({ isPremium = false }) {
                   className={[
                     "p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md transition-all border border-gray-200 dark:border-gray-700",
                     isPremium || index < 4
-                      ? "hover:shadow-lg cursor-pointer hover:scale-105 transform"
+                      ? "cursor-pointer hover:shadow-lg hover:-translate-y-0.5"
                       : "opacity-60 cursor-not-allowed",
                   ].join(" ")}
                 >

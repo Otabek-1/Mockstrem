@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FaHome,
   FaUser,
@@ -43,6 +43,12 @@ const formatTimeAgo = (dateString) => {
   if (weeks < 4) return `${weeks}w ago`;
   return date.toLocaleDateString();
 };
+
+const FEEDBACK_VISIT_KEY = "ms_feedback_dashboard_visits";
+const FEEDBACK_MODAL_SNOOZE_KEY = "ms_feedback_modal_snooze_until";
+const FEEDBACK_VISIT_THRESHOLD = 5;
+const FEEDBACK_MOCK_THRESHOLD = 3;
+const FEEDBACK_SNOOZE_HOURS = 24;
 
 // ─── Floating Popup (sidebar closed) ─────────────────────────
 function FloatingDropdown({ item, active, setActive, toggleTheme, theme, isPremium }) {
@@ -120,6 +126,15 @@ export default function Dashboard() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackSummary, setFeedbackSummary] = useState({
+    has_feedback: false,
+    mock_submissions_count: 0,
+    visit_count: 0,
+  });
   // floating popup for collapsed sidebar
   const [floatingMenu, setFloatingMenu] = useState(null); // item.name | null
   const nav = useNavigate();
@@ -172,6 +187,80 @@ export default function Dashboard() {
 
     fetchUser();
   }, []);
+
+  useEffect(() => {
+    const visitCount = Number(localStorage.getItem(FEEDBACK_VISIT_KEY) || "0") + 1;
+    localStorage.setItem(FEEDBACK_VISIT_KEY, String(visitCount));
+    setFeedbackSummary((prev) => ({ ...prev, visit_count: visitCount }));
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchFeedbackStatus = async () => {
+      try {
+        const res = await api.get("/feedback/me");
+        const data = res.data || {};
+        const hasFeedback = Boolean(data.has_feedback);
+        const mockSubmissions = Number(data.mock_submissions_count || 0);
+        const visitCount = Number(localStorage.getItem(FEEDBACK_VISIT_KEY) || "0");
+        const snoozeUntil = Number(localStorage.getItem(FEEDBACK_MODAL_SNOOZE_KEY) || "0");
+        const canPromptNow = Date.now() > snoozeUntil;
+        const shouldPrompt =
+          !hasFeedback &&
+          canPromptNow &&
+          (visitCount >= FEEDBACK_VISIT_THRESHOLD || mockSubmissions >= FEEDBACK_MOCK_THRESHOLD);
+
+        setFeedbackSummary({
+          has_feedback: hasFeedback,
+          mock_submissions_count: mockSubmissions,
+          visit_count: visitCount,
+        });
+
+        if (shouldPrompt) {
+          setFeedbackModalOpen(true);
+        }
+      } catch (e) {
+        console.error("Error fetching feedback status:", e);
+      }
+    };
+
+    fetchFeedbackStatus();
+  }, [user]);
+
+  const closeFeedbackModal = (withSnooze = true) => {
+    if (withSnooze) {
+      const snoozeUntil = Date.now() + FEEDBACK_SNOOZE_HOURS * 60 * 60 * 1000;
+      localStorage.setItem(FEEDBACK_MODAL_SNOOZE_KEY, String(snoozeUntil));
+    }
+    setFeedbackModalOpen(false);
+  };
+
+  const submitFeedback = async () => {
+    if (feedbackSubmitting) return;
+
+    if (!feedbackText.trim()) {
+      alert("Please write your feedback.");
+      return;
+    }
+
+    try {
+      setFeedbackSubmitting(true);
+      await api.post("/feedback", {
+        rating: feedbackRating,
+        text: feedbackText.trim(),
+      });
+      setFeedbackSummary((prev) => ({ ...prev, has_feedback: true }));
+      localStorage.removeItem(FEEDBACK_MODAL_SNOOZE_KEY);
+      setFeedbackModalOpen(false);
+      setFeedbackText("");
+    } catch (e) {
+      console.error("Error submitting feedback:", e);
+      alert("Could not send feedback. Please try again.");
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
 
   // ─── Menu config ────────────────────────────────────────────
   const menuItems = [
@@ -810,6 +899,79 @@ export default function Dashboard() {
       </div>
 
       {/* ── Click-outside overlay ── */}
+      {feedbackModalOpen && active === "home" && !feedbackSummary.has_feedback && (
+        <div className="fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Platform haqida fikringiz?
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {`Visits: ${feedbackSummary.visit_count} • Mock submissions: ${feedbackSummary.mock_submissions_count}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => closeFeedbackModal(true)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+              >
+                <MdClose size={20} />
+              </button>
+            </div>
+
+            <div className="mt-5">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rate your experience</p>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFeedbackRating(value)}
+                    className={[
+                      "w-10 h-10 rounded-lg border font-semibold transition-colors",
+                      feedbackRating === value
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-400",
+                    ].join(" ")}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Feedback</label>
+              <textarea
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                placeholder="Nima yaxshilansa platforma sizga yanada foydali bo'ladi?"
+                className="mt-2 w-full min-h-28 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => closeFeedbackModal(true)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                Later
+              </button>
+              <button
+                type="button"
+                onClick={submitFeedback}
+                disabled={feedbackSubmitting}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60"
+              >
+                {feedbackSubmitting ? "Sending..." : "Send feedback"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {(profileOpen || notificationsOpen) && (
         <div
           className="fixed inset-0 z-30 bg-black/10 backdrop-blur-[1px]"
