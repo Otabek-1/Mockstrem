@@ -6,12 +6,16 @@ import "aos/dist/aos.css";
 import { BookOpen, ChartArea, Command, GraduationCap, MessageCircle, Target, Trophy } from 'lucide-react';
 import { SiCoursera } from 'react-icons/si';
 import { GiTargetArrows } from 'react-icons/gi';
+import api from './api';
 
 export default function App() {
   const [dirx, setDirx] = useState(0);
   const [diry, setDiry] = useState(0);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [activeReview, setActiveReview] = useState(0);
+  const [pauseReview, setPauseReview] = useState(false);
 
   function parallax(e) {
     setDirx(Math.floor(e.clientX / 100));
@@ -33,6 +37,31 @@ export default function App() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const fetchFeedbacks = async () => {
+      try {
+        const res = await api.get("/feedback/public?limit=15");
+        const items = Array.isArray(res.data?.feedbacks) ? res.data.feedbacks : [];
+        setFeedbacks(items);
+      } catch (error) {
+        console.error("Error loading public feedbacks:", error);
+        setFeedbacks([]);
+      }
+    };
+
+    fetchFeedbacks();
+  }, []);
+
+  useEffect(() => {
+    if (pauseReview || feedbacks.length <= 1) return;
+
+    const timer = setInterval(() => {
+      setActiveReview((prev) => (prev + 1) % feedbacks.length);
+    }, 3500);
+
+    return () => clearInterval(timer);
+  }, [feedbacks.length, pauseReview]);
 
   return (
     <div className='w-full min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-x-hidden'>
@@ -119,6 +148,36 @@ export default function App() {
           50% { transform: translateY(10px); }
         }
 
+        .review-orb {
+          filter: blur(60px);
+          opacity: 0.5;
+          pointer-events: none;
+        }
+
+        .review-card {
+          transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.55s ease;
+        }
+
+        .review-glow {
+          position: absolute;
+          inset: -1px;
+          border-radius: 1.5rem;
+          background: linear-gradient(120deg, rgba(59, 130, 246, 0.35), rgba(234, 88, 12, 0.3), rgba(16, 185, 129, 0.35));
+          filter: blur(14px);
+          z-index: -1;
+        }
+
+        .review-quote::before {
+          content: '"';
+          font-size: 5rem;
+          line-height: 0.5;
+          position: absolute;
+          top: 14px;
+          left: 20px;
+          color: rgba(71, 85, 105, 0.15);
+          font-family: Georgia, serif;
+        }
+
         @media (max-width: 768px) {
           .floating-badge {
             font-size: 1.25rem;
@@ -148,6 +207,7 @@ export default function App() {
               <li><a href="#" className="nav-link text-slate-700 font-semibold hover:text-indigo-600">Main</a></li>
               <li><a href="#about" className="nav-link text-slate-700 font-semibold hover:text-indigo-600">About</a></li>
               <li><a href="#features" className="nav-link text-slate-700 font-semibold hover:text-indigo-600">Features</a></li>
+              <li><a href="#reviews" className="nav-link text-slate-700 font-semibold hover:text-indigo-600">Reviews</a></li>
               <li><a href="#contact" className="nav-link text-slate-700 font-semibold hover:text-indigo-600">Contact</a></li>
             </ul>
 
@@ -182,6 +242,7 @@ export default function App() {
               <a href="#" className="text-slate-700 font-semibold hover:text-indigo-600 transition-colors" onClick={() => setMobileMenuOpen(false)}>Main</a>
               <a href="#about" className="text-slate-700 font-semibold hover:text-indigo-600 transition-colors" onClick={() => setMobileMenuOpen(false)}>About</a>
               <a href="#features" className="text-slate-700 font-semibold hover:text-indigo-600 transition-colors" onClick={() => setMobileMenuOpen(false)}>Features</a>
+              <a href="#reviews" className="text-slate-700 font-semibold hover:text-indigo-600 transition-colors" onClick={() => setMobileMenuOpen(false)}>Reviews</a>
               <a href="#contact" className="text-slate-700 font-semibold hover:text-indigo-600 transition-colors" onClick={() => setMobileMenuOpen(false)}>Contact</a>
               <Link
                 to="/auth"
@@ -514,6 +575,127 @@ export default function App() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Reviews Section */}
+      <section id='reviews' className="w-full py-16 sm:py-24 lg:py-28 bg-slate-950 relative overflow-hidden">
+        <div className="review-orb absolute -top-28 -left-16 w-72 h-72 bg-blue-400"></div>
+        <div className="review-orb absolute top-1/3 -right-12 w-72 h-72 bg-orange-400"></div>
+        <div className="review-orb absolute -bottom-24 left-1/3 w-72 h-72 bg-emerald-400"></div>
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-12 sm:mb-16">
+            <div
+              data-aos="fade-up"
+              className="inline-block px-6 py-2 rounded-full border border-white/20 bg-white/5 text-orange-200 font-semibold mb-4"
+            >
+              Real Students, Real Voices
+            </div>
+            <h2
+              data-aos="fade-up"
+              data-aos-delay="100"
+              className="text-3xl sm:text-4xl lg:text-6xl font-black text-white mb-5"
+            >
+              What users think about
+              <span className="block bg-gradient-to-r from-orange-300 via-pink-300 to-blue-300 bg-clip-text text-transparent">
+                MockStream
+              </span>
+            </h2>
+            <p
+              data-aos="fade-up"
+              data-aos-delay="200"
+              className="text-slate-300 text-base sm:text-lg max-w-3xl mx-auto"
+            >
+              Every review below comes from users inside the platform after real usage and mock submissions.
+            </p>
+          </div>
+
+          {feedbacks.length > 0 ? (
+            <div
+              data-aos="zoom-in-up"
+              onMouseEnter={() => setPauseReview(true)}
+              onMouseLeave={() => setPauseReview(false)}
+              className="relative w-full"
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                <div className="hidden lg:flex lg:col-span-3">
+                  {feedbacks.length > 1 && (
+                    <div className="review-card w-full rounded-3xl p-5 bg-white/5 border border-white/10 backdrop-blur-md opacity-70">
+                      <p className="text-xs uppercase tracking-[0.25em] text-slate-400 mb-3">Previous</p>
+                      <p className="font-semibold text-white text-lg">{feedbacks[(activeReview - 1 + feedbacks.length) % feedbacks.length].username}</p>
+                      <p className="text-slate-300 mt-3 text-sm line-clamp-6">
+                        {feedbacks[(activeReview - 1 + feedbacks.length) % feedbacks.length].text}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="lg:col-span-6 relative">
+                  <div className="review-glow"></div>
+                  <article className="review-card review-quote relative rounded-3xl p-7 sm:p-9 bg-gradient-to-br from-white via-slate-100 to-slate-200 shadow-2xl min-h-[320px] flex flex-col justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 mb-5">Featured Review</p>
+                      <p className="text-slate-700 text-base sm:text-lg leading-relaxed pl-8">
+                        {feedbacks[activeReview].text}
+                      </p>
+                    </div>
+
+                    <div className="mt-8 border-t border-slate-300 pt-5 flex flex-col gap-2">
+                      <p className="text-slate-900 font-extrabold text-xl">{feedbacks[activeReview].username}</p>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            className={[
+                              "text-2xl leading-none",
+                              star <= feedbacks[activeReview].rating ? "text-amber-500" : "text-slate-300",
+                            ].join(" ")}
+                          >
+                            {"\\u2605"}
+                          </span>
+                        ))}
+                        <span className="ml-2 text-sm font-semibold text-slate-600">
+                          {feedbacks[activeReview].rating}/5
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+
+                <div className="hidden lg:flex lg:col-span-3">
+                  {feedbacks.length > 1 && (
+                    <div className="review-card w-full rounded-3xl p-5 bg-white/5 border border-white/10 backdrop-blur-md opacity-70">
+                      <p className="text-xs uppercase tracking-[0.25em] text-slate-400 mb-3">Next</p>
+                      <p className="font-semibold text-white text-lg">{feedbacks[(activeReview + 1) % feedbacks.length].username}</p>
+                      <p className="text-slate-300 mt-3 text-sm line-clamp-6">
+                        {feedbacks[(activeReview + 1) % feedbacks.length].text}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-8 flex justify-center items-center gap-2">
+                {feedbacks.map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setActiveReview(index)}
+                    className={[
+                      "h-2.5 rounded-full transition-all duration-300",
+                      activeReview === index ? "w-10 bg-white" : "w-2.5 bg-white/35 hover:bg-white/60",
+                    ].join(" ")}
+                    aria-label={`Go to review ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-white/15 bg-white/5 backdrop-blur-xl p-8 text-center text-slate-200">
+              No feedbacks yet. First users are sharing their impressions now.
+            </div>
+          )}
         </div>
       </section>
 
