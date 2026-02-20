@@ -36,7 +36,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [feedbacks, setFeedbacks] = useState([]);
   const [activeReview, setActiveReview] = useState(0);
-  const [pauseReview, setPauseReview] = useState(false);
+  const [isReviewTransitioning, setIsReviewTransitioning] = useState(false);
 
   function parallax(e) {
     setDirx(Math.floor(e.clientX / 100));
@@ -73,15 +73,27 @@ export default function App() {
     fetchFeedbacks();
   }, []);
 
+  const goToReview = (nextIndex) => {
+    if (feedbacks.length === 0) return;
+    if (isReviewTransitioning || nextIndex === activeReview) return;
+
+    setIsReviewTransitioning(true);
+    setTimeout(() => {
+      setActiveReview(nextIndex);
+      requestAnimationFrame(() => setIsReviewTransitioning(false));
+    }, 180);
+  };
+
   useEffect(() => {
-    if (pauseReview || feedbacks.length <= 1) return;
+    if (feedbacks.length <= 1 || isReviewTransitioning) return;
 
     const timer = setInterval(() => {
-      setActiveReview((prev) => (prev + 1) % feedbacks.length);
-    }, 3500);
+      const nextIndex = (activeReview + 1) % feedbacks.length;
+      goToReview(nextIndex);
+    }, 3600);
 
     return () => clearInterval(timer);
-  }, [feedbacks.length, pauseReview]);
+  }, [activeReview, feedbacks.length, isReviewTransitioning]);
 
   return (
     <div className='w-full min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-x-hidden'>
@@ -628,14 +640,17 @@ export default function App() {
           {feedbacks.length > 0 ? (
             <div
               data-aos="zoom-in-up"
-              onMouseEnter={() => setPauseReview(true)}
-              onMouseLeave={() => setPauseReview(false)}
               className="relative w-full"
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
                 <div className="hidden lg:flex lg:col-span-3">
                   {feedbacks.length > 1 && (
-                    <div className="review-card w-full rounded-3xl p-5 bg-white/5 border border-white/10 backdrop-blur-md opacity-70">
+                    <div
+                      className={[
+                        "review-card w-full rounded-3xl p-5 bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-500",
+                        isReviewTransitioning ? "opacity-55 translate-y-1 scale-[0.99]" : "opacity-70 translate-y-0 scale-100",
+                      ].join(" ")}
+                    >
                       <p className="text-xs uppercase tracking-[0.25em] text-slate-400 mb-3">Previous</p>
                       <p className="font-semibold text-white text-lg">{feedbacks[(activeReview - 1 + feedbacks.length) % feedbacks.length].username}</p>
                       <p className="text-slate-300 mt-3 text-sm line-clamp-6">
@@ -647,7 +662,12 @@ export default function App() {
 
                 <div className="lg:col-span-6 relative">
                   <div className="review-glow"></div>
-                  <article className="review-card review-quote relative rounded-3xl p-7 sm:p-9 bg-gradient-to-br from-white via-slate-100 to-slate-200 shadow-2xl min-h-[320px] flex flex-col justify-between">
+                  <article
+                    className={[
+                      "review-card review-quote relative rounded-3xl p-7 sm:p-9 bg-gradient-to-br from-white via-slate-100 to-slate-200 shadow-2xl min-h-[320px] flex flex-col justify-between transition-all duration-500",
+                      isReviewTransitioning ? "opacity-70 translate-y-1 scale-[0.995]" : "opacity-100 translate-y-0 scale-100",
+                    ].join(" ")}
+                  >
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 mb-5">Featured Review</p>
                       <p className="text-slate-700 text-base sm:text-lg leading-relaxed pl-8">
@@ -679,7 +699,12 @@ export default function App() {
 
                 <div className="hidden lg:flex lg:col-span-3">
                   {feedbacks.length > 1 && (
-                    <div className="review-card w-full rounded-3xl p-5 bg-white/5 border border-white/10 backdrop-blur-md opacity-70">
+                    <div
+                      className={[
+                        "review-card w-full rounded-3xl p-5 bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-500",
+                        isReviewTransitioning ? "opacity-55 translate-y-1 scale-[0.99]" : "opacity-70 translate-y-0 scale-100",
+                      ].join(" ")}
+                    >
                       <p className="text-xs uppercase tracking-[0.25em] text-slate-400 mb-3">Next</p>
                       <p className="font-semibold text-white text-lg">{feedbacks[(activeReview + 1) % feedbacks.length].username}</p>
                       <p className="text-slate-300 mt-3 text-sm line-clamp-6">
@@ -695,7 +720,7 @@ export default function App() {
                   <button
                     key={index}
                     type="button"
-                    onClick={() => setActiveReview(index)}
+                    onClick={() => goToReview(index)}
                     className={[
                       "h-2.5 rounded-full transition-all duration-300",
                       activeReview === index ? "w-10 bg-white" : "w-2.5 bg-white/35 hover:bg-white/60",
