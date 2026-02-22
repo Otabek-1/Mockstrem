@@ -167,9 +167,9 @@ export default function AdminLayout({
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0 relative">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 h-16 shrink-0 flex items-center justify-between gap-4 px-4 md:px-6 bg-[#08090b]/80 backdrop-blur-xl border-b border-white/[0.06]">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0 relative overflow-hidden">
+        {/* Top bar - doim yuqorida (sticky) */}
+        <header className="sticky top-0 z-40 h-16 shrink-0 flex items-center justify-between gap-4 px-4 md:px-6 bg-[#08090b] border-b border-white/[0.06] shadow-[0_1px_0_0_rgba(255,255,255,0.06)]">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"

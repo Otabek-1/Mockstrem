@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from 'react'
-import { Search, MoreVertical, Shield, Crown, ListChecks, X } from 'lucide-react'
-import api, { getMyDevices } from '../api'
+import React, { useEffect, useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
+import { Search, MoreVertical, Shield, Crown, ListChecks, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import api from '../api'
+
+const PAGE_SIZE = 15
 
 const permissions = {
   users: ["promote_admin", "give_premium", "manage_permissions"],
@@ -23,6 +26,7 @@ export default function Users() {
   const [showSessionsModal, setShowSessionsModal] = useState(false)
   const [userSessions, setUserSessions] = useState([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [page, setPage] = useState(1)
 
   const [userPermissions, setUserPermissions] = useState({
     users: [],
@@ -35,18 +39,30 @@ export default function Users() {
   })
 
   // Qidiruv: username, email va ID bo'yicha (masalan "42" yoki "id:42")
-  const filteredUsers = users?.filter((user) => {
+  const filteredUsers = useMemo(() => {
+    if (!users) return []
     const q = searchQuery.trim().toLowerCase()
-    if (!q) return true
-    const byUsername = user.username?.toLowerCase().includes(q)
-    const byEmail = user.email?.toLowerCase().includes(q)
-    const idStr = String(user.id)
-    const byIdExact = idStr === q
-    const byIdInclude = idStr.includes(q)
-    const idPrefix = q.startsWith('id:') ? q.slice(3).trim() : null
-    const byIdPrefix = idPrefix !== null && (idStr === idPrefix || idStr.includes(idPrefix))
-    return byUsername || byEmail || byIdExact || byIdInclude || byIdPrefix
-  })
+    if (!q) return users
+    return users.filter((user) => {
+      const byUsername = user.username?.toLowerCase().includes(q)
+      const byEmail = user.email?.toLowerCase().includes(q)
+      const idStr = String(user.id)
+      const byIdExact = idStr === q
+      const byIdInclude = idStr.includes(q)
+      const idPrefix = q.startsWith('id:') ? q.slice(3).trim() : null
+      const byIdPrefix = idPrefix !== null && (idStr === idPrefix || idStr.includes(idPrefix))
+      return byUsername || byEmail || byIdExact || byIdInclude || byIdPrefix
+    })
+  }, [users, searchQuery])
+
+  const totalPages = Math.max(1, Math.ceil((filteredUsers?.length || 0) / PAGE_SIZE))
+  const paginatedUsers = useMemo(() => {
+    const list = filteredUsers || []
+    const start = (page - 1) * PAGE_SIZE
+    return list.slice(start, start + PAGE_SIZE)
+  }, [filteredUsers, page])
+
+  useEffect(() => setPage(1), [searchQuery])
 
   function fetchUsers() {
     api.get("/user/users")
@@ -381,7 +397,7 @@ export default function Users() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-white text-2xl font-bold">Foydalanuvchilar</h2>
-          <p className="text-white/50 text-sm mt-0.5">ID, username yoki email bo&apos;yicha qidirish</p>
+          <p className="text-gray-400 text-sm mt-0.5">ID, username yoki email bo&apos;yicha qidirish</p>
         </div>
         <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 w-5 h-5" />
@@ -396,30 +412,30 @@ export default function Users() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden">
+      <div className="rounded-xl border border-white/10 bg-[#0f1012] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/5 bg-white/5">
-                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Username</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Premium</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Sessions</th>
-                <th className="px-6 py-3 text-right text-xs font-semibold text-white/60 uppercase tracking-wider">Amallar</th>
+              <tr className="border-b border-white/10 bg-white/[0.06]">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Username</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Premium</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Sessions</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-300 uppercase tracking-wider">Amallar</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
-              {filteredUsers?.length === 0 ? (
+            <tbody className="divide-y divide-white/10 bg-[#0c0d0f]">
+              {paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-white/50">
+                  <td colSpan="7" className="px-6 py-12 text-center text-gray-400">
                     Foydalanuvchilar topilmadi. ID, username yoki email orqali qidiring.
                   </td>
                 </tr>
               ) : (
-                filteredUsers?.map((user) => (
-                  <tr key={user.id} className="hover:bg-white/5 transition-colors">
+                paginatedUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-white/[0.06] transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-mono font-medium text-violet-300">#{user.id}</span>
                     </td>
@@ -429,7 +445,7 @@ export default function Users() {
                         {user.is_admin && <Shield className="w-4 h-4 text-violet-400 shrink-0" />}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white/70">{user.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">{user.email}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {user.premium_duration && new Date(user.premium_duration) > new Date() ? (
                         <div className="flex flex-col gap-0.5">
@@ -437,12 +453,12 @@ export default function Users() {
                             <Crown className="w-3 h-3" />
                             Premium
                           </span>
-                          <span className="text-xs text-white/40">
+                          <span className="text-xs text-gray-400">
                             {new Date(user.premium_duration).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                           </span>
                         </div>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white/60">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/15 text-gray-200">
                           Free
                         </span>
                       )}
@@ -453,7 +469,7 @@ export default function Users() {
                           Admin
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white/60">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/15 text-gray-200">
                           User
                         </span>
                       )}
@@ -461,7 +477,7 @@ export default function Users() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => handleViewSessions(user)}
-                        className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 transition-colors"
+                        className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-cyan-500/50 text-white hover:bg-cyan-500/60 transition-colors border border-cyan-400/30"
                       >
                         Sessions
                       </button>
@@ -470,7 +486,7 @@ export default function Users() {
                       <button
                         onClick={() => setOpenDropdown(openDropdown === user.id ? null : user.id)}
                         disabled={loading}
-                        className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50"
+                        className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/15 transition-colors disabled:opacity-50"
                       >
                         <MoreVertical className="w-5 h-5" />
                       </button>
@@ -478,30 +494,30 @@ export default function Users() {
                       {openDropdown === user.id && (
                         <div className="z-[999]">
                           <div className="fixed inset-0" onClick={() => setOpenDropdown(null)} />
-                          <div className="absolute right-0 mt-2 w-56 rounded-xl shadow-xl bg-[#16161a] border border-white/10 py-1 z-20">
+                          <div className="absolute right-0 mt-2 w-56 rounded-xl shadow-xl bg-[#1a1b1f] border border-white/15 py-1 z-20">
                             <button
                               onClick={() => toggleAdmin(user.id)}
                               disabled={loading}
-                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors disabled:opacity-50"
+                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-violet-500/25 transition-colors disabled:opacity-50 font-medium"
                             >
-                              <Shield className="w-4 h-4 text-violet-400" />
+                              <Shield className="w-4 h-4 text-violet-400 shrink-0" />
                               {user.role === "admin" ? "Adminlikdan olish" : "Admin qilish"}
                             </button>
                             <button
                               onClick={() => togglePremium(user.id)}
                               disabled={loading}
-                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors disabled:opacity-50"
+                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-amber-500/25 transition-colors disabled:opacity-50 font-medium"
                             >
-                              <Crown className="w-4 h-4 text-amber-400" />
+                              <Crown className="w-4 h-4 text-amber-400 shrink-0" />
                               {user.premium_duration ? "Premium olib tashlash" : "Premium berish"}
                             </button>
                             {user.role == "admin" && (
                               <button
                                 onClick={() => openPermissionModal(user)}
                                 disabled={loading}
-                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors disabled:opacity-50"
+                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors disabled:opacity-50 font-medium"
                               >
-                                <ListChecks className="w-4 h-4" />
+                                <ListChecks className="w-4 h-4 shrink-0" />
                                 Ruxsatlarni boshqarish
                               </button>
                             )}
@@ -517,12 +533,37 @@ export default function Users() {
         </div>
       </div>
 
-      <div className="text-sm text-white/50">
-        Ko&apos;rsatilmoqda: <span className="text-violet-300 font-medium">{filteredUsers?.length ?? 0}</span> / {users?.length ?? 0} foydalanuvchi
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <p className="text-sm text-white/60">
+          Ko&apos;rsatilmoqda: <span className="text-white font-medium">{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredUsers?.length || 0)}</span> / <span className="text-violet-300 font-medium">{filteredUsers?.length ?? 0}</span> (jami {users?.length ?? 0})
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/15 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm text-gray-300 min-w-[80px] text-center">
+              {page} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/15 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
-      {showPermissionModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {showPermissionModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-[#16161a] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 overflow-auto shadow-2xl">
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
               <div>
@@ -643,11 +684,12 @@ export default function Users() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {showSessionsModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      {showSessionsModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
           <div className="bg-[#16161a] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 shadow-2xl my-8">
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
               <div>
@@ -706,7 +748,8 @@ export default function Users() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
