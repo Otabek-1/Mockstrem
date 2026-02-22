@@ -1,7 +1,9 @@
-﻿const GEMINI_MODEL = 'gemini-2.0-flash'
+const GEMINI_MODEL = 'gemini-2.0-flash'
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
-const GEMINI_KEY_ENDPOINT = 'https://english-server-p7y6.onrender.com/key'
-const GEMINI_KEY_PASSWORD = 'mocksTream10010512111111497'
+
+const getKeyEndpoint = () =>
+  `${import.meta.env.VITE_API_URL || 'https://english-server-p7y6.onrender.com'}/key`
+const getKeyPassword = () => import.meta.env.VITE_GEMINI_KEY_PASSWORD || ''
 
 let geminiKeyPromise = null
 
@@ -28,28 +30,31 @@ async function blobToBase64(blob) {
 
 export async function getGeminiApiKey() {
   if (!geminiKeyPromise) {
-    geminiKeyPromise = fetch(GEMINI_KEY_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: GEMINI_KEY_PASSWORD })
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          const text = await response.text().catch(() => '')
-          throw new Error(`Failed to fetch Gemini key (${response.status}): ${text}`)
-        }
-
-        const data = await response.json()
-        if (!data?.key) {
-          throw new Error('Gemini key response is missing "key" field')
-        }
-
-        return data.key
+    const password = getKeyPassword()
+    if (!password) {
+      geminiKeyPromise = Promise.reject(new Error('VITE_GEMINI_KEY_PASSWORD is not set'))
+    } else {
+      geminiKeyPromise = fetch(getKeyEndpoint(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
       })
-      .catch((error) => {
-        geminiKeyPromise = null
-        throw error
-      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const text = await response.text().catch(() => '')
+            throw new Error(`Failed to fetch Gemini key (${response.status}): ${text}`)
+          }
+          const data = await response.json()
+          if (!data?.key) {
+            throw new Error('Gemini key response is missing "key" field')
+          }
+          return data.key
+        })
+        .catch((error) => {
+          geminiKeyPromise = null
+          throw error
+        })
+    }
   }
 
   return geminiKeyPromise

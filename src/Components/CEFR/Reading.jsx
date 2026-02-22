@@ -90,6 +90,11 @@ export default function ReadingExamInterface() {
                 })
             })
 
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.detail || `Submit failed (${response.status})`)
+            }
+
             const result = await response.json()
             setResults(result)
             setSubmitted(true)

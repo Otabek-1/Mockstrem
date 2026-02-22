@@ -777,15 +777,18 @@ export default function ReadingMockForm() {
       if (answersResponse.ok) {
         const answerData = await answersResponse.json();
         if (answerData.answers) {
+          const part4 = Array.isArray(answerData.answers.part4) ? answerData.answers.part4 : [];
+          const part5 = Array.isArray(answerData.answers.part5) ? answerData.answers.part5 : [];
+
           setAnswerId(answerData.answers.id);
           setAnswers({
             part1: answerData.answers.part1 || Array(6).fill(''),
             part2: answerData.answers.part2 || Array(10).fill(''),
             part3: answerData.answers.part3 || Array(6).fill(''),
-            part4MC: answerData.answers.part4MC || Array(4).fill(''),
-            part4TF: answerData.answers.part4TF || Array(5).fill(''),
-            part5Mini: answerData.answers.part5Mini || Array(5).fill(''),
-            part5MC: answerData.answers.part5MC || Array(2).fill('')
+            part4MC: part4.length ? [...part4.slice(0, 4), ...Array(Math.max(0, 4 - part4.slice(0, 4).length)).fill('')] : Array(4).fill(''),
+            part4TF: part4.length ? [...part4.slice(4, 9), ...Array(Math.max(0, 5 - part4.slice(4, 9).length)).fill('')] : Array(5).fill(''),
+            part5Mini: part5.length ? [...part5.slice(0, 5), ...Array(Math.max(0, 5 - part5.slice(0, 5).length)).fill('')] : Array(5).fill(''),
+            part5MC: part5.length ? [...part5.slice(5, 7), ...Array(Math.max(0, 2 - part5.slice(5, 7).length)).fill('')] : Array(2).fill('')
           });
           setShowAnswersSection(true);
         }
@@ -938,17 +941,20 @@ export default function ReadingMockForm() {
     setLoading(true);
     setError('');
     try {
+      const normalizeList = (items, length) =>
+        Array.from({ length }, (_, i) => String(items?.[i] ?? '').trim());
+
       const answerData = {
-        part1: answers.part1.filter(a => a.trim() !== ''),
-        part2: answers.part2.filter(a => a.trim() !== ''),
-        part3: answers.part3.filter(a => a.trim() !== ''),
+        part1: normalizeList(answers.part1, 6),
+        part2: normalizeList(answers.part2, 10),
+        part3: normalizeList(answers.part3, 6),
         part4: [
-          ...answers.part4MC.filter(a => a.trim() !== ''),
-          ...answers.part4TF.filter(a => a.trim() !== '')
+          ...normalizeList(answers.part4MC, 4),
+          ...normalizeList(answers.part4TF, 5)
         ],
         part5: [
-          ...answers.part5Mini.filter(a => a.trim() !== ''),
-          ...answers.part5MC.filter(a => a.trim() !== '')
+          ...normalizeList(answers.part5Mini, 5),
+          ...normalizeList(answers.part5MC, 2)
         ]
       };
 

@@ -1,16 +1,8 @@
 // api.js
 import axios from "axios";
-// https://english-server-p7y6.onrender.com
-const baseURL = "https://english-server-p7y6.onrender.com";
 
-// 🧪 TEST MODE TOKEN
-const TEST_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTYsImVtYWlsIjoiZm9ydGVzdGluZ0BnbWFpbC5jb20iLCJleHAiOjEzMTM2ODU4MTk3M30.E5_03H5UQd3UqZiFMdOTnO1FtqYF3szopG_EAEDS0cA";
-
-// 🧪 Check if test mode is enabled
-function isTestMode() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("test") === "true";
-}
+const baseURL =
+  import.meta.env.VITE_API_URL || "https://english-server-p7y6.onrender.com";
 
 const api = axios.create({
   baseURL,
@@ -24,9 +16,6 @@ const api = axios.create({
 // =========================
 
 function getAccessToken() {
-  if (isTestMode()) {
-    return TEST_TOKEN;
-  }
   return localStorage.getItem("access_token");
 }
 
@@ -117,10 +106,10 @@ api.interceptors.response.use(
 
       try {
         const res = await axios.post(`${baseURL}/auth/verify`, {
-          refresh: refreshToken,
+          refresh_token: refreshToken,
         });
 
-        const newAccess = res.data.access;
+        const newAccess = res.data.access_token;
 
         setAccessToken(newAccess);
         processQueue(null, newAccess);
