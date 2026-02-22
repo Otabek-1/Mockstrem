@@ -79,6 +79,17 @@ function normalizeQuestion(item, index) {
   };
 }
 
+function toTitleFromKey(key) {
+  if (!key || typeof key !== "string") return "";
+  return key
+    .split("_")
+    .map((part) => {
+      if (/^task\d+$/i.test(part)) return part.toUpperCase();
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    })
+    .join(" ");
+}
+
 export default function IeltsExamCDI() {
   const { module, id } = useParams();
   const navigate = useNavigate();
@@ -145,6 +156,60 @@ export default function IeltsExamCDI() {
 
     return parts;
   }, [module, section]);
+  const aiObject = useMemo(() => {
+    if (!aiResult || typeof aiResult !== "object" || Array.isArray(aiResult)) return null;
+    return aiResult;
+  }, [aiResult]);
+  const aiBandCards = useMemo(() => {
+    if (!aiObject) return [];
+    return Object.entries(aiObject)
+      .filter(([key, value]) => key.endsWith("_band") && (typeof value === "number" || typeof value === "string"))
+      .map(([key, value]) => ({
+        key,
+        label: toTitleFromKey(key),
+        value,
+      }));
+  }, [aiObject]);
+  const aiFeedbackCards = useMemo(() => {
+    if (!aiObject) return [];
+    return Object.entries(aiObject)
+      .filter(([key, value]) => key.endsWith("_feedback") && typeof value === "string" && value.trim().length > 0)
+      .map(([key, value]) => ({
+        key,
+        label: toTitleFromKey(key),
+        text: value.trim(),
+      }));
+  }, [aiObject]);
+  const aiImprovementPoints = useMemo(() => {
+    if (!aiObject) return [];
+    const raw = aiObject.improvement_points;
+    if (Array.isArray(raw)) {
+      return raw.map((item) => String(item || "").trim()).filter(Boolean);
+    }
+    if (typeof raw === "string") {
+      return raw
+        .split(/\n+/)
+        .map((item) => item.replace(/^[-*\d.]+\s*/, "").trim())
+        .filter(Boolean);
+    }
+    return [];
+  }, [aiObject]);
+  const aiMetaEntries = useMemo(() => {
+    if (!aiObject) return [];
+    const hiddenKeys = new Set([
+      ...aiBandCards.map((item) => item.key),
+      ...aiFeedbackCards.map((item) => item.key),
+      "improvement_points",
+    ]);
+
+    return Object.entries(aiObject)
+      .filter(([key, value]) => !hiddenKeys.has(key) && (typeof value === "string" || typeof value === "number"))
+      .map(([key, value]) => ({
+        key,
+        label: toTitleFromKey(key),
+        value,
+      }));
+  }, [aiObject, aiBandCards, aiFeedbackCards]);
 
   useEffect(() => {
     const load = async () => {
@@ -447,9 +512,63 @@ export default function IeltsExamCDI() {
           </div>
 
           {isPremium && aiResult && (
-            <div className="mt-6 bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <p className="font-semibold text-white mb-2">Premium AI Evaluation</p>
-              <pre className="text-xs text-slate-200 whitespace-pre-wrap">{JSON.stringify(aiResult, null, 2)}</pre>
+            <div className="mt-6 rounded-2xl p-5 border border-cyan-500/20 bg-gradient-to-br from-slate-800 via-slate-800 to-slate-900 shadow-lg shadow-cyan-900/20">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <p className="font-semibold text-cyan-200 text-lg">Premium AI Evaluation</p>
+                <span className="text-[11px] px-2 py-1 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/30">
+                  Structured View
+                </span>
+              </div>
+
+              {aiBandCards.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                  {aiBandCards.map((item) => (
+                    <div key={item.key} className="rounded-xl border border-slate-600/60 bg-slate-800/80 p-3">
+                      <p className="text-xs text-slate-400">{item.label}</p>
+                      <p className="text-2xl font-bold text-white mt-1">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {aiFeedbackCards.length > 0 && (
+                <div className="space-y-3 mb-4">
+                  {aiFeedbackCards.map((item) => (
+                    <div key={item.key} className="rounded-xl border border-slate-600/50 bg-slate-800/70 p-4">
+                      <p className="text-sm font-semibold text-slate-100 mb-1">{item.label}</p>
+                      <p className="text-sm text-slate-300 leading-relaxed">{item.text}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {aiImprovementPoints.length > 0 && (
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 mb-4">
+                  <p className="text-sm font-semibold text-emerald-200 mb-2">Improvement Points</p>
+                  <ul className="space-y-1">
+                    {aiImprovementPoints.map((point, index) => (
+                      <li key={`${point}-${index}`} className="text-sm text-emerald-100/90">
+                        {index + 1}. {point}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {aiMetaEntries.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {aiMetaEntries.map((item) => (
+                    <span key={item.key} className="text-xs px-2 py-1 rounded-lg border border-slate-600 bg-slate-800/80 text-slate-200">
+                      {item.label}: {item.value}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <details className="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
+                <summary className="cursor-pointer text-xs text-slate-300">Show raw AI JSON</summary>
+                <pre className="text-xs text-slate-300 whitespace-pre-wrap mt-2">{JSON.stringify(aiResult, null, 2)}</pre>
+              </details>
             </div>
           )}
 
@@ -680,5 +799,3 @@ export default function IeltsExamCDI() {
     </div>
   );
 }
-
-
