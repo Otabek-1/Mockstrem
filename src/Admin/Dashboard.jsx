@@ -17,6 +17,10 @@ import Main_admin from "./Main";
 import CEFR_reading from "./CEFR_reading";
 import CEFR_Speaking from "./CEFR_speaking";
 import CEFR_Listening from "./CEFR_Listening";
+import IELTSReadingAdmin from "./IELTS_reading";
+import IELTSListeningAdmin from "./IELTS_listening";
+import IELTSWritingAdmin from "./IELTS_writing";
+import IELTSSpeakingAdmin from "./IELTS_speaking";
 
 export default function Dashboard_admin() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -135,6 +139,10 @@ export default function Dashboard_admin() {
         {activeMenu === "cefr_reading" && <CEFR_reading />}
         {activeMenu === "cefr_speaking" && <CEFR_Speaking />}
         {activeMenu === "cefr_listening" && <CEFR_Listening />}
+        {activeMenu === "ielts_reading" && <IELTSReadingAdmin />}
+        {activeMenu === "ielts_listening" && <IELTSListeningAdmin />}
+        {activeMenu === "ielts_speaking" && <IELTSSpeakingAdmin />}
+        {activeMenu === "ielts_writing" && <IELTSWritingAdmin />}
         {activeMenu === "Users" && <Users />}
         {activeMenu === "Dashboard" && <Main_admin />}
       </div>

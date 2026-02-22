@@ -387,3 +387,125 @@ export async function evaluateWritingWithGemini(payload) {
   return JSON.parse(jsonText)
 }
 
+function extractFirstNumber(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  const match = String(value || '').match(/(\d+(\.\d+)?)/)
+  return match ? Number(match[1]) : null
+}
+
+export function buildIeltsWritingPrompt({
+  testTitle = 'IELTS Writing',
+  task1Prompt = '',
+  task2Prompt = '',
+  task1Answer = '',
+  task2Answer = ''
+}) {
+  return `You are an official IELTS writing examiner.
+Evaluate the candidate's responses for Task 1 and Task 2.
+
+Use IELTS band descriptors:
+- Task Achievement / Response
+- Coherence and Cohesion
+- Lexical Resource
+- Grammatical Range and Accuracy
+
+Test: ${testTitle}
+
+TASK 1 PROMPT:
+${task1Prompt || 'N/A'}
+
+TASK 1 ANSWER:
+${task1Answer || '[No response]'}
+
+TASK 2 PROMPT:
+${task2Prompt || 'N/A'}
+
+TASK 2 ANSWER:
+${task2Answer || '[No response]'}
+
+Return STRICT JSON only:
+{
+  "task1_band": number,
+  "task2_band": number,
+  "overall_band": number,
+  "task1_feedback": "string",
+  "task2_feedback": "string",
+  "overall_feedback": "string",
+  "improvement_points": ["point1", "point2", "point3"]
+}
+Use 0.5 band steps (e.g. 6.0, 6.5, 7.0).`
+}
+
+export async function evaluateIeltsWritingWithGemini(payload) {
+  const prompt = buildIeltsWritingPrompt(payload)
+  const raw = await callGemini({
+    parts: [{ text: prompt }],
+    generationConfig: {
+      temperature: 0.2,
+      maxOutputTokens: 4096,
+      responseMimeType: 'application/json'
+    }
+  })
+  const jsonText = extractJsonObject(raw)
+  const data = JSON.parse(jsonText)
+
+  const overallBand = extractFirstNumber(data.overall_band)
+  return {
+    ...data,
+    overall_band: overallBand ?? data.overall_band ?? null
+  }
+}
+
+export async function evaluateIeltsSpeakingWithGemini({
+  testTitle = 'IELTS Speaking',
+  prompts = [],
+  transcriptions = []
+}) {
+  const joined = prompts
+    .map((prompt, idx) => {
+      const answer = transcriptions[idx] || '[No response]'
+      return `Q${idx + 1} PROMPT: ${prompt}\nQ${idx + 1} TRANSCRIPT: ${answer}`
+    })
+    .join('\n\n')
+
+  const evaluationPrompt = `You are an official IELTS speaking examiner.
+Evaluate the candidate based on:
+- Fluency and Coherence
+- Lexical Resource
+- Grammatical Range and Accuracy
+- Pronunciation (infer from transcript quality cautiously)
+
+Test: ${testTitle}
+
+Candidate responses:
+${joined || '[No responses]'}
+
+Return STRICT JSON only:
+{
+  "fluency_band": number,
+  "lexical_band": number,
+  "grammar_band": number,
+  "pronunciation_band": number,
+  "overall_band": number,
+  "feedback": "string",
+  "improvement_points": ["point1", "point2", "point3"]
+}
+Use IELTS 0.5 band increments.`
+
+  const raw = await callGemini({
+    parts: [{ text: evaluationPrompt }],
+    generationConfig: {
+      temperature: 0.2,
+      maxOutputTokens: 4096,
+      responseMimeType: 'application/json'
+    }
+  })
+  const jsonText = extractJsonObject(raw)
+  const data = JSON.parse(jsonText)
+
+  const overallBand = extractFirstNumber(data.overall_band)
+  return {
+    ...data,
+    overall_band: overallBand ?? data.overall_band ?? null
+  }
+}

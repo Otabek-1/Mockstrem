@@ -26,6 +26,10 @@ import Reading_list from "./Components/CEFR/Reading_list";
 import Speaking_list from "./Components/CEFR/Speaking_list";
 import Background from "./Background";
 import Listening_list from "./Components/CEFR/Listening_list";
+import IELTSWritingList from "./Components/IELTS/Writing_list";
+import IELTSListeningList from "./Components/IELTS/Listening_list";
+import IELTSReadingList from "./Components/IELTS/Reading_list";
+import IELTSSpeakingList from "./Components/IELTS/Speaking_list";
 
 // ─── Time formatter ───────────────────────────────────────────
 const formatTimeAgo = (dateString) => {
@@ -890,10 +894,10 @@ export default function Dashboard() {
           {active === "cefr_reading" && <Reading_list isPremium={isPremium} />}
           {active === "cefr_speaking" && <Speaking_list isPremium={isPremium} />}
 
-          {active === "ielts_writing" && <div>IELTS Writing</div>}
-          {active === "ielts_listening" && <div>IELTS Listening</div>}
-          {active === "ielts_reading" && <div>IELTS Reading</div>}
-          {active === "ielts_speaking" && <div>IELTS Speaking</div>}
+          {active === "ielts_writing" && <IELTSWritingList isPremium={isPremium} />}
+          {active === "ielts_listening" && <IELTSListeningList isPremium={isPremium} />}
+          {active === "ielts_reading" && <IELTSReadingList isPremium={isPremium} />}
+          {active === "ielts_speaking" && <IELTSSpeakingList isPremium={isPremium} />}
 
           {active === "profile" && <Profile />}
         </div>
