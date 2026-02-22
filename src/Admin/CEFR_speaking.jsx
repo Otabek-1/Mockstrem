@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaEdit, FaTrash, FaPlus } from "react-icons/fa";
-import { RiReceiptFill } from "react-icons/ri";
+import { Pencil, Trash2, Plus, FileCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import api from "../api";
 
@@ -96,10 +95,10 @@ export default function CEFR_Speaking() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center">
+      <div className="p-6 flex items-center justify-center min-h-[200px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600 dark:text-gray-400">Loading...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-white/10 border-t-violet-500 mx-auto mb-3" />
+          <p className="text-gray-400">Yuklanmoqda...</p>
         </div>
       </div>
     );
@@ -107,123 +106,108 @@ export default function CEFR_Speaking() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">CEFR Speaking</h1>
+      <h1 className="text-2xl font-bold text-white mb-6">CEFR Speaking</h1>
 
-      {/* ✅ Permission warning */}
       {!hasAnySpeakingPermission() && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-lg mb-6">
-          <p className="font-semibold">⚠️ Limited Access</p>
-          <p className="text-sm">You don't have permissions to manage speaking mocks. Please contact an administrator.</p>
+        <div className="bg-amber-500/15 border border-amber-500/30 text-amber-200 p-4 rounded-xl mb-6">
+          <p className="font-semibold">⚠️ Cheklangan kirish</p>
+          <p className="text-sm text-white/80 mt-1">Speaking mocklarni boshqarish ruxsati yo&apos;q. Administrator bilan bog&apos;laning.</p>
         </div>
       )}
 
-      {/* Create New Speaking */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
-        <h2 className="text-lg font-semibold mb-3">Create New Speaking Mock</h2>
-
-        <div className="flex gap-3">
-          {/* ✅ Add button - requires "add" permission */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 mb-6">
+        <h2 className="text-lg font-semibold text-white mb-3">Yangi speaking</h2>
+        <div className="flex flex-wrap gap-3">
           <Link
             to={hasPermission("add") ? "/mock/cefr/speaking/form" : "#"}
             onClick={(e) => {
               if (!hasPermission("add")) {
                 e.preventDefault();
-                alert("You don't have permission to add new speaking mocks");
+                alert("Yangi speaking qo&apos;shish ruxsati yo&apos;q");
               }
             }}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition ${
               hasPermission("add")
-                ? "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-50"
+                ? "bg-violet-600 text-white hover:bg-violet-500"
+                : "bg-white/10 text-gray-500 cursor-not-allowed opacity-60"
             }`}
           >
-            <FaPlus /> Add
+            <Plus className="w-4 h-4" /> Add
           </Link>
-
-          {/* ✅ Check mocks button - requires "check_result" permission */}
           <Link
             to={hasPermission("check_result") ? "/mock/cefr/speaking/check-list" : "#"}
             target="_blank"
             onClick={(e) => {
               if (!hasPermission("check_result")) {
                 e.preventDefault();
-                alert("You don't have permission to check mocks");
+                alert("Mocklarni tekshirish ruxsati yo&apos;q");
               }
             }}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition ${
               hasPermission("check_result")
-                ? "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-50"
+                ? "bg-cyan-600 text-white hover:bg-cyan-500"
+                : "bg-white/10 text-gray-500 cursor-not-allowed opacity-60"
             }`}
           >
-            <RiReceiptFill /> Check mocks
+            <FileCheck className="w-4 h-4" /> Check mocks
           </Link>
         </div>
       </div>
 
-      {/* List */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-        <h2 className="text-lg font-semibold mb-4">Speaking Mocks List</h2>
-
+      <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
+        <h2 className="text-lg font-semibold text-white px-5 py-4 border-b border-white/10">Speaking ro&apos;yxati</h2>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full">
             <thead>
-              <tr className="text-left border-b dark:border-gray-700">
-                <th className="p-2">Title</th>
-                <th className="p-2">Questions</th>
-                <th className="p-2">Actions</th>
+              <tr className="border-b border-white/10 bg-white/[0.04]">
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Title</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Questions</th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-300 uppercase tracking-wider">Amallar</th>
               </tr>
             </thead>
-
-            <tbody>
+            <tbody className="divide-y divide-white/10">
               {speaking.map((s) => (
-                <tr key={s.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="p-2">{s.title}</td>
-                  <td className="p-2">8 Questions</td>
-                  <td className="p-2 flex gap-3">
-                    {/* ✅ Edit button - requires "update_delete" permission */}
-                    <Link
-                      to={
-                        hasPermission("update_delete")
-                          ? `/mock/cefr/speaking/form?edit=true&id=${s.id}`
-                          : "#"
-                      }
-                      onClick={(e) => {
-                        if (!hasPermission("update_delete")) {
-                          e.preventDefault();
-                          alert("You don't have permission to edit speaking mocks");
-                        }
-                      }}
-                      className={`p-2 rounded-lg transition ${
-                        hasPermission("update_delete")
-                          ? "bg-yellow-500 text-white hover:bg-yellow-600 cursor-pointer"
-                          : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-50"
-                      }`}
-                    >
-                      <FaEdit />
-                    </Link>
-
-                    {/* ✅ Delete button - requires "update_delete" permission */}
-                    <button
-                      onClick={() => deleteSpeaking(s.id)}
-                      disabled={!hasPermission("update_delete")}
-                      className={`p-2 rounded-lg transition ${
-                        hasPermission("update_delete")
-                          ? "bg-red-600 text-white hover:bg-red-700 cursor-pointer"
-                          : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-50"
-                      }`}
-                    >
-                      <FaTrash />
-                    </button>
+                <tr key={s.id} className="hover:bg-white/[0.04] transition-colors">
+                  <td className="px-5 py-4 text-gray-200">{s.title}</td>
+                  <td className="px-5 py-4 text-gray-400">8 Questions</td>
+                  <td className="px-5 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Link
+                        to={hasPermission("update_delete") ? `/mock/cefr/speaking/form?edit=true&id=${s.id}` : "#"}
+                        onClick={(e) => {
+                          if (!hasPermission("update_delete")) {
+                            e.preventDefault();
+                            alert("Tahrirlash ruxsati yo&apos;q");
+                          }
+                        }}
+                        className={`inline-flex items-center justify-center w-9 h-9 rounded-lg transition ${
+                          hasPermission("update_delete")
+                            ? "bg-amber-500/30 text-amber-200 hover:bg-amber-500/40"
+                            : "bg-white/10 text-gray-500 cursor-not-allowed opacity-60"
+                        }`}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Link>
+                      <button
+                        onClick={() => deleteSpeaking(s.id)}
+                        disabled={!hasPermission("update_delete")}
+                        className={`inline-flex items-center justify-center w-9 h-9 rounded-lg transition ${
+                          hasPermission("update_delete")
+                            ? "bg-red-500/30 text-red-200 hover:bg-red-500/40"
+                            : "bg-white/10 text-gray-500 cursor-not-allowed opacity-60"
+                        }`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-
         {speaking.length === 0 && (
-          <p className="text-gray-400 text-center py-4">No speaking mocks yet…</p>
+          <p className="text-gray-400 text-center py-8">Hali speakinglar yo&apos;q</p>
         )}
       </div>
     </div>

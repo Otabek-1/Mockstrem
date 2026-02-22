@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaEdit, FaTrash, FaPlus } from "react-icons/fa";
+import { Pencil, Trash2, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import api from "../api";
 
@@ -8,38 +8,24 @@ export default function CEFR_Reading() {
   const [userPermissions, setUserPermissions] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Current user va permissions olish
   const fetchUserAndPermissions = async () => {
     try {
       const userRes = await api.get("/user/me");
       const userId = userRes.data.id;
-
       const permRes = await api.get(`/permissions/${userId}`);
-      console.log("User permissions:", permRes.data);
-
       if (permRes.data.data !== "not_added") {
         setUserPermissions(permRes.data.data.permissions);
       } else {
         setUserPermissions({
           users: [],
-          cefr: {
-            reading: [],
-            listening: [],
-            speaking: [],
-            writing: []
-          }
+          cefr: { reading: [], listening: [], speaking: [], writing: [] },
         });
       }
     } catch (err) {
       console.error("Error fetching permissions:", err);
       setUserPermissions({
         users: [],
-        cefr: {
-          reading: [],
-          listening: [],
-          speaking: [],
-          writing: []
-        }
+        cefr: { reading: [], listening: [], speaking: [], writing: [] },
       });
     } finally {
       setLoading(false);
@@ -48,23 +34,15 @@ export default function CEFR_Reading() {
 
   function getMocks() {
     api.get("/mock/reading/all")
-      .then(res => {
-        // Agar res.data array bo'lsa
-        setReadings(Array.isArray(res.data.mocks) ? res.data.mocks : []);
-      })
-      .catch(err => {
-        console.log(err);
-        setReadings([]);
-      });
+      .then(res => setReadings(Array.isArray(res.data?.mocks) ? res.data.mocks : []))
+      .catch(() => setReadings([]));
   }
 
   const deleteReading = async (id) => {
-    // ✅ Permission check
     if (!hasPermission("update_delete")) {
       alert("You don't have permission to delete reading mocks");
       return;
     }
-
     api.delete(`/mock/reading/${id}`)
       .then(res => {
         if (res.status === 200) {
@@ -72,19 +50,14 @@ export default function CEFR_Reading() {
           getMocks();
         }
       })
-      .catch(err => {
-        console.log(err);
-        alert("Error in deleting mock. (See console)");
-      });
+      .catch(() => alert("Error in deleting mock. (See console)"));
   };
 
-  // ✅ Permission check function
   const hasPermission = (permission) => {
     if (!userPermissions) return false;
     return userPermissions.cefr?.reading?.includes(permission) || false;
   };
 
-  // ✅ Check if user has any reading permissions
   const hasAnyReadingPermission = () => {
     if (!userPermissions) return false;
     return userPermissions.cefr?.reading?.length > 0;
@@ -97,10 +70,10 @@ export default function CEFR_Reading() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center">
+      <div className="p-6 flex items-center justify-center min-h-[200px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600 dark:text-gray-400">Loading...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-white/10 border-t-violet-500 mx-auto mb-3" />
+          <p className="text-gray-400">Yuklanmoqda...</p>
         </div>
       </div>
     );
@@ -108,104 +81,89 @@ export default function CEFR_Reading() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">CEFR Reading</h1>
+      <h1 className="text-2xl font-bold text-white mb-6">CEFR Reading</h1>
 
-      {/* ✅ Permission warning */}
       {!hasAnyReadingPermission() && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-lg mb-6">
-          <p className="font-semibold">⚠️ Limited Access</p>
-          <p className="text-sm">You don't have permissions to manage reading mocks. Please contact an administrator.</p>
+        <div className="bg-amber-500/15 border border-amber-500/30 text-amber-200 p-4 rounded-xl mb-6">
+          <p className="font-semibold">⚠️ Cheklangan kirish</p>
+          <p className="text-sm text-white/80 mt-1">Reading mocklarni boshqarish ruxsati yo&apos;q. Administrator bilan bog&apos;laning.</p>
         </div>
       )}
 
-      {/* Create New Reading */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
-        <h2 className="text-lg font-semibold mb-3">Create New Reading</h2>
-
-        <div className="flex gap-3">
-          {/* ✅ Add button - requires "add" permission */}
-          <Link
-            to={hasPermission("add") ? "/mock/cefr/reading/form" : "#"}
-            onClick={(e) => {
-              if (!hasPermission("add")) {
-                e.preventDefault();
-                alert("You don't have permission to add new reading mocks");
-              }
-            }}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition ${
-              hasPermission("add")
-                ? "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-50"
-            }`}
-          >
-            <FaPlus /> Add
-          </Link>
-        </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 mb-6">
+        <h2 className="text-lg font-semibold text-white mb-3">Yangi reading</h2>
+        <Link
+          to={hasPermission("add") ? "/mock/cefr/reading/form" : "#"}
+          onClick={(e) => {
+            if (!hasPermission("add")) {
+              e.preventDefault();
+              alert("Yangi reading qo&apos;shish ruxsati yo&apos;q");
+            }
+          }}
+          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition ${
+            hasPermission("add")
+              ? "bg-violet-600 text-white hover:bg-violet-500"
+              : "bg-white/10 text-gray-500 cursor-not-allowed opacity-60"
+          }`}
+        >
+          <Plus className="w-4 h-4" /> Add
+        </Link>
       </div>
 
-      {/* List */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-        <h2 className="text-lg font-semibold mb-4">Reading List</h2>
-
+      <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
+        <h2 className="text-lg font-semibold text-white px-5 py-4 border-b border-white/10">Reading ro&apos;yxati</h2>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full">
             <thead>
-              <tr className="text-left border-b dark:border-gray-700">
-                <th className="p-2">Title</th>
-                <th className="p-2">Level</th>
-                <th className="p-2">Actions</th>
+              <tr className="border-b border-white/10 bg-white/[0.04]">
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Title</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Level</th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-300 uppercase tracking-wider">Amallar</th>
               </tr>
             </thead>
-
-            <tbody>
+            <tbody className="divide-y divide-white/10">
               {Array.isArray(readings) && readings.map((r) => (
-                <tr key={r.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="p-2">{r.title || `Reading #${r.id}`}</td>
-                  <td className="p-2">B2</td>
-                  <td className="p-2 flex gap-3">
-                    {/* ✅ Edit button - requires "update_delete" permission */}
-                    <Link
-                      to={
-                        hasPermission("update_delete")
-                          ? `/mock/cefr/reading/form?edit=true&id=${r.id}`
-                          : "#"
-                      }
-                      onClick={(e) => {
-                        if (!hasPermission("update_delete")) {
-                          e.preventDefault();
-                          alert("You don't have permission to edit reading mocks");
-                        }
-                      }}
-                      className={`p-2 rounded-lg transition ${
-                        hasPermission("update_delete")
-                          ? "bg-yellow-500 text-white hover:bg-yellow-600 cursor-pointer"
-                          : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-50"
-                      }`}
-                    >
-                      <FaEdit />
-                    </Link>
-
-                    {/* ✅ Delete button - requires "update_delete" permission */}
-                    <button
-                      onClick={() => deleteReading(r.id)}
-                      disabled={!hasPermission("update_delete")}
-                      className={`p-2 rounded-lg transition ${
-                        hasPermission("update_delete")
-                          ? "bg-red-600 text-white hover:bg-red-700 cursor-pointer"
-                          : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-50"
-                      }`}
-                    >
-                      <FaTrash />
-                    </button>
+                <tr key={r.id} className="hover:bg-white/[0.04] transition-colors">
+                  <td className="px-5 py-4 text-gray-200">{r.title || `Reading #${r.id}`}</td>
+                  <td className="px-5 py-4 text-gray-400">B2</td>
+                  <td className="px-5 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Link
+                        to={hasPermission("update_delete") ? `/mock/cefr/reading/form?edit=true&id=${r.id}` : "#"}
+                        onClick={(e) => {
+                          if (!hasPermission("update_delete")) {
+                            e.preventDefault();
+                            alert("Tahrirlash ruxsati yo&apos;q");
+                          }
+                        }}
+                        className={`inline-flex items-center justify-center w-9 h-9 rounded-lg transition ${
+                          hasPermission("update_delete")
+                            ? "bg-amber-500/30 text-amber-200 hover:bg-amber-500/40"
+                            : "bg-white/10 text-gray-500 cursor-not-allowed opacity-60"
+                        }`}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Link>
+                      <button
+                        onClick={() => deleteReading(r.id)}
+                        disabled={!hasPermission("update_delete")}
+                        className={`inline-flex items-center justify-center w-9 h-9 rounded-lg transition ${
+                          hasPermission("update_delete")
+                            ? "bg-red-500/30 text-red-200 hover:bg-red-500/40"
+                            : "bg-white/10 text-gray-500 cursor-not-allowed opacity-60"
+                        }`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-
-        {Array.isArray(readings) && readings.length === 0 && (
-          <p className="text-gray-400 text-center py-4">No readings yet…</p>
+        {(!readings || readings.length === 0) && (
+          <p className="text-gray-400 text-center py-8">Hali readinglar yo&apos;q</p>
         )}
       </div>
     </div>

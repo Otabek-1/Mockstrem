@@ -509,7 +509,9 @@ export default function Users() {
                               className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-amber-500/25 transition-colors disabled:opacity-50 font-medium"
                             >
                               <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-                              {user.premium_duration ? "Premium olib tashlash" : "Premium berish"}
+                              {user.premium_duration && new Date(user.premium_duration) > new Date()
+                                ? "Premium olib tashlash"
+                                : "Premium berish"}
                             </button>
                             {user.role == "admin" && (
                               <button
