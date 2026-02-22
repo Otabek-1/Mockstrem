@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AlarmClock, CircleCheckBig, Mic, Pause, Play, SendHorizontal, Volume2 } from "lucide-react";
 import JSZip from "jszip";
@@ -439,20 +439,25 @@ export default function IeltsExamCDI() {
             </div>
           )}
 
-          {aiError && <p className="text-amber-400 mt-4 text-sm">{aiError}</p>}
+          {aiError && (
+            <div className="mt-4 p-4 rounded-xl bg-amber-500/15 border border-amber-500/30">
+              <p className="text-amber-200 text-sm">{aiError}</p>
+              <p className="text-amber-200/80 text-xs mt-1">Ball va band keyinroq admin tomonidan beriladi.</p>
+            </div>
+          )}
 
           <div className="mt-6 flex gap-3">
             <button
               onClick={() => navigate("/dashboard")}
-              className="px-5 py-2 rounded-lg bg-white text-slate-900 font-semibold"
+              className="px-5 py-2.5 rounded-xl bg-violet-600 text-white font-semibold hover:bg-violet-500 transition shadow-lg shadow-violet-500/20"
             >
               Dashboard
             </button>
             <button
               onClick={() => navigate(0)}
-              className="px-5 py-2 rounded-lg border border-slate-600"
+              className="px-5 py-2.5 rounded-xl border border-slate-500 text-slate-200 hover:bg-slate-700/50 font-medium transition"
             >
-              Retake
+              Qayta topshirish
             </button>
           </div>
         </div>
