@@ -34,18 +34,28 @@ export const getListeningAnswers = async (mockId) => {
  * @returns {Object} Detailed results with score and answer comparison
  */
 export const calculateListeningScore = (userAnswers, correctAnswers) => {
+    const partTotals = {
+        part1: Array.isArray(correctAnswers?.part_1) ? correctAnswers.part_1.length : 0,
+        part2: Array.isArray(correctAnswers?.part_2) ? correctAnswers.part_2.length : 0,
+        part3: Array.isArray(correctAnswers?.part_3) ? correctAnswers.part_3.length : 0,
+        part4: Array.isArray(correctAnswers?.part_4) ? correctAnswers.part_4.length : 0,
+        part5: Array.isArray(correctAnswers?.part_5) ? correctAnswers.part_5.length : 0,
+        part6: Array.isArray(correctAnswers?.part_6) ? correctAnswers.part_6.length : 0
+    }
+    const dynamicMaxScore = Object.values(partTotals).reduce((acc, val) => acc + val, 0)
+
     const results = {
         total: 0,
-        maxScore: 35,
+        maxScore: dynamicMaxScore,
         percentage: 0,
         details: [],
         partScores: {
-            part1: { correct: 0, total: 8 },
-            part2: { correct: 0, total: 6 },
-            part3: { correct: 0, total: 4 },
-            part4: { correct: 0, total: 5 },
-            part5: { correct: 0, total: 6 },
-            part6: { correct: 0, total: 6 }
+            part1: { correct: 0, total: partTotals.part1 },
+            part2: { correct: 0, total: partTotals.part2 },
+            part3: { correct: 0, total: partTotals.part3 },
+            part4: { correct: 0, total: partTotals.part4 },
+            part5: { correct: 0, total: partTotals.part5 },
+            part6: { correct: 0, total: partTotals.part6 }
         }
     }
 
@@ -190,7 +200,7 @@ export const calculateListeningScore = (userAnswers, correctAnswers) => {
     }
 
     // Calculate percentage
-    results.percentage = Math.round((results.total / results.maxScore) * 100)
+    results.percentage = results.maxScore > 0 ? Math.round((results.total / results.maxScore) * 100) : 0
 
     return results
 }

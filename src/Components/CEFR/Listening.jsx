@@ -14,15 +14,16 @@ const API_BASE_URL = 'https://english-server-p7y6.onrender.com'
 export default function ListeningExamInterface() {
     const { id } = useParams()
     const [mockId, setMockId] = useState(id || 1)
-    const [currentPart, setCurrentPart] = useState(1)
-    const [answers, setAnswers] = useState({
-        part1: Array(8).fill(''),
-        part2: Array(6).fill(''),   
-        part3: Array(4).fill(''),
-        part4: Array(5).fill(''),
-        part5: Array(6).fill(''),
-        part6: Array(6).fill('')
+    const createAnswerState = (data = null) => ({
+        part1: Array(data?.data?.part_1?.length || 0).fill(''),
+        part2: Array(data?.data?.part_2?.length || 0).fill(''),
+        part3: Array(data?.data?.part_3?.speakers?.length || 0).fill(''),
+        part4: Array(data?.data?.part_4?.questions?.length || 0).fill(''),
+        part5: Array((data?.data?.part_5 || []).reduce((acc, ex) => acc + (ex?.questions?.length || 0), 0)).fill(''),
+        part6: Array(data?.data?.part_6?.questions?.length || 0).fill('')
     })
+    const [currentPart, setCurrentPart] = useState(1)
+    const [answers, setAnswers] = useState(createAnswerState())
     const [submitted, setSubmitted] = useState(false)
     const [results, setResults] = useState(null)
     const [mockData, setMockData] = useState(null)
@@ -61,14 +62,7 @@ export default function ListeningExamInterface() {
                 console.log('Received data:', data)
                 setMockData(data)
 
-                setAnswers({
-                    part1: Array(8).fill(''),
-                    part2: Array(6).fill(''),
-                    part3: Array(4).fill(''),
-                    part4: Array(5).fill(''),
-                    part5: Array(6).fill(''),
-                    part6: Array(6).fill('')
-                })
+                setAnswers(createAnswerState(data))
 
                 setError(null)
             } catch (err) {

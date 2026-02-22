@@ -4,45 +4,30 @@ import api from "../api";
 
 const MODULES = ["reading", "listening", "writing", "speaking"];
 
-const TEMPLATES = {
-  reading: {
-    questions: [
-      { prompt: "Question 1", type: "text" },
-      { prompt: "Question 2", type: "text" }
-    ]
-  },
-  listening: {
-    audio_parts: [
-      { title: "Part 1", url: "https://example.com/listening-part1.mp3" },
-      { title: "Part 2", url: "https://example.com/listening-part2.mp3" }
-    ],
-    questions: [
-      { prompt: "Question 1", options: ["A", "B", "C", "D"], type: "choice" },
-      { prompt: "Question 2", options: ["A", "B", "C", "D"], type: "choice" }
-    ]
-  },
-  writing: {
-    tasks: [
-      { prompt: "Task 1 prompt", min_words: 150 },
-      { prompt: "Task 2 prompt", min_words: 250 }
-    ]
-  },
-  speaking: {
-    stages: [
-      { prompt: "Part 1 intro questions" },
-      { prompt: "Part 2 cue card" },
-      { prompt: "Part 3 follow-up" }
-    ]
-  }
-};
+const createQuestion = (withOptions = false) => ({
+  prompt: "",
+  type: withOptions ? "choice" : "text",
+  options: withOptions ? ["", "", "", ""] : [],
+  answer: "",
+});
 
-function parseJsonSafe(value, fallback = {}) {
-  try {
-    const parsed = JSON.parse(value);
-    return parsed;
-  } catch {
-    return fallback;
-  }
+const createAudioPart = () => ({ title: "", url: "" });
+const createWritingTask = () => ({ prompt: "", min_words: 150 });
+const createSpeakingStage = () => ({ prompt: "", prep_seconds: 60, speak_seconds: 120 });
+
+function normalizeQuestion(raw) {
+  return {
+    prompt: raw?.prompt || "",
+    type: raw?.type || (Array.isArray(raw?.options) && raw.options.length > 0 ? "choice" : "text"),
+    options: Array.isArray(raw?.options) ? raw.options : [],
+    answer: raw?.answer || "",
+  };
+}
+
+function ensureMinArray(arr, min, factory) {
+  const out = Array.isArray(arr) ? [...arr] : [];
+  while (out.length < min) out.push(factory());
+  return out;
 }
 
 export default function IeltsManager({ defaultModule = "reading" }) {
@@ -64,8 +49,11 @@ export default function IeltsManager({ defaultModule = "reading" }) {
     section_title: "",
     section_instructions: "",
     section_duration_minutes: 60,
-    section_content_json: JSON.stringify(TEMPLATES[defaultModule], null, 2),
-    answer_key_text: "",
+
+    questions: [createQuestion(false), createQuestion(false), createQuestion(false)],
+    audio_parts: [createAudioPart()],
+    writing_tasks: [createWritingTask(), createWritingTask()],
+    speaking_stages: [createSpeakingStage(), createSpeakingStage(), createSpeakingStage()],
   });
 
   const filteredTests = useMemo(
@@ -95,38 +83,65 @@ export default function IeltsManager({ defaultModule = "reading" }) {
   }, []);
 
   useEffect(() => {
+    const baseMinutes = activeModule === "listening" ? 40 : activeModule === "speaking" ? 14 : 60;
     setForm((prev) => ({
       ...prev,
-      section_content_json: JSON.stringify(TEMPLATES[activeModule], null, 2),
-      answer_key_text: "",
+      duration_minutes: baseMinutes,
       section_title: `${activeModule.toUpperCase()} Section`,
-      section_duration_minutes: activeModule === "listening" ? 40 : activeModule === "speaking" ? 14 : 60,
-      duration_minutes: activeModule === "listening" ? 40 : activeModule === "speaking" ? 14 : 60,
+      section_duration_minutes: baseMinutes,
+      questions:
+        activeModule === "listening"
+          ? [createQuestion(true), createQuestion(true), createQuestion(true)]
+          : activeModule === "reading"
+          ? [createQuestion(false), createQuestion(false), createQuestion(false)]
+          : prev.questions,
+      audio_parts: [createAudioPart()],
+      writing_tasks: [createWritingTask(), createWritingTask()],
+      speaking_stages: [createSpeakingStage(), createSpeakingStage(), createSpeakingStage()],
     }));
+    setEditingId(null);
   }, [activeModule]);
 
   const clearForm = () => {
+    const baseMinutes = activeModule === "listening" ? 40 : activeModule === "speaking" ? 14 : 60;
     setEditingId(null);
-    setForm((prev) => ({
-      ...prev,
+    setForm({
       title: "",
       description: "",
       exam_track: "academic",
       level: "Band 6-7",
-      duration_minutes: activeModule === "listening" ? 40 : activeModule === "speaking" ? 14 : 60,
+      duration_minutes: baseMinutes,
       is_published: true,
       tags_csv: "",
       section_title: `${activeModule.toUpperCase()} Section`,
       section_instructions: "",
-      section_duration_minutes: activeModule === "listening" ? 40 : activeModule === "speaking" ? 14 : 60,
-      section_content_json: JSON.stringify(TEMPLATES[activeModule], null, 2),
-      answer_key_text: "",
-    }));
+      section_duration_minutes: baseMinutes,
+      questions:
+        activeModule === "listening"
+          ? [createQuestion(true), createQuestion(true), createQuestion(true)]
+          : activeModule === "reading"
+          ? [createQuestion(false), createQuestion(false), createQuestion(false)]
+          : [],
+      audio_parts: [createAudioPart()],
+      writing_tasks: [createWritingTask(), createWritingTask()],
+      speaking_stages: [createSpeakingStage(), createSpeakingStage(), createSpeakingStage()],
+    });
   };
 
   const onEdit = (test) => {
     const section = test.sections.find((item) => item.module === activeModule);
     if (!section) return;
+
+    const content = section.content || {};
+    const answerKey = Array.isArray(section.answer_key) ? section.answer_key : [];
+
+    const normalizedQuestions = Array.isArray(content.questions)
+      ? content.questions.map((q, idx) => {
+          const normalized = normalizeQuestion(q);
+          normalized.answer = q?.answer || answerKey[idx] || "";
+          return normalized;
+        })
+      : [];
 
     setEditingId(test.id);
     setForm({
@@ -140,13 +155,174 @@ export default function IeltsManager({ defaultModule = "reading" }) {
       section_title: section.title || "",
       section_instructions: section.instructions || "",
       section_duration_minutes: section.duration_minutes || 60,
-      section_content_json: JSON.stringify(section.content || {}, null, 2),
-      answer_key_text: Array.isArray(section.answer_key) ? section.answer_key.join("\n") : "",
+      questions:
+        activeModule === "reading"
+          ? ensureMinArray(normalizedQuestions, 1, () => createQuestion(false))
+          : activeModule === "listening"
+          ? ensureMinArray(normalizedQuestions, 1, () => createQuestion(true))
+          : [],
+      audio_parts:
+        activeModule === "listening"
+          ? ensureMinArray(content.audio_parts || (content.audio_url ? [{ title: "Main Audio", url: content.audio_url }] : []), 1, createAudioPart)
+          : [createAudioPart()],
+      writing_tasks:
+        activeModule === "writing"
+          ? ensureMinArray(content.tasks || [], 2, createWritingTask).map((task) => ({
+              prompt: task?.prompt || "",
+              min_words: Number(task?.min_words || 150),
+            }))
+          : [createWritingTask(), createWritingTask()],
+      speaking_stages:
+        activeModule === "speaking"
+          ? ensureMinArray(content.stages || [], 1, createSpeakingStage).map((stage) => ({
+              prompt: stage?.prompt || "",
+              prep_seconds: Number(stage?.prep_seconds || stage?.prep_time || 60),
+              speak_seconds: Number(stage?.speak_seconds || stage?.speak_time || 120),
+            }))
+          : [createSpeakingStage(), createSpeakingStage(), createSpeakingStage()],
     });
+  };
+
+  const updateQuestion = (index, key, value) => {
+    setForm((prev) => {
+      const next = [...prev.questions];
+      next[index] = { ...next[index], [key]: value };
+      return { ...prev, questions: next };
+    });
+  };
+
+  const updateQuestionOption = (qIndex, optionIndex, value) => {
+    setForm((prev) => {
+      const next = [...prev.questions];
+      const opts = [...(next[qIndex].options || [])];
+      opts[optionIndex] = value;
+      next[qIndex] = { ...next[qIndex], options: opts };
+      return { ...prev, questions: next };
+    });
+  };
+
+  const addQuestion = () => {
+    setForm((prev) => ({
+      ...prev,
+      questions: [...prev.questions, createQuestion(activeModule === "listening")],
+    }));
+  };
+
+  const removeQuestion = (index) => {
+    setForm((prev) => {
+      if (prev.questions.length <= 1) return prev;
+      return { ...prev, questions: prev.questions.filter((_, idx) => idx !== index) };
+    });
+  };
+
+  const updateAudioPart = (index, key, value) => {
+    setForm((prev) => {
+      const next = [...prev.audio_parts];
+      next[index] = { ...next[index], [key]: value };
+      return { ...prev, audio_parts: next };
+    });
+  };
+
+  const addAudioPart = () => setForm((prev) => ({ ...prev, audio_parts: [...prev.audio_parts, createAudioPart()] }));
+  const removeAudioPart = (index) =>
+    setForm((prev) => ({
+      ...prev,
+      audio_parts: prev.audio_parts.length <= 1 ? prev.audio_parts : prev.audio_parts.filter((_, idx) => idx !== index),
+    }));
+
+  const updateWritingTask = (index, key, value) => {
+    setForm((prev) => {
+      const next = [...prev.writing_tasks];
+      next[index] = { ...next[index], [key]: value };
+      return { ...prev, writing_tasks: next };
+    });
+  };
+
+  const addWritingTask = () => setForm((prev) => ({ ...prev, writing_tasks: [...prev.writing_tasks, createWritingTask()] }));
+  const removeWritingTask = (index) =>
+    setForm((prev) => ({
+      ...prev,
+      writing_tasks: prev.writing_tasks.length <= 1 ? prev.writing_tasks : prev.writing_tasks.filter((_, idx) => idx !== index),
+    }));
+
+  const updateSpeakingStage = (index, key, value) => {
+    setForm((prev) => {
+      const next = [...prev.speaking_stages];
+      next[index] = { ...next[index], [key]: value };
+      return { ...prev, speaking_stages: next };
+    });
+  };
+
+  const addSpeakingStage = () => setForm((prev) => ({ ...prev, speaking_stages: [...prev.speaking_stages, createSpeakingStage()] }));
+  const removeSpeakingStage = (index) =>
+    setForm((prev) => ({
+      ...prev,
+      speaking_stages: prev.speaking_stages.length <= 1 ? prev.speaking_stages : prev.speaking_stages.filter((_, idx) => idx !== index),
+    }));
+
+  const buildModulePayload = () => {
+    if (activeModule === "reading") {
+      const questions = form.questions.map((q) => ({ prompt: q.prompt, type: "text" }));
+      const answer_key = form.questions.map((q) => q.answer || "");
+      return { content: { questions }, answer_key };
+    }
+
+    if (activeModule === "listening") {
+      const questions = form.questions.map((q) => ({
+        prompt: q.prompt,
+        type: q.type || "choice",
+        options: q.type === "choice" ? q.options : [],
+      }));
+      const audio_parts = form.audio_parts.filter((item) => item.url?.trim()).map((item) => ({
+        title: item.title?.trim() || "Part",
+        url: item.url.trim(),
+      }));
+      const answer_key = form.questions.map((q) => q.answer || "");
+      return { content: { questions, audio_parts }, answer_key };
+    }
+
+    if (activeModule === "writing") {
+      const tasks = form.writing_tasks
+        .filter((task) => task.prompt.trim())
+        .map((task) => ({ prompt: task.prompt.trim(), min_words: Number(task.min_words || 150) }));
+      return { content: { tasks }, answer_key: [] };
+    }
+
+    const stages = form.speaking_stages
+      .filter((stage) => stage.prompt.trim())
+      .map((stage) => ({
+        prompt: stage.prompt.trim(),
+        prep_seconds: Number(stage.prep_seconds || 60),
+        speak_seconds: Number(stage.speak_seconds || 120),
+      }));
+    return { content: { stages }, answer_key: [] };
   };
 
   const saveTest = async (event) => {
     event.preventDefault();
+
+    if (!form.title.trim()) {
+      alert("Title required");
+      return;
+    }
+
+    const modulePayload = buildModulePayload();
+    if (activeModule === "reading" || activeModule === "listening") {
+      const hasEmptyPrompt = modulePayload.content.questions.some((q) => !q.prompt?.trim());
+      if (hasEmptyPrompt) {
+        alert("Savol matnlarini to'liq kiriting");
+        return;
+      }
+    }
+
+    if (activeModule === "writing" && modulePayload.content.tasks.length === 0) {
+      alert("Kamida bitta writing task kiriting");
+      return;
+    }
+    if (activeModule === "speaking" && modulePayload.content.stages.length === 0) {
+      alert("Kamida bitta speaking stage kiriting");
+      return;
+    }
 
     const payload = {
       title: form.title.trim(),
@@ -155,7 +331,10 @@ export default function IeltsManager({ defaultModule = "reading" }) {
       level: form.level.trim() || "Band 6-7",
       duration_minutes: Number(form.duration_minutes),
       is_published: Boolean(form.is_published),
-      tags: form.tags_csv.split(",").map((item) => item.trim()).filter(Boolean),
+      tags: form.tags_csv
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
       meta: { source: "admin-panel" },
       sections: [
         {
@@ -163,20 +342,12 @@ export default function IeltsManager({ defaultModule = "reading" }) {
           title: form.section_title.trim() || `${activeModule.toUpperCase()} Section`,
           instructions: form.section_instructions,
           duration_minutes: Number(form.section_duration_minutes),
-          content: parseJsonSafe(form.section_content_json, TEMPLATES[activeModule]),
-          answer_key: form.answer_key_text
-            .split("\n")
-            .map((item) => item.trim())
-            .filter(Boolean),
+          content: modulePayload.content,
+          answer_key: modulePayload.answer_key,
           order_index: 1,
         },
       ],
     };
-
-    if (!payload.title) {
-      alert("Title required");
-      return;
-    }
 
     try {
       setSaving(true);
@@ -188,7 +359,7 @@ export default function IeltsManager({ defaultModule = "reading" }) {
       clearForm();
       await loadAll();
     } catch {
-      alert("Saving failed. JSON formatni tekshiring.");
+      alert("Saving failed.");
     } finally {
       setSaving(false);
     }
@@ -209,7 +380,7 @@ export default function IeltsManager({ defaultModule = "reading" }) {
     <section className="p-6 min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
       <div className="rounded-2xl bg-white border border-slate-200 shadow p-5 mb-5">
         <h2 className="text-3xl font-black text-slate-800">IELTS Admin Ecosystem</h2>
-        <p className="text-sm text-slate-600 mt-1">CRUD, publish flow, CDI section templates, submissions monitoring.</p>
+        <p className="text-sm text-slate-600 mt-1">JSONsiz, input-based mock builder. Savol soni moslashuvchan.</p>
 
         <div className="mt-4 flex flex-wrap gap-2">
           {MODULES.map((module) => (
@@ -296,20 +467,157 @@ export default function IeltsManager({ defaultModule = "reading" }) {
             <textarea value={form.section_instructions} onChange={(e) => setForm((p) => ({ ...p, section_instructions: e.target.value }))} placeholder="Section instructions" className="w-full border border-slate-300 rounded-lg p-2 min-h-16" />
             <input type="number" value={form.section_duration_minutes} onChange={(e) => setForm((p) => ({ ...p, section_duration_minutes: e.target.value }))} placeholder="Section minutes" className="w-full border border-slate-300 rounded-lg p-2" />
 
-            <div>
-              <p className="text-xs font-semibold text-slate-600 mb-1">Section Content JSON</p>
-              <textarea value={form.section_content_json} onChange={(e) => setForm((p) => ({ ...p, section_content_json: e.target.value }))} className="w-full border border-slate-300 rounded-lg p-2 min-h-44 font-mono text-xs" />
-              {activeModule === "listening" && (
-                <p className="mt-1 text-[11px] text-slate-500">
-                  Listening uchun `audio_parts` qo‘shing. Har part: {"{"}title, url{"}"} (`.mp3`, `.wav`, `.m4a` va boshqalar).
-                </p>
-              )}
-            </div>
+            {(activeModule === "reading" || activeModule === "listening") && (
+              <div className="space-y-2 rounded-lg border border-slate-200 p-3 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-700">Questions ({form.questions.length})</p>
+                  <button type="button" onClick={addQuestion} className="text-xs px-2 py-1 rounded bg-slate-900 text-white">+ Add</button>
+                </div>
+                {form.questions.map((q, idx) => (
+                  <div key={`q-${idx}`} className="rounded border border-slate-200 bg-white p-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-slate-600">Q{idx + 1}</p>
+                      <button type="button" onClick={() => removeQuestion(idx)} className="text-[11px] px-2 py-0.5 rounded bg-red-100 text-red-700">Remove</button>
+                    </div>
+                    <input
+                      value={q.prompt}
+                      onChange={(e) => updateQuestion(idx, "prompt", e.target.value)}
+                      placeholder="Question prompt"
+                      className="w-full border border-slate-300 rounded p-2 text-sm"
+                    />
+                    {activeModule === "listening" && (
+                      <>
+                        <select
+                          value={q.type}
+                          onChange={(e) => updateQuestion(idx, "type", e.target.value)}
+                          className="w-full border border-slate-300 rounded p-2 text-sm"
+                        >
+                          <option value="choice">Choice</option>
+                          <option value="text">Text</option>
+                        </select>
+                        {q.type === "choice" && (
+                          <div className="grid grid-cols-2 gap-2">
+                            {(q.options || []).map((opt, oIdx) => (
+                              <input
+                                key={`q-${idx}-o-${oIdx}`}
+                                value={opt}
+                                onChange={(e) => updateQuestionOption(idx, oIdx, e.target.value)}
+                                placeholder={`Option ${oIdx + 1}`}
+                                className="border border-slate-300 rounded p-2 text-sm"
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <input
+                      value={q.answer}
+                      onChange={(e) => updateQuestion(idx, "answer", e.target.value)}
+                      placeholder="Correct answer"
+                      className="w-full border border-emerald-300 rounded p-2 text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
 
-            <div>
-              <p className="text-xs font-semibold text-slate-600 mb-1">Answer Key (one answer per line)</p>
-              <textarea value={form.answer_key_text} onChange={(e) => setForm((p) => ({ ...p, answer_key_text: e.target.value }))} className="w-full border border-slate-300 rounded-lg p-2 min-h-24 font-mono text-xs" placeholder="A&#10;B&#10;C" />
-            </div>
+            {activeModule === "listening" && (
+              <div className="space-y-2 rounded-lg border border-slate-200 p-3 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-700">Audio Parts ({form.audio_parts.length})</p>
+                  <button type="button" onClick={addAudioPart} className="text-xs px-2 py-1 rounded bg-slate-900 text-white">+ Add Audio</button>
+                </div>
+                {form.audio_parts.map((item, idx) => (
+                  <div key={`audio-${idx}`} className="rounded border border-slate-200 bg-white p-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-slate-600">Audio {idx + 1}</p>
+                      <button type="button" onClick={() => removeAudioPart(idx)} className="text-[11px] px-2 py-0.5 rounded bg-red-100 text-red-700">Remove</button>
+                    </div>
+                    <input
+                      value={item.title}
+                      onChange={(e) => updateAudioPart(idx, "title", e.target.value)}
+                      placeholder="Part title"
+                      className="w-full border border-slate-300 rounded p-2 text-sm"
+                    />
+                    <input
+                      value={item.url}
+                      onChange={(e) => updateAudioPart(idx, "url", e.target.value)}
+                      placeholder="https://...mp3"
+                      className="w-full border border-slate-300 rounded p-2 text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeModule === "writing" && (
+              <div className="space-y-2 rounded-lg border border-slate-200 p-3 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-700">Writing Tasks ({form.writing_tasks.length})</p>
+                  <button type="button" onClick={addWritingTask} className="text-xs px-2 py-1 rounded bg-slate-900 text-white">+ Add Task</button>
+                </div>
+                {form.writing_tasks.map((task, idx) => (
+                  <div key={`task-${idx}`} className="rounded border border-slate-200 bg-white p-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-slate-600">Task {idx + 1}</p>
+                      <button type="button" onClick={() => removeWritingTask(idx)} className="text-[11px] px-2 py-0.5 rounded bg-red-100 text-red-700">Remove</button>
+                    </div>
+                    <textarea
+                      value={task.prompt}
+                      onChange={(e) => updateWritingTask(idx, "prompt", e.target.value)}
+                      placeholder="Task prompt"
+                      className="w-full border border-slate-300 rounded p-2 text-sm min-h-20"
+                    />
+                    <input
+                      type="number"
+                      value={task.min_words}
+                      onChange={(e) => updateWritingTask(idx, "min_words", e.target.value)}
+                      placeholder="Min words"
+                      className="w-full border border-slate-300 rounded p-2 text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeModule === "speaking" && (
+              <div className="space-y-2 rounded-lg border border-slate-200 p-3 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-700">Speaking Stages ({form.speaking_stages.length})</p>
+                  <button type="button" onClick={addSpeakingStage} className="text-xs px-2 py-1 rounded bg-slate-900 text-white">+ Add Stage</button>
+                </div>
+                {form.speaking_stages.map((stage, idx) => (
+                  <div key={`stage-${idx}`} className="rounded border border-slate-200 bg-white p-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-slate-600">Stage {idx + 1}</p>
+                      <button type="button" onClick={() => removeSpeakingStage(idx)} className="text-[11px] px-2 py-0.5 rounded bg-red-100 text-red-700">Remove</button>
+                    </div>
+                    <textarea
+                      value={stage.prompt}
+                      onChange={(e) => updateSpeakingStage(idx, "prompt", e.target.value)}
+                      placeholder="Stage prompt"
+                      className="w-full border border-slate-300 rounded p-2 text-sm min-h-20"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="number"
+                        value={stage.prep_seconds}
+                        onChange={(e) => updateSpeakingStage(idx, "prep_seconds", e.target.value)}
+                        placeholder="Prep seconds"
+                        className="border border-slate-300 rounded p-2 text-sm"
+                      />
+                      <input
+                        type="number"
+                        value={stage.speak_seconds}
+                        onChange={(e) => updateSpeakingStage(idx, "speak_seconds", e.target.value)}
+                        placeholder="Speak seconds"
+                        className="border border-slate-300 rounded p-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="flex gap-2">
               <button disabled={saving} type="submit" className="flex-1 px-3 py-2 rounded-lg bg-slate-900 text-white inline-flex items-center justify-center gap-1 disabled:opacity-60">
@@ -347,7 +655,10 @@ export default function IeltsManager({ defaultModule = "reading" }) {
                   <td>{item.user?.username || "user"}</td>
                   <td>{item.test?.title || "test"}</td>
                   <td>{item.module}</td>
-                  <td>{item.score ?? "-"}{item.max_score ? `/${item.max_score}` : ""}</td>
+                  <td>
+                    {item.score ?? "-"}
+                    {item.max_score ? `/${item.max_score}` : ""}
+                  </td>
                   <td>{item.band || "-"}</td>
                   <td>{item.time_spent_seconds || 0}s</td>
                 </tr>

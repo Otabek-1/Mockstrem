@@ -1,1042 +1,321 @@
-import React, { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+﻿import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api";
 
-/* ===================== HELPERS ===================== */
-
-function Section({ title, children }) {
-    const [open, setOpen] = useState(true);
-
-    return (
-        <div className="border rounded-lg mb-6 bg-white dark:bg-gray-800">
-            <div
-                onClick={() => setOpen(!open)}
-                className="cursor-pointer px-4 py-3 border-b font-semibold flex justify-between"
-            >
-                <span>{title}</span>
-                <span>{open ? "−" : "+"}</span>
-            </div>
-            {open && <div className="p-4 space-y-4">{children}</div>}
-        </div>
-    );
-}
-
-function AudioInput({ label, value, onChange }) {
-    return (
-        <div>
-            <label className="block font-medium mb-1">{label}</label>
-            <input
-                className="w-full p-2 border rounded"
-                placeholder="https://archive.org/..."
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-            />
-            {value && <audio className="mt-2" controls src={value} />}
-        </div>
-    );
-}
-
-/* ===================== FILE PARSER ===================== */
-
-function parseFileContent(fileContent, fileName) {
-    try {
-        if (fileName.endsWith('.json')) {
-            return JSON.parse(fileContent);
-        } else if (fileName.endsWith('.csv')) {
-            // CSV parser - custom format
-            return parseCSV(fileContent);
-        } else {
-            alert("Faqat .json yoki .csv fayllar qabul qilinadi");
-            return null;
-        }
-    } catch (error) {
-        alert("Fayl parse qilishda xato: " + error.message);
-        return null;
-    }
-}
-
-function parseCSV(csvContent) {
-    const lines = csvContent.trim().split('\n');
-    const data = {
-        title: "",
-        audios: {
-            part_1: "", part_2: "", part_3: "", part_4: "", part_5: "", part_6: ""
-        },
-        part1: [], part2: [], part3: {}, part4: {}, part5: [], part6: []
-    };
-
-    let i = 0;
-
-    while (i < lines.length) {
-        const line = lines[i].trim();
-        i++;
-
-        if (!line || line.startsWith('#')) continue;
-
-        if (line.startsWith('[TITLE]')) {
-            while (i < lines.length && !lines[i].startsWith('[')) {
-                const titleLine = lines[i].trim();
-                if (titleLine && !titleLine.startsWith('#')) {
-                    data.title = titleLine;
-                    i++;
-                    break;
-                }
-                i++;
-            }
-        } 
-        else if (line.startsWith('[AUDIOS]')) {
-            while (i < lines.length && !lines[i].startsWith('[')) {
-                const audioLine = lines[i].trim();
-                if (audioLine && !audioLine.startsWith('#')) {
-                    const parts = audioLine.split('|');
-                    if (parts.length === 2) {
-                        const key = parts[0].trim();
-                        const url = parts[1].trim();
-                        if (key in data.audios) {
-                            data.audios[key] = url;
-                        }
-                    }
-                }
-                i++;
-            }
-        }
-        else if (line.startsWith('[PART1]')) {
-            while (i < lines.length && !lines[i].startsWith('[')) {
-                const qLine = lines[i].trim();
-                if (qLine && !qLine.startsWith('#')) {
-                    // Format: options|opt1;opt2;opt3|answer|A
-                    const parts = qLine.split('|');
-                    const parsed = {};
-                    for (let j = 0; j < parts.length; j += 2) {
-                        const key = parts[j].trim();
-                        const value = parts[j + 1]?.trim() || "";
-                        parsed[key] = value;
-                    }
-                    if (parsed.options) {
-                        const opts = parsed.options.split(';').map(o => o.trim());
-                        data.part1.push({
-                            options: opts.length === 3 ? opts : [opts[0] || "", opts[1] || "", opts[2] || ""],
-                            answer: parsed.answer || ""
-                        });
-                    }
-                }
-                i++;
-            }
-        }
-        else if (line.startsWith('[PART2]')) {
-            while (i < lines.length && !lines[i].startsWith('[')) {
-                const qLine = lines[i].trim();
-                if (qLine && !qLine.startsWith('#')) {
-                    // Format: label|Label Text|before|Before Text|after|After Text|answer|Answer
-                    const parsed = {};
-                    const parts = qLine.split('|');
-                    for (let j = 0; j < parts.length; j += 2) {
-                        const key = parts[j].trim();
-                        const value = parts[j + 1]?.trim() || "";
-                        parsed[key] = value;
-                    }
-                    if (parsed.label && parsed.before && ('after' in parsed) && parsed.answer) {
-                        data.part2.push({
-                            label: parsed.label,
-                            before: parsed.before,
-                            after: parsed.after || "",
-                            answer: parsed.answer
-                        });
-                    }
-                }
-                i++;
-            }
-        }
-        else if (line.startsWith('[PART3]')) {
-            const part3Data = { speakers: [], options: [], answers: [] };
-            while (i < lines.length && !lines[i].startsWith('[')) {
-                const qLine = lines[i].trim();
-                if (qLine && !qLine.startsWith('#')) {
-                    const parts = qLine.split('|');
-                    if (parts.length >= 2) {
-                        const key = parts[0].trim();
-                        const value = parts[1].trim();
-                        if (key === 'speakers') {
-                            part3Data.speakers = value.split(';').map(s => s.trim());
-                        } else if (key === 'options') {
-                            part3Data.options = value.split(';').map(s => s.trim());
-                        } else if (key === 'answers') {
-                            part3Data.answers = value.split(';').map(s => s.trim());
-                        }
-                    }
-                }
-                i++;
-            }
-            data.part3 = part3Data;
-        }
-        else if (line.startsWith('[PART4]')) {
-            const part4Data = { mapUrl: "", mapLabels: [], questions: [] };
-            while (i < lines.length && !lines[i].startsWith('[')) {
-                const qLine = lines[i].trim();
-                if (qLine && !qLine.startsWith('#')) {
-                    const parts = qLine.split('|');
-                    if (parts.length >= 2) {
-                        const key = parts[0].trim();
-                        if (key === 'mapUrl') {
-                            part4Data.mapUrl = parts[1].trim();
-                        } else if (key === 'mapLabels') {
-                            part4Data.mapLabels = parts[1].trim().split(';').map(s => s.trim());
-                        } else if (key.startsWith('question')) {
-                            // Format: questionN|place|Place Name|answer|Label
-                            const q = {};
-                            for (let j = 1; j < parts.length; j += 2) {
-                                const fKey = parts[j].trim();
-                                const fVal = parts[j + 1]?.trim() || "";
-                                q[fKey] = fVal;
-                            }
-                            if (q.place && q.answer) {
-                                part4Data.questions.push({
-                                    place: q.place,
-                                    answer: q.answer
-                                });
-                            }
-                        }
-                    }
-                }
-                i++;
-            }
-            data.part4 = part4Data;
-        }
-        else if (line.startsWith('[PART5]')) {
-            while (i < lines.length && !lines[i].startsWith('[')) {
-                const qLine = lines[i].trim();
-                if (qLine && !qLine.startsWith('#')) {
-                    // Format: extractN|text|Text|q1_question|Q1|q1_options|opt1;opt2;opt3|q1_answer|A|q2_question|Q2|q2_options|opt1;opt2;opt3|q2_answer|B
-                    const parsed = {};
-                    const parts = qLine.split('|');
-                    for (let j = 1; j < parts.length; j += 2) {
-                        const key = parts[j].trim();
-                        const value = parts[j + 1]?.trim() || "";
-                        parsed[key] = value;
-                    }
-                    
-                    const extract = {
-                        text: parsed.text || "",
-                        q1: {
-                            question: parsed.q1_question || "",
-                            options: (parsed.q1_options || "").split(';').map(o => o.trim()).filter(o => o),
-                            answer: parsed.q1_answer || ""
-                        },
-                        q2: {
-                            question: parsed.q2_question || "",
-                            options: (parsed.q2_options || "").split(';').map(o => o.trim()).filter(o => o),
-                            answer: parsed.q2_answer || ""
-                        }
-                    };
-                    
-                    // Ensure we have 3 options for each question
-                    if (extract.q1.options.length < 3) {
-                        while (extract.q1.options.length < 3) extract.q1.options.push("");
-                    }
-                    if (extract.q2.options.length < 3) {
-                        while (extract.q2.options.length < 3) extract.q2.options.push("");
-                    }
-                    
-                    if (extract.q1.question && extract.q2.question) {
-                        data.part5.push(extract);
-                    }
-                }
-                i++;
-            }
-        }
-        else if (line.startsWith('[PART6]')) {
-            while (i < lines.length && !lines[i].startsWith('[')) {
-                const qLine = lines[i].trim();
-                if (qLine && !qLine.startsWith('#')) {
-                    // Format: before|Before Text|after|After Text|answer|Answer
-                    const parsed = {};
-                    const parts = qLine.split('|');
-                    for (let j = 0; j < parts.length; j += 2) {
-                        const key = parts[j].trim();
-                        const value = parts[j + 1]?.trim() || "";
-                        parsed[key] = value;
-                    }
-                    if (parsed.before && ('after' in parsed) && parsed.answer) {
-                        data.part6.push({
-                            before: parsed.before,
-                            after: parsed.after || "",
-                            answer: parsed.answer
-                        });
-                    }
-                }
-                i++;
-            }
-        }
-    }
-
-    return data;
-}
-
-/* ===================== MAIN ===================== */
+const makePart1 = () => ({ options: ["", "", ""], answer: "" });
+const makePart2 = () => ({ label: "", before: "", after: "", answer: "" });
+const makePart4Question = () => ({ place: "", answer: "" });
+const makePart5Question = () => ({ text: "", options: ["", "", ""], answer: "" });
+const makePart5Extract = () => ({ name: "", questions: [makePart5Question(), makePart5Question()] });
+const makePart6 = () => ({ before: "", after: "", answer: "" });
 
 export default function ListeningMockForm() {
-    /* -------- BASIC -------- */
-    const [title, setTitle] = useState("");
-    const [params] = useSearchParams();
-    const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const isEdit = params.get("edit") === "true";
+  const mockId = params.get("id");
 
-    const isEdit = params.get("edit") === "true";
-    const mockId = params.get("id");
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (!isEdit || !mockId) return;
+  const [title, setTitle] = useState("");
+  const [audios, setAudios] = useState({ part_1: "", part_2: "", part_3: "", part_4: "", part_5: "", part_6: "" });
 
-        async function loadMock() {
-            // ===== MOCK =====
-            const mockRes = await api.get(`/cefr/listening/${mockId}`);
-            const m = mockRes.data;
+  const [part1, setPart1] = useState([makePart1(), makePart1(), makePart1()]);
+  const [part2, setPart2] = useState([makePart2(), makePart2(), makePart2()]);
+  const [part3, setPart3] = useState({ speakers: ["", "", ""], options: ["", "", ""], answers: ["", "", ""] });
+  const [part4, setPart4] = useState({ mapUrl: "", mapLabels: ["A", "B", "C", "D", "E"], questions: [makePart4Question(), makePart4Question()] });
+  const [part5, setPart5] = useState([makePart5Extract()]);
+  const [part6, setPart6] = useState([makePart6(), makePart6(), makePart6()]);
 
-            setTitle(m.title);
+  useEffect(() => {
+    if (!isEdit || !mockId) return;
 
-            setAudios({
-                part_1: m.audio_part_1,
-                part_2: m.audio_part_2,
-                part_3: m.audio_part_3,
-                part_4: m.audio_part_4,
-                part_5: m.audio_part_5,
-                part_6: m.audio_part_6,
-            });
+    const load = async () => {
+      try {
+        setLoading(true);
+        const [mockRes, answerRes] = await Promise.all([
+          api.get(`/cefr/listening/${mockId}`),
+          api.get(`/cefr/listening/answer/${mockId}`).catch(() => ({ data: null })),
+        ]);
 
-            // ===== PART 1 =====
-            setPart1(
-                m.data.part_1.map((opts) => ({
-                    options: opts,
-                    answer: "",
-                }))
-            );
+        const mock = mockRes.data;
+        const ans = answerRes.data;
 
-            // ===== PART 2 =====
-            setPart2(
-                m.data.part_2.map((q) => ({
-                    label: q.label,
-                    before: q.before,
-                    after: q.after,
-                    answer: "",
-                }))
-            );
+        setTitle(mock?.title || "");
+        setAudios({
+          part_1: mock?.audio_part_1 || "",
+          part_2: mock?.audio_part_2 || "",
+          part_3: mock?.audio_part_3 || "",
+          part_4: mock?.audio_part_4 || "",
+          part_5: mock?.audio_part_5 || "",
+          part_6: mock?.audio_part_6 || "",
+        });
 
-            // ===== PART 3 =====
-            setPart3({
-                speakers: m.data.part_3.speakers,
-                options: m.data.part_3.options,
-                answers: ["", "", "", ""],
-            });
+        const p1 = Array.isArray(mock?.data?.part_1) ? mock.data.part_1 : [];
+        setPart1(p1.length ? p1.map((opts, idx) => ({ options: Array.isArray(opts) ? opts : ["", "", ""], answer: ans?.part_1?.[idx] || "" })) : [makePart1()]);
 
-            // ===== PART 4 =====
-            setPart4({
-                mapUrl: m.data.part_4.mapUrl,
-                mapLabels: m.data.part_4.mapLabels,
-                questions: m.data.part_4.questions.map((q) => ({
-                    place: q.place,
-                    answer: "",
-                })),
-            });
+        const p2 = Array.isArray(mock?.data?.part_2) ? mock.data.part_2 : [];
+        setPart2(p2.length ? p2.map((q, idx) => ({ label: q?.label || "", before: q?.before || "", after: q?.after || "", answer: ans?.part_2?.[idx] || "" })) : [makePart2()]);
 
-            // ===== PART 5 =====
-            setPart5(
-                m.data.part_5.map((ex) => ({
-                    text: ex.name,
-                    q1: {
-                        question: ex.questions[0].text,
-                        options: ex.questions[0].options,
-                        answer: "",
-                    },
-                    q2: {
-                        question: ex.questions[1].text,
-                        options: ex.questions[1].options,
-                        answer: "",
-                    },
-                }))
-            );
+        const p3 = mock?.data?.part_3 || {};
+        const speakers = Array.isArray(p3?.speakers) && p3.speakers.length ? p3.speakers : [""];
+        const answers = Array.isArray(ans?.part_3) ? ans.part_3 : speakers.map(() => "");
+        setPart3({
+          speakers,
+          options: Array.isArray(p3?.options) && p3.options.length ? p3.options : [""],
+          answers: speakers.map((_, i) => answers[i] || ""),
+        });
 
-            // ===== PART 6 =====
-            setPart6(
-                m.data.part_6.questions.map((q) => ({
-                    before: q.before,
-                    after: q.after,
-                    answer: "",
-                }))
-            );
+        const p4 = mock?.data?.part_4 || {};
+        const p4q = Array.isArray(p4?.questions) ? p4.questions : [];
+        setPart4({
+          mapUrl: p4?.mapUrl || "",
+          mapLabels: Array.isArray(p4?.mapLabels) && p4.mapLabels.length ? p4.mapLabels : ["A", "B", "C"],
+          questions: p4q.length
+            ? p4q.map((q, idx) => ({ place: q?.place || "", answer: ans?.part_4?.[idx] || "" }))
+            : [makePart4Question()],
+        });
 
-            // ===== ANSWERS =====
-            try {
-                const ansRes = await api.get(`/cefr/listening/answer/${mockId}`);
-                const a = ansRes.data;
+        const p5 = Array.isArray(mock?.data?.part_5) ? mock.data.part_5 : [];
+        let p5AnswerIndex = 0;
+        setPart5(
+          p5.length
+            ? p5.map((extract) => {
+                const rawQuestions = Array.isArray(extract?.questions) ? extract.questions : [];
+                const questions = rawQuestions.length
+                  ? rawQuestions.map((qq) => {
+                      const answer = ans?.part_5?.[p5AnswerIndex] || "";
+                      p5AnswerIndex += 1;
+                      return {
+                        text: qq?.text || "",
+                        options: Array.isArray(qq?.options) && qq.options.length ? qq.options : ["", "", ""],
+                        answer,
+                      };
+                    })
+                  : [makePart5Question()];
+                return { name: extract?.name || "", questions };
+              })
+            : [makePart5Extract()]
+        );
 
-                setPart1((p) => p.map((q, i) => ({ ...q, answer: a.part_1[i] })));
-                setPart2((p) => p.map((q, i) => ({ ...q, answer: a.part_2[i] })));
-                setPart3((p) => ({ ...p, answers: a.part_3 }));
-                setPart4((p) => ({
-                    ...p,
-                    questions: p.questions.map((q, i) => ({
-                        ...q,
-                        answer: a.part_4[i],
-                    })),
-                }));
-
-                setPart5((p) =>
-                    p.map((ex, i) => ({
-                        ...ex,
-                        q1: { ...ex.q1, answer: a.part_5[i * 2] },
-                        q2: { ...ex.q2, answer: a.part_5[i * 2 + 1] },
-                    }))
-                );
-
-                setPart6((p) => p.map((q, i) => ({ ...q, answer: a.part_6[i] })));
-            } catch { }
-        }
-
-        loadMock();
-    }, [isEdit, mockId]);
-
-
-    const [audios, setAudios] = useState({
-        part_1: "",
-        part_2: "",
-        part_3: "",
-        part_4: "",
-        part_5: "",
-        part_6: "",
-    });
-
-    /* -------- PART 1 -------- */
-    const [part1, setPart1] = useState(
-        Array.from({ length: 8 }, () => ({
-            options: ["", "", ""],
-            answer: "",
-        }))
-    );
-
-    /* -------- PART 2 -------- */
-    const [part2, setPart2] = useState(
-        Array.from({ length: 6 }, () => ({
-            label: "",
-            before: "",
-            after: "",
-            answer: "",
-        }))
-    );
-
-    /* -------- PART 3 -------- */
-    const [part3, setPart3] = useState({
-        speakers: ["", "", "", ""],
-        options: ["", "", "", "", "", ""],
-        answers: ["", "", "", ""],
-    });
-
-    /* -------- PART 4 -------- */
-    const [part4, setPart4] = useState({
-        mapUrl: "",
-        questions: Array.from({ length: 5 }, () => ({
-            place: "",
-            answer: "",
-        })),
-        mapLabels: ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
-    });
-
-    /* -------- PART 5 -------- */
-    const [part5, setPart5] = useState(
-        Array.from({ length: 3 }, () => ({
-            text: "",
-            q1: { question: "", options: ["", "", ""], answer: "" },
-            q2: { question: "", options: ["", "", ""], answer: "" },
-        }))
-    );
-
-    /* -------- PART 6 -------- */
-    const [part6, setPart6] = useState(
-        Array.from({ length: 6 }, () => ({
-            before: "",
-            after: "",
-            answer: "",
-        }))
-    );
-
-    /* ===================== SAVE ===================== */
-
-    async function saveMock() {
-        // Prepare payload matching database schema exactly
-        const payload = {
-            title,
-            data: {
-                part_1: part1.map((q) => q.options),
-                part_2: part2.map(({ label, before, after }) => ({ 
-                    label, 
-                    before, 
-                    after 
-                })),
-                part_3: {
-                    speakers: part3.speakers,
-                    options: part3.options,
-                },
-                part_4: {
-                    mapUrl: part4.mapUrl,
-                    mapLabels: part4.mapLabels,
-                    questions: part4.questions.map((q, i) => ({
-                        num: 19 + i,
-                        place: q.place,
-                    })),
-                },
-                part_5: part5.map((e, i) => ({
-                    name: `Extract ${i + 1}`,
-                    questions: [
-                        { text: e.q1.question, options: e.q1.options },
-                        { text: e.q2.question, options: e.q2.options },
-                    ],
-                })),
-                part_6: {
-                    questions: part6.map((q, i) => ({
-                        num: 30 + i,
-                        before: q.before,
-                        after: q.after,
-                    })),
-                },
-            },
-            audio_part_1: audios.part_1,
-            audio_part_2: audios.part_2,
-            audio_part_3: audios.part_3,
-            audio_part_4: audios.part_4,
-            audio_part_5: audios.part_5,
-            audio_part_6: audios.part_6,
-        };
-
-        const answersPayload = {
-            part_1: part1.map((q) => q.answer),
-            part_2: part2.map((q) => q.answer),
-            part_3: part3.answers,
-            part_4: part4.questions.map((q) => q.answer),
-            part_5: part5.flatMap((e) => [e.q1.answer, e.q2.answer]),
-            part_6: part6.map((q) => q.answer),
-        };
-
-        try {
-            if (isEdit) {
-                await api.put(`/cefr/listening/update/${mockId}`, payload);
-                await api.put(`/cefr/listening/answer/update/${mockId}`, answersPayload);
-            } else {
-                const res = await api.post("/cefr/listening/create", payload);
-                await api.post(`/cefr/listening/answer/create/${res.data.id}`, answersPayload);
-            }
-            alert("✅ Muvaffaqiyatli saqlandi!");
-            navigate("/admin/dashboard");
-        } catch (error) {
-            console.error("Save error:", error);
-            alert("❌ Saqlashda xato: " + error.message);
-        }
-    }
-
-
-    /* ===================== RENDER ===================== */
-
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const content = event.target.result;
-            const data = parseFileContent(content, file.name);
-            
-            if (data) {
-                // Set title
-                if (data.title) setTitle(data.title);
-
-                // Set audios
-                if (data.audios) {
-                    setAudios(data.audios);
-                }
-
-                // Set part1
-                if (data.part1 && data.part1.length > 0) {
-                    setPart1([
-                        ...data.part1,
-                        ...Array.from(
-                            { length: Math.max(0, 8 - data.part1.length) },
-                            () => ({ options: ["", "", ""], answer: "" })
-                        )
-                    ]);
-                }
-
-                // Set part2
-                if (data.part2 && data.part2.length > 0) {
-                    setPart2([
-                        ...data.part2,
-                        ...Array.from(
-                            { length: Math.max(0, 6 - data.part2.length) },
-                            () => ({ label: "", before: "", after: "", answer: "" })
-                        )
-                    ]);
-                }
-
-                // Set part3
-                if (data.part3 && Object.keys(data.part3).length > 0) {
-                    setPart3({
-                        speakers: data.part3.speakers || ["", "", "", ""],
-                        options: data.part3.options || ["", "", "", "", "", ""],
-                        answers: data.part3.answers || ["", "", "", ""]
-                    });
-                }
-
-                // Set part4
-                if (data.part4 && Object.keys(data.part4).length > 0) {
-                    setPart4({
-                        mapUrl: data.part4.mapUrl || "",
-                        mapLabels: data.part4.mapLabels || ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
-                        questions: [
-                            ...data.part4.questions || [],
-                            ...Array.from(
-                                { length: Math.max(0, 5 - (data.part4.questions?.length || 0)) },
-                                () => ({ place: "", answer: "" })
-                            )
-                        ]
-                    });
-                }
-
-                // Set part5
-                if (data.part5 && data.part5.length > 0) {
-                    setPart5([
-                        ...data.part5,
-                        ...Array.from(
-                            { length: Math.max(0, 3 - data.part5.length) },
-                            () => ({
-                                text: "",
-                                q1: { question: "", options: ["", "", ""], answer: "" },
-                                q2: { question: "", options: ["", "", ""], answer: "" }
-                            })
-                        )
-                    ]);
-                }
-
-                // Set part6
-                if (data.part6 && data.part6.length > 0) {
-                    setPart6([
-                        ...data.part6,
-                        ...Array.from(
-                            { length: Math.max(0, 6 - data.part6.length) },
-                            () => ({ before: "", after: "", answer: "" })
-                        )
-                    ]);
-                }
-
-                alert("✅ Fayl muvaffaqiyatli yuklandi!");
-            }
-        };
-        reader.readAsText(file);
+        const p6 = Array.isArray(mock?.data?.part_6?.questions) ? mock.data.part_6.questions : [];
+        setPart6(
+          p6.length
+            ? p6.map((q, idx) => ({ before: q?.before || "", after: q?.after || "", answer: ans?.part_6?.[idx] || "" }))
+            : [makePart6()]
+        );
+      } finally {
+        setLoading(false);
+      }
     };
 
-    return (
-        <div className="p-6 max-w-6xl mx-auto">
-            <h1 className="text-2xl font-bold mb-6">Create Listening Mock</h1>
+    load();
+  }, [isEdit, mockId]);
 
-            {/* FILE UPLOAD SECTION */}
-            <div className="border-2 border-dashed border-blue-400 rounded-lg p-6 mb-6 bg-blue-50">
-                <h3 className="font-bold text-lg mb-3">📁 Fayldan Yuklash (JSON/CSV)</h3>
-                <input
-                    type="file"
-                    accept=".json,.csv,.txt"
-                    onChange={handleFileUpload}
-                    className="block w-full p-3 border border-blue-300 rounded-lg cursor-pointer"
-                />
-                <p className="text-sm text-gray-600 mt-2">
-                    💡 Masala: 
-                    <code className="bg-gray-200 px-2 py-1 rounded">.json</code> yoki 
-                    <code className="bg-gray-200 px-2 py-1 rounded">.csv</code> fayl yuklang
-                </p>
-                <details className="mt-3 text-sm">
-                    <summary className="cursor-pointer font-semibold">📋 CSV Format Namunasi</summary>
-                    <pre className="bg-gray-100 p-3 rounded mt-2 overflow-x-auto text-xs">
-{`[TITLE]
-CEFR Listening Test 2024
+  const totalQuestions = useMemo(() => part1.length + part2.length + part3.speakers.length + part4.questions.length + part5.reduce((a, b) => a + b.questions.length, 0) + part6.length, [part1, part2, part3, part4, part5, part6]);
 
-[AUDIOS]
-part_1|https://example.com/audio1.mp3
-part_2|https://example.com/audio2.mp3
-part_3|https://example.com/audio3.mp3
+  const save = async () => {
+    try {
+      setSaving(true);
 
-[PART1]
-Apple|Banana|Orange|A
-Car|Bus|Train|B
+      const dataPayload = {
+        part_1: part1.map((q) => q.options),
+        part_2: part2.map((q) => ({ label: q.label, before: q.before, after: q.after })),
+        part_3: { speakers: part3.speakers, options: part3.options },
+        part_4: {
+          mapUrl: part4.mapUrl,
+          mapLabels: part4.mapLabels,
+          questions: part4.questions.map((q, idx) => ({ num: 19 + idx, place: q.place })),
+        },
+        part_5: part5.map((extract, idx) => ({
+          name: extract.name || `Extract ${idx + 1}`,
+          questions: extract.questions.map((q) => ({ text: q.text, options: q.options })),
+        })),
+        part_6: {
+          questions: part6.map((q, idx) => ({ num: 30 + idx, before: q.before, after: q.after })),
+        },
+      };
 
-[PART2]
-label|Numbers|before|Flight is at|after|o'clock|answer|3pm
-label|Time|before|Shop opens|after|daily|answer|9am
+      const answerPayload = {
+        part_1: part1.map((q) => q.answer),
+        part_2: part2.map((q) => q.answer),
+        part_3: part3.answers,
+        part_4: part4.questions.map((q) => q.answer),
+        part_5: part5.flatMap((extract) => extract.questions.map((q) => q.answer)),
+        part_6: part6.map((q) => q.answer),
+      };
 
-[PART3]
-speakers|John;Mary;David;Sarah
-options|Doctor;Teacher;Engineer;Driver;Manager;Accountant
-answers|A;B;C;D
+      const mockPayload = {
+        title,
+        data: dataPayload,
+        audio_part_1: audios.part_1,
+        audio_part_2: audios.part_2,
+        audio_part_3: audios.part_3,
+        audio_part_4: audios.part_4,
+        audio_part_5: audios.part_5,
+        audio_part_6: audios.part_6,
+      };
 
-[PART4]
-mapUrl|https://example.com/map.jpg
-mapLabels|A;B;C;D;E
-question1|place|Museum|answer|A
-question2|place|Library|answer|B
+      if (isEdit && mockId) {
+        await api.put(`/cefr/listening/update/${mockId}`, mockPayload);
+        await api.put(`/cefr/listening/answer/update/${mockId}`, answerPayload);
+      } else {
+        const res = await api.post("/cefr/listening/create", mockPayload);
+        await api.post(`/cefr/listening/answer/create/${res.data.id}`, answerPayload);
+      }
 
-[PART5]
-extract1|text|Interview|q1_question|What is the job?|q1_options|Doctor;Teacher;Engineer|q1_answer|A|q2_question|Experience?|q2_options|5;10;15|q2_answer|B
+      alert("Saved successfully");
+      navigate("/admin/dashboard");
+    } catch (e) {
+      alert("Saving error");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-[PART6]
-before|The project|after|completed successfully|answer|was
-before|We must|after|responsibilities|answer|take`}
-                    </pre>
-                    <p className="text-gray-600 mt-2">
-                        💡 <strong>JSON</strong> formatiga o'tish: <code className="bg-gray-200 px-1">LISTENING_MOCK_TEMPLATE.json</code> faylni ko'ring
-                    </p>
-                </details>
+  if (loading) return <div className="p-6">Loading...</div>;
+
+  return (
+    <div className="max-w-6xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-2">{isEdit ? "Edit" : "Create"} CEFR Listening Mock</h1>
+      <p className="text-sm text-slate-600 mb-6">Flexible builder: savol sonini istalgancha qo‘shish/o‘chirish mumkin. Total: {totalQuestions}</p>
+
+      <div className="bg-white rounded-lg border p-4 mb-4">
+        <label className="block text-sm font-semibold mb-1">Title</label>
+        <input className="w-full border rounded p-2" value={title} onChange={(e) => setTitle(e.target.value)} />
+      </div>
+
+      <div className="bg-white rounded-lg border p-4 mb-4">
+        <h3 className="font-semibold mb-3">Audio URLs</h3>
+        {Object.keys(audios).map((key) => (
+          <div key={key} className="mb-2">
+            <label className="block text-xs text-slate-600 mb-1">{key.replace("_", " ")}</label>
+            <input
+              className="w-full border rounded p-2"
+              value={audios[key]}
+              onChange={(e) => setAudios((p) => ({ ...p, [key]: e.target.value }))}
+              placeholder="https://...mp3"
+            />
+          </div>
+        ))}
+      </div>
+
+      <Section title={`Part 1 Multiple Choice (${part1.length})`} onAdd={() => setPart1((p) => [...p, makePart1()])}>
+        {part1.map((q, idx) => (
+          <Card key={`p1-${idx}`} onRemove={() => setPart1((p) => p.length <= 1 ? p : p.filter((_, i) => i !== idx))}>
+            {q.options.map((opt, oIdx) => (
+              <input key={oIdx} className="w-full border rounded p-2 mb-2" placeholder={`Option ${oIdx + 1}`} value={opt} onChange={(e) => setPart1((p) => p.map((item, i) => i !== idx ? item : { ...item, options: item.options.map((oo, oi) => oi === oIdx ? e.target.value : oo) }))} />
+            ))}
+            <input className="w-full border rounded p-2 bg-emerald-50" placeholder="Correct answer (A/B/C...)" value={q.answer} onChange={(e) => setPart1((p) => p.map((item, i) => i === idx ? { ...item, answer: e.target.value } : item))} />
+          </Card>
+        ))}
+      </Section>
+
+      <Section title={`Part 2 Sentence Completion (${part2.length})`} onAdd={() => setPart2((p) => [...p, makePart2()])}>
+        {part2.map((q, idx) => (
+          <Card key={`p2-${idx}`} onRemove={() => setPart2((p) => p.length <= 1 ? p : p.filter((_, i) => i !== idx))}>
+            <input className="w-full border rounded p-2 mb-2" placeholder="Label" value={q.label} onChange={(e) => setPart2((p) => p.map((item, i) => i === idx ? { ...item, label: e.target.value } : item))} />
+            <input className="w-full border rounded p-2 mb-2" placeholder="Before" value={q.before} onChange={(e) => setPart2((p) => p.map((item, i) => i === idx ? { ...item, before: e.target.value } : item))} />
+            <input className="w-full border rounded p-2 mb-2" placeholder="After" value={q.after} onChange={(e) => setPart2((p) => p.map((item, i) => i === idx ? { ...item, after: e.target.value } : item))} />
+            <input className="w-full border rounded p-2 bg-emerald-50" placeholder="Correct answer" value={q.answer} onChange={(e) => setPart2((p) => p.map((item, i) => i === idx ? { ...item, answer: e.target.value } : item))} />
+          </Card>
+        ))}
+      </Section>
+
+      <Section title={`Part 3 Matching (speakers: ${part3.speakers.length}, options: ${part3.options.length})`} onAdd={() => setPart3((p) => ({ ...p, speakers: [...p.speakers, ""], answers: [...p.answers, ""] }))}>
+        <p className="text-xs text-slate-600">Speakers</p>
+        {part3.speakers.map((sp, idx) => (
+          <div key={`sp-${idx}`} className="flex gap-2 mb-2">
+            <input className="flex-1 border rounded p-2" value={sp} onChange={(e) => setPart3((p) => ({ ...p, speakers: p.speakers.map((s, i) => i === idx ? e.target.value : s) }))} placeholder={`Speaker ${idx + 1}`} />
+            <input className="w-40 border rounded p-2 bg-emerald-50" value={part3.answers[idx] || ""} onChange={(e) => setPart3((p) => ({ ...p, answers: p.answers.map((a, i) => i === idx ? e.target.value : a) }))} placeholder="Correct (A/B...)" />
+            <button className="px-2 rounded bg-red-100" onClick={() => setPart3((p) => p.speakers.length <= 1 ? p : ({ ...p, speakers: p.speakers.filter((_, i) => i !== idx), answers: p.answers.filter((_, i) => i !== idx) }))}>-</button>
+          </div>
+        ))}
+        <p className="text-xs text-slate-600 mt-3">Options</p>
+        {part3.options.map((op, idx) => (
+          <div key={`op-${idx}`} className="flex gap-2 mb-2">
+            <input className="flex-1 border rounded p-2" value={op} onChange={(e) => setPart3((p) => ({ ...p, options: p.options.map((o, i) => i === idx ? e.target.value : o) }))} placeholder={`Option ${String.fromCharCode(65 + idx)}`} />
+            <button className="px-2 rounded bg-red-100" onClick={() => setPart3((p) => p.options.length <= 1 ? p : ({ ...p, options: p.options.filter((_, i) => i !== idx) }))}>-</button>
+          </div>
+        ))}
+        <button className="px-3 py-1 rounded bg-slate-900 text-white text-xs" onClick={() => setPart3((p) => ({ ...p, options: [...p.options, ""] }))}>+ Add option</button>
+      </Section>
+
+      <Section title={`Part 4 Map (${part4.questions.length})`} onAdd={() => setPart4((p) => ({ ...p, questions: [...p.questions, makePart4Question()] }))}>
+        <input className="w-full border rounded p-2 mb-2" value={part4.mapUrl} onChange={(e) => setPart4((p) => ({ ...p, mapUrl: e.target.value }))} placeholder="Map URL" />
+        <input className="w-full border rounded p-2 mb-3" value={part4.mapLabels.join(", ")} onChange={(e) => setPart4((p) => ({ ...p, mapLabels: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) }))} placeholder="Map labels: A,B,C,D" />
+        {part4.questions.map((q, idx) => (
+          <Card key={`p4-${idx}`} onRemove={() => setPart4((p) => ({ ...p, questions: p.questions.length <= 1 ? p.questions : p.questions.filter((_, i) => i !== idx) }))}>
+            <input className="w-full border rounded p-2 mb-2" value={q.place} onChange={(e) => setPart4((p) => ({ ...p, questions: p.questions.map((it, i) => i === idx ? { ...it, place: e.target.value } : it) }))} placeholder="Place" />
+            <input className="w-full border rounded p-2 bg-emerald-50" value={q.answer} onChange={(e) => setPart4((p) => ({ ...p, questions: p.questions.map((it, i) => i === idx ? { ...it, answer: e.target.value } : it) }))} placeholder="Correct label" />
+          </Card>
+        ))}
+      </Section>
+
+      <Section title={`Part 5 Extracts (${part5.length})`} onAdd={() => setPart5((p) => [...p, makePart5Extract()])}>
+        {part5.map((extract, eIdx) => (
+          <div key={`extract-${eIdx}`} className="border rounded p-3 mb-3 bg-slate-50">
+            <div className="flex justify-between items-center mb-2">
+              <p className="font-semibold text-sm">Extract {eIdx + 1}</p>
+              <button className="px-2 rounded bg-red-100" onClick={() => setPart5((p) => p.length <= 1 ? p : p.filter((_, i) => i !== eIdx))}>Remove extract</button>
             </div>
-
-            {/* TITLE */}
-            <Section title="Basic Info">
-                <input
-                    className="w-full p-2 border rounded"
-                    placeholder="Mock title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                />
-            </Section>
-
-            {/* PART 1 */}
-            <Section title="Part 1 – Multiple Choice (8 questions)">
-                <AudioInput
-                    label="Audio Part 1"
-                    value={audios.part_1}
-                    onChange={(v) => setAudios({ ...audios, part_1: v })}
-                />
-
-                {part1.map((q, i) => (
-                    <div key={i} className="border p-3 rounded">
-                        <p className="font-semibold mb-2">Question {i + 1}</p>
-
-                        {q.options.map((opt, j) => (
-                            <input
-                                key={j}
-                                className="w-full p-2 border rounded mb-2"
-                                placeholder={`Option ${j + 1}`}
-                                value={opt}
-                                onChange={(e) => {
-                                    const copy = [...part1];
-                                    copy[i].options[j] = e.target.value;
-                                    setPart1(copy);
-                                }}
-                            />
-                        ))}
-
-                        <select
-                            className="p-2 border rounded"
-                            value={q.answer}
-                            onChange={(e) => {
-                                const copy = [...part1];
-                                copy[i].answer = e.target.value;
-                                setPart1(copy);
-                            }}
-                        >
-                            <option value="">Correct answer</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                        </select>
-                    </div>
-                ))}
-            </Section>
-
-            <Section title="Part 2 – Sentence Completion (6 questions)">
-                <AudioInput
-                    label="Audio Part 2"
-                    value={audios.part_2}
-                    onChange={(v) => setAudios({ ...audios, part_2: v })}
-                />
-
-                {part2.map((q, i) => (
-                    <div key={i} className="border p-3 rounded space-y-2">
-                        <p className="font-semibold">Question {i + 9}</p>
-
-                        <input
-                            className="w-full p-2 border rounded"
-                            placeholder="Label (e.g. Running times)"
-                            value={q.label}
-                            onChange={(e) => {
-                                const c = [...part2];
-                                c[i].label = e.target.value;
-                                setPart2(c);
-                            }}
-                        />
-
-                        <input
-                            className="w-full p-2 border rounded"
-                            placeholder="Text BEFORE the blank"
-                            value={q.before}
-                            onChange={(e) => {
-                                const c = [...part2];
-                                c[i].before = e.target.value;
-                                setPart2(c);
-                            }}
-                        />
-
-                        <input
-                            className="w-full p-2 border rounded"
-                            placeholder="Text AFTER the blank"
-                            value={q.after}
-                            onChange={(e) => {
-                                const c = [...part2];
-                                c[i].after = e.target.value;
-                                setPart2(c);
-                            }}
-                        />
-
-                        <input
-                            className="w-full p-2 border rounded bg-green-50"
-                            placeholder="Correct answer"
-                            value={q.answer}
-                            onChange={(e) => {
-                                const c = [...part2];
-                                c[i].answer = e.target.value;
-                                setPart2(c);
-                            }}
-                        />
-                    </div>
-                ))}
-            </Section>
-
-            <Section title="Part 3 – Matching (Speakers)">
-                <AudioInput
-                    label="Audio Part 3"
-                    value={audios.part_3}
-                    onChange={(v) => setAudios({ ...audios, part_3: v })}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                    {part3.speakers.map((s, i) => (
-                        <input
-                            key={i}
-                            className="p-2 border rounded"
-                            placeholder={`Speaker ${15 + i}`}
-                            value={s}
-                            onChange={(e) => {
-                                const c = { ...part3 };
-                                c.speakers[i] = e.target.value;
-                                setPart3(c);
-                            }}
-                        />
-                    ))}
+            <input className="w-full border rounded p-2 mb-2" value={extract.name} onChange={(e) => setPart5((p) => p.map((it, i) => i === eIdx ? { ...it, name: e.target.value } : it))} placeholder="Extract name" />
+            {extract.questions.map((qq, qIdx) => (
+              <div key={`eq-${eIdx}-${qIdx}`} className="border rounded p-2 mb-2 bg-white">
+                <div className="flex justify-between items-center mb-1">
+                  <p className="text-xs font-semibold">Question {qIdx + 1}</p>
+                  <button className="px-2 rounded bg-red-100 text-xs" onClick={() => setPart5((p) => p.map((it, i) => i !== eIdx ? it : { ...it, questions: it.questions.length <= 1 ? it.questions : it.questions.filter((_, j) => j !== qIdx) }))}>-</button>
                 </div>
-
-                <h4 className="font-semibold mt-4">Options</h4>
-                {part3.options.map((o, i) => (
-                    <input
-                        key={i}
-                        className="w-full p-2 border rounded mb-2"
-                        placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                        value={o}
-                        onChange={(e) => {
-                            const c = { ...part3 };
-                            c.options[i] = e.target.value;
-                            setPart3(c);
-                        }}
-                    />
+                <input className="w-full border rounded p-2 mb-2" value={qq.text} onChange={(e) => setPart5((p) => p.map((it, i) => i !== eIdx ? it : { ...it, questions: it.questions.map((q2, j) => j === qIdx ? { ...q2, text: e.target.value } : q2) }))} placeholder="Question text" />
+                {qq.options.map((op, oIdx) => (
+                  <input key={oIdx} className="w-full border rounded p-2 mb-1" value={op} onChange={(e) => setPart5((p) => p.map((it, i) => i !== eIdx ? it : { ...it, questions: it.questions.map((q2, j) => j !== qIdx ? q2 : { ...q2, options: q2.options.map((oo, oi) => oi === oIdx ? e.target.value : oo) }) }))} placeholder={`Option ${oIdx + 1}`} />
                 ))}
+                <input className="w-full border rounded p-2 mb-1 bg-emerald-50" value={qq.answer} onChange={(e) => setPart5((p) => p.map((it, i) => i !== eIdx ? it : { ...it, questions: it.questions.map((q2, j) => j === qIdx ? { ...q2, answer: e.target.value } : q2) }))} placeholder="Correct answer" />
+              </div>
+            ))}
+            <button className="px-3 py-1 rounded bg-slate-900 text-white text-xs" onClick={() => setPart5((p) => p.map((it, i) => i === eIdx ? { ...it, questions: [...it.questions, makePart5Question()] } : it))}>+ Add question</button>
+          </div>
+        ))}
+      </Section>
 
-                <h4 className="font-semibold mt-4">Correct Answers</h4>
-                {part3.answers.map((a, i) => (
-                    <select
-                        key={i}
-                        className="p-2 border rounded mr-2"
-                        value={a}
-                        onChange={(e) => {
-                            const c = { ...part3 };
-                            c.answers[i] = e.target.value;
-                            setPart3(c);
-                        }}
-                    >
-                        <option value="">Speaker {15 + i}</option>
-                        {part3.options.map((_, j) => (
-                            <option key={j} value={String.fromCharCode(65 + j)}>
-                                {String.fromCharCode(65 + j)}
-                            </option>
-                        ))}
-                    </select>
-                ))}
-            </Section>
+      <Section title={`Part 6 Completion (${part6.length})`} onAdd={() => setPart6((p) => [...p, makePart6()])}>
+        {part6.map((q, idx) => (
+          <Card key={`p6-${idx}`} onRemove={() => setPart6((p) => p.length <= 1 ? p : p.filter((_, i) => i !== idx))}>
+            <input className="w-full border rounded p-2 mb-2" value={q.before} onChange={(e) => setPart6((p) => p.map((it, i) => i === idx ? { ...it, before: e.target.value } : it))} placeholder="Before" />
+            <input className="w-full border rounded p-2 mb-2" value={q.after} onChange={(e) => setPart6((p) => p.map((it, i) => i === idx ? { ...it, after: e.target.value } : it))} placeholder="After" />
+            <input className="w-full border rounded p-2 bg-emerald-50" value={q.answer} onChange={(e) => setPart6((p) => p.map((it, i) => i === idx ? { ...it, answer: e.target.value } : it))} placeholder="Correct answer" />
+          </Card>
+        ))}
+      </Section>
 
-            <Section title="Part 4 – Map Labelling">
-                <AudioInput
-                    label="Audio Part 4"
-                    value={audios.part_4}
-                    onChange={(v) => setAudios({ ...audios, part_4: v })}
-                />
-
-                <input
-                    className="w-full p-2 border rounded"
-                    placeholder="Map Image URL"
-                    value={part4.mapUrl}
-                    onChange={(e) => setPart4({ ...part4, mapUrl: e.target.value })}
-                />
-
-                {part4.mapUrl && (
-                    <img src={part4.mapUrl} alt="map" className="mt-2 max-w-md" />
-                )}
-
-                {part4.questions.map((q, i) => (
-                    <div key={i} className="border p-3 rounded">
-                        <input
-                            className="w-full p-2 border rounded mb-2"
-                            placeholder={`Place name (Q${19 + i})`}
-                            value={q.place}
-                            onChange={(e) => {
-                                const c = [...part4.questions];
-                                c[i].place = e.target.value;
-                                setPart4({ ...part4, questions: c });
-                            }}
-                        />
-
-                        <select
-                            className="p-2 border rounded"
-                            value={q.answer}
-                            onChange={(e) => {
-                                const c = [...part4.questions];
-                                c[i].answer = e.target.value;
-                                setPart4({ ...part4, questions: c });
-                            }}
-                        >
-                            <option value="">Correct label</option>
-                            {part4.mapLabels.map((l) => (
-                                <option key={l} value={l}>{l}</option>
-                            ))}
-                        </select>
-                    </div>
-                ))}
-            </Section>
-
-            <Section title="Part 5 – Multiple Choice Extracts">
-                <AudioInput
-                    label="Audio Part 5"
-                    value={audios.part_5}
-                    onChange={(v) => setAudios({ ...audios, part_5: v })}
-                />
-
-                {part5.map((ex, i) => (
-                    <div key={i} className="border p-4 rounded space-y-3">
-                        <h4 className="font-semibold">Extract {i + 1}</h4>
-
-                        <textarea
-                            className="w-full p-2 border rounded"
-                            placeholder="Extract description (optional)"
-                            value={ex.text}
-                            onChange={(e) => {
-                                const c = [...part5];
-                                c[i].text = e.target.value;
-                                setPart5(c);
-                            }}
-                        />
-
-                        {[ex.q1, ex.q2].map((q, qi) => (
-                            <div key={qi} className="border p-3 rounded">
-                                <input
-                                    className="w-full p-2 border rounded mb-2"
-                                    placeholder={`Question ${24 + i * 2 + qi}`}
-                                    value={q.question}
-                                    onChange={(e) => {
-                                        const c = [...part5];
-                                        c[i][qi === 0 ? "q1" : "q2"].question = e.target.value;
-                                        setPart5(c);
-                                    }}
-                                />
-
-                                {q.options.map((opt, oi) => (
-                                    <input
-                                        key={oi}
-                                        className="w-full p-2 border rounded mb-1"
-                                        placeholder={`Option ${oi + 1}`}
-                                        value={opt}
-                                        onChange={(e) => {
-                                            const c = [...part5];
-                                            c[i][qi === 0 ? "q1" : "q2"].options[oi] = e.target.value;
-                                            setPart5(c);
-                                        }}
-                                    />
-                                ))}
-
-                                <select
-                                    className="p-2 border rounded"
-                                    value={q.answer}
-                                    onChange={(e) => {
-                                        const c = [...part5];
-                                        c[i][qi === 0 ? "q1" : "q2"].answer = e.target.value;
-                                        setPart5(c);
-                                    }}
-                                >
-                                    <option value="">Correct</option>
-                                    <option value="A">A</option>
-                                    <option value="B">B</option>
-                                    <option value="C">C</option>
-                                </select>
-                            </div>
-                        ))}
-                    </div>
-                ))}
-            </Section>
-
-            <Section title="Part 6 – Lecture Completion">
-                <AudioInput
-                    label="Audio Part 6"
-                    value={audios.part_6}
-                    onChange={(v) => setAudios({ ...audios, part_6: v })}
-                />
-
-                {part6.map((q, i) => (
-                    <div key={i} className="border p-3 rounded space-y-2">
-                        <p className="font-semibold">Question {30 + i}</p>
-
-                        <input
-                            className="w-full p-2 border rounded"
-                            placeholder="Text BEFORE blank"
-                            value={q.before}
-                            onChange={(e) => {
-                                const c = [...part6];
-                                c[i].before = e.target.value;
-                                setPart6(c);
-                            }}
-                        />
-
-                        <input
-                            className="w-full p-2 border rounded"
-                            placeholder="Text AFTER blank"
-                            value={q.after}
-                            onChange={(e) => {
-                                const c = [...part6];
-                                c[i].after = e.target.value;
-                                setPart6(c);
-                            }}
-                        />
-
-                        <input
-                            className="w-full p-2 border rounded bg-green-50"
-                            placeholder="Correct answer"
-                            value={q.answer}
-                            onChange={(e) => {
-                                const c = [...part6];
-                                c[i].answer = e.target.value;
-                                setPart6(c);
-                            }}
-                        />
-                    </div>
-                ))}
-            </Section>
-
-
-            {/* Qolgan partlar shu strukturada, xuddi shunday */}
-            {/* Part 2–6 ni shu model bilan davom ettirish mumkin */}
-
-            <button
-                onClick={saveMock}
-                className="mt-6 px-6 py-3 bg-green-600 text-white rounded-lg"
-            >
-                Save Listening Mock
-            </button>
-        </div>
-    );
+      <button disabled={saving} onClick={save} className="mt-4 px-5 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-60">
+        {saving ? "Saving..." : isEdit ? "Update Mock" : "Create Mock"}
+      </button>
+    </div>
+  );
 }
+
+function Section({ title, onAdd, children }) {
+  return (
+    <div className="bg-white rounded-lg border p-4 mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold">{title}</h3>
+        <button className="px-3 py-1 rounded bg-slate-900 text-white text-xs" onClick={onAdd}>+ Add</button>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Card({ children, onRemove }) {
+  return (
+    <div className="border rounded p-3 mb-2 bg-slate-50">
+      <div className="flex justify-end mb-2">
+        <button className="px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs" onClick={onRemove}>Remove</button>
+      </div>
+      {children}
+    </div>
+  );
+}
+
