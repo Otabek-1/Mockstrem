@@ -365,7 +365,21 @@ export default function IeltsExamCDI() {
       setAiResult(data);
       return data ? { ai_feedback: data } : {};
     } catch (e) {
-      setAiError("AI analysis ishlamadi. Submission saqlandi.");
+      console.error("IELTS AI check failed:", e);
+      const msg = e?.message || "";
+      let reason = "AI tahlil vaqtincha ishlamadi.";
+      if (msg.includes("VITE_GEMINI_KEY_PASSWORD") || (msg.includes("missing") && msg.includes("key"))) {
+        reason = "API kaliti sozlanmagan (backend/admin).";
+      } else if (msg.includes("429") || msg.includes("quota") || msg.includes("ResourceExhausted")) {
+        reason = "Gemini kunlik limiti tugadi.";
+      } else if (msg.includes("403") || msg.includes("API key")) {
+        reason = "Gemini API kaliti noto‘g‘ri yoki o‘chirilgan.";
+      } else if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+        reason = "Tarmoq xatosi — internet yoki serverga ulanishni tekshiring.";
+      } else if (msg.length > 0 && msg.length < 120) {
+        reason = msg;
+      }
+      setAiError(`${reason} Javoblar saqlandi — ball keyinroq beriladi.`);
       return {};
     } finally {
       setAiChecking(false);
