@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa'
+import { Pencil, Trash2, Plus, Save, X } from 'lucide-react'
 import api from '../api'
 
-// Simple Rich Text Editor Component
 function SimpleRichEditor({ value, onChange }) {
   const handleBold = () => {
     const textarea = document.querySelector('.rich-textarea')
     if (!textarea) return
-    
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
     const text = value
@@ -19,7 +17,6 @@ function SimpleRichEditor({ value, onChange }) {
   const handleItalic = () => {
     const textarea = document.querySelector('.rich-textarea')
     if (!textarea) return
-    
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
     const text = value
@@ -29,12 +26,10 @@ function SimpleRichEditor({ value, onChange }) {
   }
 
   const handleLink = () => {
-    const url = prompt('Enter URL:')
+    const url = prompt('URL kiriting:')
     if (!url) return
-    
     const textarea = document.querySelector('.rich-textarea')
     if (!textarea) return
-    
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
     const text = value
@@ -45,37 +40,22 @@ function SimpleRichEditor({ value, onChange }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex gap-2 flex-wrap bg-gray-100 dark:bg-slate-600 p-2 rounded-t-lg border-b-2 border-gray-300 dark:border-gray-500">
-        <button
-          type="button"
-          onClick={handleBold}
-          className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded text-sm transition-all"
-          title="Bold"
-        >
+      <div className="flex gap-2 flex-wrap bg-white/5 border border-white/10 p-2 rounded-t-xl">
+        <button type="button" onClick={handleBold} className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-lg text-sm transition-all" title="Qalin">
           B
         </button>
-        <button
-          type="button"
-          onClick={handleItalic}
-          className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white italic rounded text-sm transition-all"
-          title="Italic"
-        >
+        <button type="button" onClick={handleItalic} className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white italic rounded-lg text-sm transition-all" title="Yotiq">
           I
         </button>
-        <button
-          type="button"
-          onClick={handleLink}
-          className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm transition-all"
-          title="Link"
-        >
-          🔗
+        <button type="button" onClick={handleLink} className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm transition-all" title="Havola">
+          Link
         </button>
       </div>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rich-textarea w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-500 rounded-b-lg dark:bg-slate-700 dark:text-white min-h-[250px] font-mono text-sm"
-        placeholder="Enter news body with HTML tags or use toolbar buttons..."
+        className="rich-textarea w-full px-4 py-3 bg-white/5 border border-white/10 rounded-b-xl text-white placeholder-white/30 min-h-[220px] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+        placeholder="Yangilik matni (HTML yoki toolbar tugmalaridan foydalaning)..."
       />
     </div>
   )
@@ -88,7 +68,6 @@ export default function Main_admin() {
   const [formData, setFormData] = useState({ title: '', body: '' })
   const [showForm, setShowForm] = useState(false)
 
-  // Fetch news
   useEffect(() => {
     fetchNews()
   }, [])
@@ -106,23 +85,19 @@ export default function Main_admin() {
     }
   }
 
-  // Handle Add/Update
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.title.trim()) {
-      alert('Title is required')
+      alert('Sarlavha kiritilishi shart')
       return
     }
-
     try {
       if (editingId) {
-        // Update
         await api.put(`/news/${editingId}`, formData)
-        alert('News updated successfully')
+        alert('Yangilik yangilandi')
       } else {
-        // Create
         await api.post('/news/create', formData)
-        alert('News created successfully')
+        alert('Yangilik qo\'shildi')
       }
       setFormData({ title: '', body: '' })
       setEditingId(null)
@@ -130,89 +105,82 @@ export default function Main_admin() {
       fetchNews()
     } catch (err) {
       console.error('Error saving news:', err)
-      alert('Error saving news')
+      alert('Saqlashda xatolik')
     }
   }
 
-  // Handle Edit
   const handleEdit = (item) => {
     setEditingId(item.id)
     setFormData({ title: item.title, body: item.body || '' })
     setShowForm(true)
   }
 
-  // Handle Delete
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this news?')) return
-
+    if (!window.confirm('Ushbu yangilikni o\'chirishga ishonchingiz komilmi?')) return
     try {
       await api.delete(`/news/${id}`)
-      alert('News deleted successfully')
+      alert('Yangilik o\'chirildi')
       fetchNews()
     } catch (err) {
       console.error('Error deleting news:', err)
-      alert('Error deleting news')
+      alert('O\'chirishda xatolik')
     }
   }
 
-  // Reset Form
   const handleCancel = () => {
     setFormData({ title: '', body: '' })
     setEditingId(null)
     setShowForm(false)
   }
 
-  // Helper function to strip HTML tags for preview
   const stripHtmlTags = (html) => {
     const temp = document.createElement('div')
     temp.innerHTML = html
     return temp.textContent || temp.innerText || ''
   }
 
-  // Get preview text from HTML
-  const getPreview = (body) => {
-    if (!body) return 'No body'
-    const plainText = stripHtmlTags(body)
-    return plainText.substring(0, 80) + (plainText.length > 80 ? '...' : '')
-  }
-
   return (
-    <div className='w-full h-full bg-white dark:bg-slate-700 rounded-xl'>
-      <div className="news w-full h-max p-6 flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-slate-700 dark:text-white text-3xl font-bold">Manage News</h3>
+    <div className="w-full h-full">
+      <div className="p-6 flex flex-col gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h3 className="text-white text-2xl font-bold">Yangiliklarni boshqarish</h3>
+            <p className="text-white/50 text-sm mt-0.5">
+              Jami {news.length} ta yangilik · Yangilik qo&apos;shish, tahrirlash va o&apos;chirish
+            </p>
+          </div>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all"
+            className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/20"
           >
-            <FaPlus /> Add News
+            <Plus className="w-5 h-5" /> Yangilik qo&apos;shish
           </button>
         </div>
 
-        {/* Add/Edit Form */}
         {showForm && (
-          <div className="bg-gray-100 dark:bg-slate-600 p-6 rounded-lg border-2 border-blue-500">
-            <h4 className="text-lg font-bold text-slate-700 dark:text-white mb-4">
-              {editingId ? 'Edit News' : 'Add New News'}
-            </h4>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-bold text-white">
+                {editingId ? 'Yangilikni tahrirlash' : 'Yangi yangilik'}
+              </h4>
+              <button onClick={handleCancel} className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
-                <label className="block text-slate-700 dark:text-gray-300 font-semibold mb-2">
-                  Title *
-                </label>
+                <label className="block text-white/80 font-semibold mb-2">Sarlavha *</label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Enter news title"
-                  className="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-500 rounded-lg dark:bg-slate-700 dark:text-white"
+                  placeholder="Yangilik sarlavhasi"
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                 />
               </div>
               <div>
-                <label className="block text-slate-700 dark:text-gray-300 font-semibold mb-2">
-                  body
-                </label>
-                <div className="tiptap-editor border-2 border-gray-300 dark:border-gray-500 rounded-lg overflow-hidden">
+                <label className="block text-white/80 font-semibold mb-2">Matn</label>
+                <div className="tiptap-editor rounded-xl overflow-hidden border border-white/10">
                   <SimpleRichEditor
                     value={formData.body}
                     onChange={(body) => setFormData({ ...formData, body })}
@@ -220,92 +188,70 @@ export default function Main_admin() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all"
-                >
-                  {editingId ? 'Update' : 'Create'}
+                <button type="submit" className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition-all">
+                  <Save className="w-4 h-4" /> {editingId ? 'Saqlash' : 'Yaratish'}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-all"
-                >
-                  Cancel
+                <button type="button" onClick={handleCancel} className="px-6 py-2.5 border border-white/20 text-white/80 rounded-xl hover:bg-white/10 transition font-medium">
+                  Bekor qilish
                 </button>
               </div>
             </form>
           </div>
         )}
 
-        {/* News Table */}
         {loading ? (
-          <div className="text-center py-8">
-            <p className="text-slate-600 dark:text-gray-400">Loading...</p>
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-2 border-white/10 border-t-violet-500 mb-4" />
+            <p className="text-white/50">Yuklanmoqda...</p>
           </div>
         ) : news.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-slate-600 dark:text-gray-400 text-lg">No news found. Create your first news!</p>
+          <div className="text-center py-16 rounded-2xl border border-white/5 bg-white/[0.02]">
+            <p className="text-white/50 text-lg">Yangiliklar yo&apos;q. Birinchi yangilikni qo&apos;shing.</p>
+            <button onClick={() => setShowForm(true)} className="mt-4 text-violet-400 hover:text-violet-300 font-medium">
+              Yangilik qo&apos;shish →
+            </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-slate-200 dark:bg-slate-600">
-                  <th className="px-6 py-3 text-left text-slate-700 dark:text-white font-bold border-b-2 border-slate-300 dark:border-slate-500">
-                    ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-slate-700 dark:text-white font-bold border-b-2 border-slate-300 dark:border-slate-500">
-                    Title
-                  </th>
-                  <th className="px-6 py-3 text-left text-slate-700 dark:text-white font-bold border-b-2 border-slate-300 dark:border-slate-500">
-                    body Preview
-                  </th>
-                  <th className="px-6 py-3 text-center text-slate-700 dark:text-white font-bold border-b-2 border-slate-300 dark:border-slate-500">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {news.map((item, idx) => (
-                  <tr
-                    key={item.id}
-                    className={`border-b border-slate-300 dark:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors ${
-                      idx % 2 === 0 ? 'bg-white dark:bg-slate-700' : 'bg-gray-50 dark:bg-slate-650'
-                    }`}
-                  >
-                    <td className="px-6 py-4 text-slate-700 dark:text-gray-300 font-semibold">
-                      {item.id}
-                    </td>
-                    <td className="px-6 py-4 text-slate-700 dark:text-gray-300 font-semibold max-w-xs">
-                      {item.title}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600 dark:text-gray-400 max-w-md">
-                      <div 
-                        className="line-clamp-2"
-                        dangerouslySetInnerHTML={{ __html: item.body ? item.body.substring(0, 150) + (item.body.length > 150 ? '...' : '') : 'No body' }}
-                      />
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex justify-center gap-3">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all text-sm"
-                        >
-                          <FaEdit /> Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all text-sm"
-                        >
-                          <FaTrash /> Delete
-                        </button>
-                      </div>
-                    </td>
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/5 bg-white/5">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Sarlavha</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Matn (qisqacha)</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold text-white/60 uppercase tracking-wider">Amallar</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {news.map((item) => (
+                    <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                      <td className="px-6 py-4 font-mono text-sm text-violet-300">#{item.id}</td>
+                      <td className="px-6 py-4 font-medium text-white max-w-xs">{item.title}</td>
+                      <td className="px-6 py-4 text-white/60 max-w-md line-clamp-2 text-sm">
+                        {item.body ? stripHtmlTags(item.body).substring(0, 120) + (item.body.length > 120 ? '...' : '') : '—'}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleEdit(item)}
+                            className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-violet-500/20 text-white rounded-lg transition text-sm"
+                          >
+                            <Pencil className="w-4 h-4" /> Tahrirlash
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="flex items-center gap-2 px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition text-sm"
+                          >
+                            <Trash2 className="w-4 h-4" /> O&apos;chirish
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

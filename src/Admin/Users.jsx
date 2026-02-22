@@ -34,10 +34,19 @@ export default function Users() {
     }
   })
 
-  const filteredUsers = users?.filter(user =>
-    user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Qidiruv: username, email va ID bo'yicha (masalan "42" yoki "id:42")
+  const filteredUsers = users?.filter((user) => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return true
+    const byUsername = user.username?.toLowerCase().includes(q)
+    const byEmail = user.email?.toLowerCase().includes(q)
+    const idStr = String(user.id)
+    const byIdExact = idStr === q
+    const byIdInclude = idStr.includes(q)
+    const idPrefix = q.startsWith('id:') ? q.slice(3).trim() : null
+    const byIdPrefix = idPrefix !== null && (idStr === idPrefix || idStr.includes(idPrefix))
+    return byUsername || byEmail || byIdExact || byIdInclude || byIdPrefix
+  })
 
   function fetchUsers() {
     api.get("/user/users")
@@ -350,10 +359,10 @@ export default function Users() {
 
   if (!users) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-[400px] p-6">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-lg text-slate-600">Loading users...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-white/10 border-t-violet-500 mx-auto mb-4"></div>
+          <p className="text-white/60">Foydalanuvchilar yuklanmoqda...</p>
         </div>
       </div>
     )
@@ -368,173 +377,179 @@ export default function Users() {
     userPermissions.cefr.reading.length > 0
 
   return (
-    <div className='w-full h-full flex flex-col gap-5 p-6'>
-      <h2 className="text-slate-700 text-4xl font-semibold">Users</h2>
-
-      <div className="relative w-full max-w-md">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-        <input
-          type="text"
-          placeholder="Search users by username or email..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          disabled={loading}
-        />
+    <div className="w-full h-full flex flex-col gap-6 p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-white text-2xl font-bold">Foydalanuvchilar</h2>
+          <p className="text-white/50 text-sm mt-0.5">ID, username yoki email bo&apos;yicha qidirish</p>
+        </div>
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="ID, username yoki email (masalan: 42 yoki id:42)"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
+            disabled={loading}
+          />
+        </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow ">
-        <table className="w-full">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Username</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Premium</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Sessions</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-slate-200">
-            {filteredUsers?.length === 0 ? (
-              <tr>
-                <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
-                  No users found
-                </td>
+      <div className="rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/5 bg-white/5">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Username</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Premium</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider">Sessions</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-white/60 uppercase tracking-wider">Amallar</th>
               </tr>
-            ) : (
-              filteredUsers?.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">#{user.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-slate-900">{user.username}</span>
-                      {user.is_admin && <Shield className="w-4 h-4 text-blue-600" />}
-                    </div>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {filteredUsers?.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-12 text-center text-white/50">
+                    Foydalanuvchilar topilmadi. ID, username yoki email orqali qidiring.
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {user.premium_duration && new Date(user.premium_duration) > new Date() ? (
-                      <div className="flex flex-col gap-1">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 w-fit">
-                          <Crown className="w-3 h-3" />
-                          Premium
-                        </span>
-                        <span className="text-xs text-slate-500">
-                          Until {new Date(user.premium_duration).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                        </span>
+                </tr>
+              ) : (
+                filteredUsers?.map((user) => (
+                  <tr key={user.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-mono font-medium text-violet-300">#{user.id}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-white">{user.username}</span>
+                        {user.is_admin && <Shield className="w-4 h-4 text-violet-400 shrink-0" />}
                       </div>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                        Free
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                    {user.role === "admin" ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Admin
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                        User
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => handleViewSessions(user)}
-                      className="inline-flex items-center px-3 py-1 rounded text-xs font-medium bg-cyan-100 text-cyan-800 hover:bg-cyan-200 transition-colors"
-                    >
-                      View Sessions
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
-                    <button
-                      onClick={() => setOpenDropdown(openDropdown === user.id ? null : user.id)}
-                      disabled={loading}
-                      className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md hover:bg-slate-100 disabled:opacity-50"
-                    >
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white/70">{user.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.premium_duration && new Date(user.premium_duration) > new Date() ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-300 w-fit">
+                            <Crown className="w-3 h-3" />
+                            Premium
+                          </span>
+                          <span className="text-xs text-white/40">
+                            {new Date(user.premium_duration).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white/60">
+                          Free
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.role === "admin" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-500/20 text-violet-300">
+                          Admin
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white/60">
+                          User
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => handleViewSessions(user)}
+                        className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 transition-colors"
+                      >
+                        Sessions
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right relative">
+                      <button
+                        onClick={() => setOpenDropdown(openDropdown === user.id ? null : user.id)}
+                        disabled={loading}
+                        className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50"
+                      >
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
 
-                    {openDropdown === user.id && (
-                      <div className='z-[999]'>
-                        <div className="fixed inset-0" onClick={() => setOpenDropdown(null)} />
-                        <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
-                          <div className="py-1">
+                      {openDropdown === user.id && (
+                        <div className="z-[999]">
+                          <div className="fixed inset-0" onClick={() => setOpenDropdown(null)} />
+                          <div className="absolute right-0 mt-2 w-56 rounded-xl shadow-xl bg-[#16161a] border border-white/10 py-1 z-20">
                             <button
                               onClick={() => toggleAdmin(user.id)}
                               disabled={loading}
-                              className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
+                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors disabled:opacity-50"
                             >
-                              <Shield className="w-4 h-4" />
-                              {user.role === "admin" ? 'Demote from Admin' : 'Promote to Admin'}
+                              <Shield className="w-4 h-4 text-violet-400" />
+                              {user.role === "admin" ? "Adminlikdan olish" : "Admin qilish"}
                             </button>
                             <button
                               onClick={() => togglePremium(user.id)}
                               disabled={loading}
-                              className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
+                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors disabled:opacity-50"
                             >
-                              <Crown className="w-4 h-4" />
-                              {user.premium_duration ? 'Remove Premium' : 'Give Premium'}
+                              <Crown className="w-4 h-4 text-amber-400" />
+                              {user.premium_duration ? "Premium olib tashlash" : "Premium berish"}
                             </button>
                             {user.role == "admin" && (
                               <button
                                 onClick={() => openPermissionModal(user)}
                                 disabled={loading}
-                                className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
+                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors disabled:opacity-50"
                               >
                                 <ListChecks className="w-4 h-4" />
-                                View permissions
+                                Ruxsatlarni boshqarish
                               </button>
                             )}
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="text-sm text-slate-500">
-        Showing {filteredUsers?.length || 0} of {users?.length || 0} users
+      <div className="text-sm text-white/50">
+        Ko&apos;rsatilmoqda: <span className="text-violet-300 font-medium">{filteredUsers?.length ?? 0}</span> / {users?.length ?? 0} foydalanuvchi
       </div>
 
       {showPermissionModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 overflow-auto shadow-2xl">
-            <div className="flex items-center justify-between mb-4 pb-4 border-b">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#16161a] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 overflow-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
               <div>
-                <h3 className="text-2xl font-semibold text-slate-800 mb-1">
-                  Manage <span className="text-blue-600">{selectedUser?.username}</span>'s Permissions
+                <h3 className="text-2xl font-semibold text-white mb-1">
+                  Ruxsatlar: <span className="text-violet-400">{selectedUser?.username}</span>
                 </h3>
-                <p className="text-sm text-slate-500">Choose which features this user can access</p>
+                <p className="text-sm text-white/50">Ushbu foydalanuvchi uchun ruxsatlarni tanlang</p>
               </div>
               <button
                 onClick={closePermissionModal}
                 disabled={loading}
-                className="p-1 hover:bg-slate-100 rounded-lg transition disabled:opacity-50"
+                className="p-2 hover:bg-white/10 rounded-lg transition disabled:opacity-50 text-white/60 hover:text-white"
               >
-                <X className="w-5 h-5 text-slate-600" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="border-t pt-4">
+            <div className="border-t border-white/10 pt-4">
               <label className="flex items-center gap-3 mb-4 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isUsersCategoryChecked}
                   onChange={(e) => handleCategoryChange('users', e.target.checked)}
                   disabled={loading}
-                  className="w-5 h-5 rounded cursor-pointer disabled:opacity-50"
+                  className="w-5 h-5 rounded cursor-pointer disabled:opacity-50 accent-violet-500"
                 />
-                <span className="text-lg font-semibold text-slate-800">Users Management</span>
+                <span className="text-lg font-semibold text-white">Foydalanuvchilar boshqaruvi</span>
               </label>
               <ul className="flex flex-col gap-3 ml-8">
                 {permissions.users.map(permission => (
@@ -545,28 +560,28 @@ export default function Users() {
                       checked={userPermissions.users.includes(permission)}
                       onChange={(e) => handlePermissionChange('users', permission, e.target.checked)}
                       disabled={loading}
-                      className="w-4 h-4 rounded cursor-pointer disabled:opacity-50"
+                      className="w-4 h-4 rounded cursor-pointer disabled:opacity-50 accent-violet-500"
                     />
-                    <label htmlFor={`users-${permission}`} className="cursor-pointer text-slate-700">
-                      {permission === 'promote_admin' ? 'Promote/Demote Admin' :
-                        permission === 'give_premium' ? 'Give Premium' :
-                          'Manage Permissions'}
+                    <label htmlFor={`users-${permission}`} className="cursor-pointer text-white/80">
+                      {permission === 'promote_admin' ? 'Admin qilish/olish' :
+                        permission === 'give_premium' ? 'Premium berish' :
+                          'Ruxsatlarni boshqarish'}
                     </label>
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div className="border-t pt-4">
+            <div className="border-t border-white/10 pt-4">
               <label className="flex items-center gap-3 mb-4 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isCEFRCategoryChecked}
                   onChange={(e) => handleCEFRChange(e.target.checked)}
                   disabled={loading}
-                  className="w-5 h-5 rounded cursor-pointer disabled:opacity-50"
+                  className="w-5 h-5 rounded cursor-pointer disabled:opacity-50 accent-violet-500"
                 />
-                <span className="text-lg font-semibold text-slate-800">CEFR Management</span>
+                <span className="text-lg font-semibold text-white">CEFR boshqaruvi</span>
               </label>
 
               <div className="ml-8 flex flex-col gap-6">
@@ -582,9 +597,9 @@ export default function Users() {
                           checked={isSubjectChecked}
                           onChange={(e) => handleCategoryChange(subject, e.target.checked)}
                           disabled={loading}
-                          className="w-4 h-4 rounded cursor-pointer disabled:opacity-50"
+                          className="w-4 h-4 rounded cursor-pointer disabled:opacity-50 accent-violet-500"
                         />
-                        <span className="font-semibold text-slate-800 capitalize">{subject}</span>
+                        <span className="font-semibold text-white capitalize">{subject}</span>
                       </label>
                       <ul className="flex flex-col gap-2 ml-7">
                         {permissions.cefr[subject].map(permission => (
@@ -595,12 +610,12 @@ export default function Users() {
                               checked={userPermissions.cefr[subject].includes(permission)}
                               onChange={(e) => handlePermissionChange(subject, permission, e.target.checked)}
                               disabled={loading}
-                              className="w-4 h-4 rounded cursor-pointer disabled:opacity-50"
+                              className="w-4 h-4 rounded cursor-pointer disabled:opacity-50 accent-violet-500"
                             />
-                            <label htmlFor={`cefr-${subject}-${permission}`} className="cursor-pointer text-slate-700 text-sm">
-                              {permission === 'add' ? 'Add new mock' :
-                                permission === 'update_delete' ? 'Update/Delete mock' :
-                                  'Check results'}
+                            <label htmlFor={`cefr-${subject}-${permission}`} className="cursor-pointer text-white/70 text-sm">
+                              {permission === 'add' ? 'Yangi mock qo\'shish' :
+                                permission === 'update_delete' ? 'Tahrirlash/o\'chirish' :
+                                  'Natijalarni ko\'rish'}
                             </label>
                           </li>
                         ))}
@@ -611,20 +626,20 @@ export default function Users() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-4 border-t">
+            <div className="flex items-center gap-3 pt-4 border-t border-white/10">
               <button
                 onClick={submitPermissions}
                 disabled={loading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
+                className="px-6 py-2.5 bg-violet-600 text-white rounded-xl hover:bg-violet-500 transition font-medium disabled:opacity-50"
               >
-                {loading ? 'Saving...' : 'Save Permissions'}
+                {loading ? 'Saqlanmoqda...' : 'Ruxsatlarni saqlash'}
               </button>
               <button
                 onClick={closePermissionModal}
                 disabled={loading}
-                className="px-6 py-2 border-2 border-slate-300 text-slate-800 rounded-lg hover:bg-slate-50 transition font-medium disabled:opacity-50"
+                className="px-6 py-2.5 border border-white/20 text-white/80 rounded-xl hover:bg-white/10 transition font-medium disabled:opacity-50"
               >
-                Cancel
+                Bekor qilish
               </button>
             </div>
           </div>
@@ -632,67 +647,62 @@ export default function Users() {
       )}
 
       {showSessionsModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 shadow-2xl my-8">
-            <div className="flex items-center justify-between mb-4 pb-4 border-b">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-[#16161a] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 shadow-2xl my-8">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
               <div>
-                <h3 className="text-2xl font-semibold text-slate-800 mb-1">
-                  <span className="text-cyan-600">{selectedUser?.username}</span>'s Active Sessions
+                <h3 className="text-2xl font-semibold text-white mb-1">
+                  Faol sessions: <span className="text-cyan-400">{selectedUser?.username}</span>
                 </h3>
-                <p className="text-sm text-slate-500">User is currently logged in from these devices</p>
+                <p className="text-sm text-white/50">Qurilmalar bo&apos;yicha kirishlar</p>
               </div>
               <button
                 onClick={() => setShowSessionsModal(false)}
-                className="p-1 hover:bg-slate-100 rounded-lg transition"
+                className="p-2 hover:bg-white/10 rounded-lg transition text-white/60 hover:text-white"
               >
-                <X className="w-5 h-5 text-slate-600" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="overflow-y-auto flex-1 space-y-3">
               {sessionsLoading ? (
                 <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-white/10 border-t-cyan-500"></div>
                 </div>
               ) : userSessions && userSessions.length > 0 ? (
                 userSessions.map((session) => (
-                  <div key={session.id} className="bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 rounded-lg p-4 flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="font-semibold text-slate-800">
-                        {session.device_type === "mobile" ? "📱 Mobile" : "💻 " + (session.browser || "Web")}
-                      </p>
-                      <p className="text-sm text-slate-600">{session.device_name?.substring(0, 50) || "Unknown"}</p>
-                      <div className="flex gap-4 mt-2 text-xs text-slate-500">
-                        <span>Last active: {new Date(session.last_activity).toLocaleString()}</span>
-                        {session.ip_address && <span>IP: {session.ip_address}</span>}
-                      </div>
+                  <div key={session.id} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <p className="font-semibold text-white">
+                      {session.device_type === "mobile" ? "📱 Mobile" : "💻 " + (session.browser || "Web")}
+                    </p>
+                    <p className="text-sm text-white/60">{session.device_name?.substring(0, 50) || "Unknown"}</p>
+                    <div className="flex gap-4 mt-2 text-xs text-white/40">
+                      <span>Oxirgi faol: {new Date(session.last_activity).toLocaleString()}</span>
+                      {session.ip_address && <span>IP: {session.ip_address}</span>}
                     </div>
                   </div>
                 ))
               ) : userSessions?.length === 0 ? (
-                <p className="text-center text-slate-500 py-8">No active sessions</p>
+                <p className="text-center text-white/50 py-8">Faol session yo&apos;q</p>
               ) : (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
-                  <p className="font-semibold text-yellow-800">⚠️ Cannot Load Sessions</p>
-                  <p className="text-sm text-yellow-700 mt-2">
-                    The backend endpoint for viewing user sessions is not yet implemented.
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                  <p className="font-semibold text-amber-300">⚠️ Sessions yuklanmadi</p>
+                  <p className="text-sm text-white/70 mt-2">
+                    Backend da foydalanuvchi sessions endpoint hali mavjud emas.
                   </p>
-                  <p className="text-sm text-yellow-700 mt-2">
-                    Backend team: See BACKEND_ENDPOINT_MISSING.md for implementation guide.
-                  </p>
-                  <p className="text-xs text-yellow-600 mt-3">
-                    Endpoint needed: GET /sessions/user/{selectedUser?.id}
+                  <p className="text-xs text-white/50 mt-3">
+                    Kerak: GET /sessions/user/{selectedUser?.id}
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t">
+            <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
               <button
                 onClick={() => setShowSessionsModal(false)}
-                className="px-6 py-2 bg-slate-100 text-slate-800 rounded-lg hover:bg-slate-200 transition font-medium"
+                className="px-6 py-2.5 bg-white/10 text-white rounded-xl hover:bg-white/15 transition font-medium"
               >
-                Close
+                Yopish
               </button>
             </div>
           </div>
