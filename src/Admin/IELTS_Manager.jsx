@@ -12,7 +12,7 @@ const createQuestion = (withOptions = false) => ({
 });
 
 const createAudioPart = () => ({ title: "", url: "" });
-const createWritingTask = () => ({ prompt: "", min_words: 150 });
+const createWritingTask = () => ({ prompt: "", min_words: 150, image_urls: [] });
 const createSpeakingStage = () => ({ prompt: "", prep_seconds: 60, speak_seconds: 120 });
 
 function normalizeQuestion(raw) {
@@ -170,6 +170,11 @@ export default function IeltsManager({ defaultModule = "reading" }) {
           ? ensureMinArray(content.tasks || [], 2, createWritingTask).map((task) => ({
               prompt: task?.prompt || "",
               min_words: Number(task?.min_words || 150),
+              image_urls: Array.isArray(task?.image_urls)
+                ? task.image_urls
+                : task?.image_url
+                ? [task.image_url]
+                : [],
             }))
           : [createWritingTask(), createWritingTask()],
       speaking_stages:
@@ -284,7 +289,11 @@ export default function IeltsManager({ defaultModule = "reading" }) {
     if (activeModule === "writing") {
       const tasks = form.writing_tasks
         .filter((task) => task.prompt.trim())
-        .map((task) => ({ prompt: task.prompt.trim(), min_words: Number(task.min_words || 150) }));
+        .map((task) => ({
+          prompt: task.prompt.trim(),
+          min_words: Number(task.min_words || 150),
+          image_urls: Array.isArray(task.image_urls) ? task.image_urls.filter((url) => String(url).trim()) : [],
+        }));
       return { content: { tasks }, answer_key: [] };
     }
 
@@ -575,6 +584,33 @@ export default function IeltsManager({ defaultModule = "reading" }) {
                       placeholder="Min words"
                       className="w-full border border-slate-300 rounded p-2 text-sm"
                     />
+                    <input
+                      value={Array.isArray(task.image_urls) ? task.image_urls.join(", ") : ""}
+                      onChange={(e) =>
+                        updateWritingTask(
+                          idx,
+                          "image_urls",
+                          e.target.value
+                            .split(",")
+                            .map((x) => x.trim())
+                            .filter(Boolean)
+                        )
+                      }
+                      placeholder="Image URLs (comma separated)"
+                      className="w-full border border-slate-300 rounded p-2 text-sm"
+                    />
+                    {Array.isArray(task.image_urls) && task.image_urls.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {task.image_urls.map((url, imageIdx) => (
+                          <img
+                            key={`task-${idx}-img-${imageIdx}`}
+                            src={url}
+                            alt={`task-${idx}-diagram-${imageIdx}`}
+                            className="w-full h-20 object-cover rounded border border-slate-200"
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

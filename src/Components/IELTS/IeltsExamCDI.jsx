@@ -573,6 +573,18 @@ export default function IeltsExamCDI() {
                   <span className="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700">Min {task?.min_words || 150} words</span>
                 </div>
                 <p className="text-slate-700 mb-3">{task?.prompt || "Task prompt"}</p>
+                {Array.isArray(task?.image_urls) && task.image_urls.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    {task.image_urls.map((url, imageIdx) => (
+                      <img
+                        key={`writing-task-${idx}-img-${imageIdx}`}
+                        src={url}
+                        alt={`writing-task-${idx}-img-${imageIdx}`}
+                        className="w-full max-h-64 object-contain rounded border border-slate-200 bg-slate-50"
+                      />
+                    ))}
+                  </div>
+                )}
                 <textarea
                   value={answers[idx] || ""}
                   onChange={(e) => setAnswer(idx, e.target.value)}
