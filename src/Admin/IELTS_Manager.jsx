@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Pencil, Plus, Save, Trash2, XCircle } from "lucide-react";
 import api from "../api";
 
@@ -12,6 +12,10 @@ const TEMPLATES = {
     ]
   },
   listening: {
+    audio_parts: [
+      { title: "Part 1", url: "https://example.com/listening-part1.mp3" },
+      { title: "Part 2", url: "https://example.com/listening-part2.mp3" }
+    ],
     questions: [
       { prompt: "Question 1", options: ["A", "B", "C", "D"], type: "choice" },
       { prompt: "Question 2", options: ["A", "B", "C", "D"], type: "choice" }
@@ -242,7 +246,7 @@ export default function IeltsManager({ defaultModule = "reading" }) {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h4 className="font-bold text-slate-800">{test.title}</h4>
-                        <p className="text-xs text-slate-500 mt-1">{test.exam_track} � {test.level} � {section?.duration_minutes || test.duration_minutes} min</p>
+                        <p className="text-xs text-slate-500 mt-1">{test.exam_track} • {test.level} • {section?.duration_minutes || test.duration_minutes} min</p>
                         <p className="text-sm text-slate-600 mt-2 line-clamp-2">{test.description || "No description"}</p>
                       </div>
                       <span className={`text-xs px-2 py-1 rounded-full ${test.is_published ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
@@ -295,6 +299,11 @@ export default function IeltsManager({ defaultModule = "reading" }) {
             <div>
               <p className="text-xs font-semibold text-slate-600 mb-1">Section Content JSON</p>
               <textarea value={form.section_content_json} onChange={(e) => setForm((p) => ({ ...p, section_content_json: e.target.value }))} className="w-full border border-slate-300 rounded-lg p-2 min-h-44 font-mono text-xs" />
+              {activeModule === "listening" && (
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Listening uchun `audio_parts` qo‘shing. Har part: {"{"}title, url{"}"} (`.mp3`, `.wav`, `.m4a` va boshqalar).
+                </p>
+              )}
             </div>
 
             <div>
@@ -351,3 +360,4 @@ export default function IeltsManager({ defaultModule = "reading" }) {
     </section>
   );
 }
+

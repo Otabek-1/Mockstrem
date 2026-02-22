@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AlarmClock, CircleCheckBig, Mic, Pause, Play, SendHorizontal, Volume2 } from "lucide-react";
 import JSZip from "jszip";
@@ -111,6 +111,7 @@ export default function IeltsExamCDI() {
   const [ttsLoading, setTtsLoading] = useState(false);
   const [ttsMap, setTtsMap] = useState({});
   const [playingPromptIndex, setPlayingPromptIndex] = useState(null);
+  const [selectedListeningAudio, setSelectedListeningAudio] = useState(0);
 
   const gradient = MODULE_COLORS[module] || MODULE_COLORS.reading;
 
@@ -123,6 +124,27 @@ export default function IeltsExamCDI() {
     if (!section?.content?.stages || !Array.isArray(section.content.stages)) return [];
     return section.content.stages;
   }, [section]);
+  const listeningAudioParts = useMemo(() => {
+    if (module !== "listening" || !section?.content) return [];
+
+    const parts = [];
+    if (Array.isArray(section.content.audio_parts)) {
+      section.content.audio_parts.forEach((item, idx) => {
+        if (item?.url) {
+          parts.push({
+            title: item.title || `Part ${idx + 1}`,
+            url: item.url,
+          });
+        }
+      });
+    }
+
+    if (parts.length === 0 && section.content.audio_url) {
+      parts.push({ title: "Main Audio", url: section.content.audio_url });
+    }
+
+    return parts;
+  }, [module, section]);
 
   useEffect(() => {
     const load = async () => {
@@ -155,6 +177,10 @@ export default function IeltsExamCDI() {
           setAnswers(Array(promptCount).fill(""));
         } else {
           setAnswers(Array(safeQuestions(targetSection).length).fill(""));
+        }
+
+        if (module === "listening") {
+          setSelectedListeningAudio(0);
         }
 
         const sectionSeconds = Math.max(1, Number(targetSection.duration_minutes || 0)) * 60;
@@ -475,6 +501,35 @@ export default function IeltsExamCDI() {
 
         {started && module !== "writing" && module !== "speaking" && (
           <div className="space-y-4">
+            {module === "listening" && listeningAudioParts.length > 0 && (
+              <article className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <p className="font-semibold text-slate-800">Listening Audio</p>
+                  {listeningAudioParts.length > 1 && (
+                    <select
+                      value={selectedListeningAudio}
+                      onChange={(e) => setSelectedListeningAudio(Number(e.target.value))}
+                      className="border border-slate-300 rounded-lg px-2 py-1 text-sm"
+                    >
+                      {listeningAudioParts.map((item, idx) => (
+                        <option key={`${item.title}-${idx}`} value={idx}>
+                          {item.title}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <audio
+                  controls
+                  preload="metadata"
+                  className="w-full"
+                  src={listeningAudioParts[selectedListeningAudio]?.url}
+                />
+                <p className="mt-2 text-xs text-slate-500 break-all">
+                  Source: {listeningAudioParts[selectedListeningAudio]?.url}
+                </p>
+              </article>
+            )}
             {questions.map((question, idx) => (
               <article key={`${question.idx}-${idx}`} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
                 <p className="font-semibold text-slate-800">{idx + 1}. {question.prompt}</p>
@@ -594,3 +649,4 @@ export default function IeltsExamCDI() {
     </div>
   );
 }
+
