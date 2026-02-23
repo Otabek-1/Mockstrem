@@ -18,6 +18,7 @@ const permissions = {
 export default function Users() {
   const [searchQuery, setSearchQuery] = useState('')
   const [openDropdown, setOpenDropdown] = useState(null)
+  const [dropdownAnchor, setDropdownAnchor] = useState({ top: 0, left: 0, openUp: false })
   const [users, setUsers] = useState(null)
   const [showPermissionModal, setShowPermissionModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
@@ -61,6 +62,10 @@ export default function Users() {
     const start = (page - 1) * PAGE_SIZE
     return list.slice(start, start + PAGE_SIZE)
   }, [filteredUsers, page])
+  const activeDropdownUser = useMemo(() => {
+    if (openDropdown == null) return null
+    return (users || []).find((u) => u.id === openDropdown) || null
+  }, [openDropdown, users])
 
   useEffect(() => setPage(1), [searchQuery])
 
@@ -369,6 +374,36 @@ export default function Users() {
     fetchUserSessions(user.id)
   }
 
+  const handleDropdownToggle = (event, user) => {
+    if (openDropdown === user.id) {
+      setOpenDropdown(null)
+      return
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    const estimatedHeight = user.role === "admin" ? 172 : 124
+    const openUp = spaceBelow < estimatedHeight
+
+    setDropdownAnchor({
+      top: openUp ? rect.top - 8 : rect.bottom + 8,
+      left: rect.right,
+      openUp
+    })
+    setOpenDropdown(user.id)
+  }
+
+  useEffect(() => {
+    if (openDropdown == null) return undefined
+    const closeDropdown = () => setOpenDropdown(null)
+    window.addEventListener('resize', closeDropdown)
+    window.addEventListener('scroll', closeDropdown, true)
+    return () => {
+      window.removeEventListener('resize', closeDropdown)
+      window.removeEventListener('scroll', closeDropdown, true)
+    }
+  }, [openDropdown])
+
   useEffect(() => {
     fetchUsers()
   }, [])
@@ -412,7 +447,7 @@ export default function Users() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-[#0f1012] overflow-hidden">
+      <div className="rounded-xl border border-white/10 bg-[#0f1012]">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -482,50 +517,14 @@ export default function Users() {
                         Sessions
                       </button>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right relative">
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
                       <button
-                        onClick={() => setOpenDropdown(openDropdown === user.id ? null : user.id)}
+                        onClick={(event) => handleDropdownToggle(event, user)}
                         disabled={loading}
                         className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/15 transition-colors disabled:opacity-50"
                       >
                         <MoreVertical className="w-5 h-5" />
                       </button>
-
-                      {openDropdown === user.id && (
-                        <div className="z-[999]">
-                          <div className="fixed inset-0" onClick={() => setOpenDropdown(null)} />
-                          <div className="absolute right-0 mt-2 w-56 rounded-xl shadow-xl bg-[#1a1b1f] border border-white/15 py-1 z-20">
-                            <button
-                              onClick={() => toggleAdmin(user.id)}
-                              disabled={loading}
-                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-violet-500/25 transition-colors disabled:opacity-50 font-medium"
-                            >
-                              <Shield className="w-4 h-4 text-violet-400 shrink-0" />
-                              {user.role === "admin" ? "Adminlikdan olish" : "Admin qilish"}
-                            </button>
-                            <button
-                              onClick={() => togglePremium(user.id)}
-                              disabled={loading}
-                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-amber-500/25 transition-colors disabled:opacity-50 font-medium"
-                            >
-                              <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-                              {user.premium_duration && new Date(user.premium_duration) > new Date()
-                                ? "Premium olib tashlash"
-                                : "Premium berish"}
-                            </button>
-                            {user.role == "admin" && (
-                              <button
-                                onClick={() => openPermissionModal(user)}
-                                disabled={loading}
-                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors disabled:opacity-50 font-medium"
-                              >
-                                <ListChecks className="w-4 h-4 shrink-0" />
-                                Ruxsatlarni boshqarish
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
                     </td>
                   </tr>
                 ))
@@ -534,6 +533,51 @@ export default function Users() {
           </table>
         </div>
       </div>
+
+      {openDropdown !== null && activeDropdownUser && createPortal(
+        <div className="fixed inset-0 z-[999]">
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setOpenDropdown(null)}
+            aria-label="Close menu"
+          />
+          <div
+            className={`fixed w-56 rounded-xl shadow-xl bg-[#1a1b1f] border border-white/15 py-1 ${dropdownAnchor.openUp ? "-translate-x-full -translate-y-full" : "-translate-x-full"} z-[1000]`}
+            style={{ top: dropdownAnchor.top, left: dropdownAnchor.left }}
+          >
+            <button
+              onClick={() => toggleAdmin(activeDropdownUser.id)}
+              disabled={loading}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-violet-500/25 transition-colors disabled:opacity-50 font-medium"
+            >
+              <Shield className="w-4 h-4 text-violet-400 shrink-0" />
+              {activeDropdownUser.role === "admin" ? "Adminlikdan olish" : "Admin qilish"}
+            </button>
+            <button
+              onClick={() => togglePremium(activeDropdownUser.id)}
+              disabled={loading}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-amber-500/25 transition-colors disabled:opacity-50 font-medium"
+            >
+              <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+              {activeDropdownUser.premium_duration && new Date(activeDropdownUser.premium_duration) > new Date()
+                ? "Premium olib tashlash"
+                : "Premium berish"}
+            </button>
+            {activeDropdownUser.role === "admin" && (
+              <button
+                onClick={() => openPermissionModal(activeDropdownUser)}
+                disabled={loading}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors disabled:opacity-50 font-medium"
+              >
+                <ListChecks className="w-4 h-4 shrink-0" />
+                Ruxsatlarni boshqarish
+              </button>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <p className="text-sm text-white/60">
