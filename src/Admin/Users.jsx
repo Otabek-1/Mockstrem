@@ -549,7 +549,7 @@ export default function Users() {
             <button
               onClick={() => toggleAdmin(activeDropdownUser.id)}
               disabled={loading}
-              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-violet-500/25 transition-colors disabled:opacity-50 font-medium"
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm !text-white hover:bg-violet-500/25 transition-colors disabled:opacity-50 font-medium"
             >
               <Shield className="w-4 h-4 text-violet-400 shrink-0" />
               {activeDropdownUser.role === "admin" ? "Adminlikdan olish" : "Admin qilish"}
@@ -557,7 +557,7 @@ export default function Users() {
             <button
               onClick={() => togglePremium(activeDropdownUser.id)}
               disabled={loading}
-              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-amber-500/25 transition-colors disabled:opacity-50 font-medium"
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm !text-white hover:bg-amber-500/25 transition-colors disabled:opacity-50 font-medium"
             >
               <Crown className="w-4 h-4 text-amber-400 shrink-0" />
               {activeDropdownUser.premium_duration && new Date(activeDropdownUser.premium_duration) > new Date()
@@ -568,7 +568,7 @@ export default function Users() {
               <button
                 onClick={() => openPermissionModal(activeDropdownUser)}
                 disabled={loading}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors disabled:opacity-50 font-medium"
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm !text-white hover:bg-white/10 transition-colors disabled:opacity-50 font-medium"
               >
                 <ListChecks className="w-4 h-4 shrink-0" />
                 Ruxsatlarni boshqarish
