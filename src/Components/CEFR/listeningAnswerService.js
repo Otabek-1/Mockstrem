@@ -219,12 +219,17 @@ export const submitListeningAnswers = async (mockId, userAnswers) => {
             ...(token && { 'Authorization': `Bearer ${token}` })
         }
 
-        const response = await fetch(`${API_BASE_URL}/mock/listening/submit`, {
+        const response = await fetch(`${API_BASE_URL}/cefr/listening/submit`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
-                question_id: mockId,
-                ...userAnswers
+                mock_id: mockId,
+                part1: userAnswers.part1 || [],
+                part2: userAnswers.part2 || [],
+                part3: userAnswers.part3 || [],
+                part4: userAnswers.part4 || [],
+                part5: userAnswers.part5 || [],
+                part6: userAnswers.part6 || []
             })
         })
 

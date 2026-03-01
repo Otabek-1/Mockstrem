@@ -185,16 +185,18 @@ export default function ListeningExamInterface() {
             loadingToast.textContent = 'Calculating results...'
             document.body.appendChild(loadingToast)
 
-            // Fetch correct answers from backend
-            const correctAnswers = await getListeningAnswers(mockId)
-            
-            // Calculate score on client side
-            const calculatedResults = calculateListeningScore(answers, correctAnswers)
-            
-            // Optionally, you can also submit to backend for record keeping
-            // await submitListeningAnswers(mockId, answers)
-            
-            setResults(calculatedResults)
+            // Submit to backend (archive + score)
+            const submitResponse = await api.post('/cefr/listening/submit', {
+                mock_id: Number(mockId),
+                part1: answers.part1,
+                part2: answers.part2,
+                part3: answers.part3,
+                part4: answers.part4,
+                part5: answers.part5,
+                part6: answers.part6
+            })
+
+            setResults(submitResponse.data)
             setSubmitted(true)
 
             // Remove loading toast
@@ -202,7 +204,16 @@ export default function ListeningExamInterface() {
 
         } catch (err) {
             console.error('Error submitting:', err)
-            alert('Error calculating results. Please try again.')
+            // Fallback: local scoring
+            try {
+                const correctAnswers = await getListeningAnswers(mockId)
+                const calculatedResults = calculateListeningScore(answers, correctAnswers)
+                setResults(calculatedResults)
+                setSubmitted(true)
+            } catch (fallbackErr) {
+                console.error('Local fallback failed:', fallbackErr)
+                alert('Error calculating results. Please try again.')
+            }
         }
     }
 
