@@ -32,6 +32,26 @@ const randomItem = (arr) => {
   return arr[Math.floor(Math.random() * arr.length)];
 };
 
+const stripHtml = (value) => String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+const sanitizeHtml = (html) => {
+  if (!html) return "";
+  if (typeof window === "undefined" || !window.DOMParser) return stripHtml(html);
+
+  const parser = new window.DOMParser();
+  const doc = parser.parseFromString(String(html), "text/html");
+  doc.querySelectorAll("script, style, iframe, object").forEach((node) => node.remove());
+  doc.querySelectorAll("*").forEach((node) => {
+    [...node.attributes].forEach((attr) => {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith("on")) node.removeAttribute(attr.name);
+    });
+  });
+  return doc.body.innerHTML;
+};
+
+const hasHtml = (value) => /<\/?[a-z][\s\S]*>/i.test(String(value || ""));
+
 const getReadingDefaults = () => ({
   part1: Array(6).fill(""),
   part2: Array(10).fill(""),
@@ -40,6 +60,16 @@ const getReadingDefaults = () => ({
   part4TF: Array(5).fill(""),
   part5Mini: Array(5).fill(""),
   part5MC: Array(2).fill(""),
+});
+
+const getReadingDefaultsFromMock = (mock) => ({
+  part1: Array((mock?.part1?.text?.match(/\(\d+\)/g) || []).length || 6).fill(""),
+  part2: Array((mock?.part2?.statements || []).length || 10).fill(""),
+  part3: Array((mock?.part3?.paragraphs || []).length || 6).fill(""),
+  part4MC: Array((mock?.part4?.multipleChoice || []).length || 4).fill(""),
+  part4TF: Array((mock?.part4?.trueFalse || []).length || 5).fill(""),
+  part5Mini: Array((mock?.part5?.miniText?.match(/\(\d+\)/g) || []).length || 5).fill(""),
+  part5MC: Array((mock?.part5?.multipleChoice || []).length || 2).fill(""),
 });
 
 const getListeningDefaults = (mock) => {
@@ -63,6 +93,11 @@ const getListeningDefaults = (mock) => {
     part5: Array(part5QuestionCount).fill(""),
     part6: Array(part6Questions.length).fill(""),
   };
+};
+
+const getQuestionCountLabel = (mockData) => {
+  const orderedParts = ["1.1", "1.2", "2", "3"];
+  return orderedParts.reduce((total, part) => total + (Array.isArray(mockData?.[part]) ? mockData[part].length : 0), 0);
 };
 
 const normalizeSpeakingQuestions = (rawSpeakingMock) => {
@@ -130,10 +165,17 @@ export default function FullMockExam() {
   const [speakingRecordings, setSpeakingRecordings] = useState({});
   const [recordingQuestionKey, setRecordingQuestionKey] = useState(null);
   const [speakingAiStatus, setSpeakingAiStatus] = useState("");
+  const [listeningAudioLoaded, setListeningAudioLoaded] = useState(false);
+  const [listeningAudioPlaying, setListeningAudioPlaying] = useState(false);
+  const [listeningAudioProgress, setListeningAudioProgress] = useState(0);
+  const [listeningVolume, setListeningVolume] = useState(1);
+  const [listeningMuted, setListeningMuted] = useState(false);
   const speakingRecorderRef = useRef(null);
   const speakingStreamRef = useRef(null);
   const speakingChunksRef = useRef([]);
   const speakingBlobsRef = useRef({});
+  const listeningAudioRef = useRef(null);
+  const speakingRecordingsRef = useRef({});
 
   const [scores, setScores] = useState({
     listening: null,
@@ -181,6 +223,7 @@ export default function FullMockExam() {
           speaking: chosenSpeaking,
         });
         setListeningAnswers(getListeningDefaults(chosenListening));
+        setReadingAnswers(getReadingDefaultsFromMock(chosenReading));
       } catch (error) {
         setLoadError(error?.message || "Full mock yuklanmadi.");
       } finally {
@@ -200,6 +243,10 @@ export default function FullMockExam() {
     setSpeakingAnswers(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speakingQuestions.length]);
+
+  useEffect(() => {
+    speakingRecordingsRef.current = speakingRecordings;
+  }, [speakingRecordings]);
 
   const sectionKey = SECTION_ORDER[currentSection];
   const isSectionChecked = scores[sectionKey] !== null;
@@ -232,15 +279,113 @@ export default function FullMockExam() {
   }, [allDone, isSectionChecked, busy, timeLeft]);
 
   useEffect(() => {
+    const listeningAudio = listeningAudioRef.current;
     return () => {
-      Object.values(speakingRecordings).forEach((url) => {
+      Object.values(speakingRecordingsRef.current || {}).forEach((url) => {
         if (url) URL.revokeObjectURL(url);
       });
       if (speakingStreamRef.current) {
         speakingStreamRef.current.getTracks().forEach((t) => t.stop());
       }
+      if (listeningAudio) {
+        listeningAudio.pause();
+      }
     };
-  }, [speakingRecordings]);
+  }, []);
+
+  useEffect(() => {
+    if (sectionKey !== "listening") return;
+
+    const audio = listeningAudioRef.current;
+    const src = selectedMocks.listening?.[`audio_part_${listeningPart}`];
+    if (!audio || !src) {
+      setListeningAudioLoaded(false);
+      setListeningAudioPlaying(false);
+      setListeningAudioProgress(0);
+      return;
+    }
+
+    setListeningAudioLoaded(false);
+    setListeningAudioPlaying(false);
+    setListeningAudioProgress(0);
+    audio.src = src;
+    audio.load();
+
+    const handleLoaded = () => setListeningAudioLoaded(true);
+    const handlePlay = () => setListeningAudioPlaying(true);
+    const handlePause = () => setListeningAudioPlaying(false);
+    const handleTimeUpdate = () => {
+      if (audio.duration) {
+        setListeningAudioProgress((audio.currentTime / audio.duration) * 100);
+      }
+    };
+
+    audio.addEventListener("loadeddata", handleLoaded);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+
+    return () => {
+      if (audio) {
+        audio.pause();
+        audio.removeEventListener("loadeddata", handleLoaded);
+        audio.removeEventListener("play", handlePlay);
+        audio.removeEventListener("pause", handlePause);
+        audio.removeEventListener("timeupdate", handleTimeUpdate);
+      }
+    };
+  }, [sectionKey, listeningPart, selectedMocks.listening]);
+
+  const renderRichText = (value, className = "") => {
+    const html = sanitizeHtml(value);
+    if (!html) return null;
+    if (hasHtml(value)) {
+      return <div className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+    }
+    return <p className={className}>{stripHtml(value)}</p>;
+  };
+
+  const renderGapText = (text, answers, onChange, inputPrefix) => {
+    const raw = String(text || "");
+    if (!raw) return null;
+
+    const segments = raw.split(/(\(\d+\))/g);
+    let gapIndex = 0;
+
+    return (
+      <div className="text-sm text-slate-700 leading-8 whitespace-pre-wrap">
+        {segments.map((segment, idx) => {
+          const gapMatch = segment.match(/\((\d+)\)/);
+          if (!gapMatch) {
+            if (hasHtml(segment)) {
+              return (
+                <span
+                  key={`${inputPrefix}-html-${idx}`}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(segment) }}
+                />
+              );
+            }
+            return <span key={`${inputPrefix}-txt-${idx}`}>{segment}</span>;
+          }
+
+          const currentGapIndex = gapIndex;
+          gapIndex += 1;
+          return (
+            <span key={`${inputPrefix}-gap-${idx}`} className="inline-flex items-center gap-2 mx-1">
+              <span className="inline-flex min-w-7 justify-center rounded-md bg-blue-600 px-2 py-1 text-xs font-bold text-white">
+                {currentGapIndex + 1}
+              </span>
+              <input
+                value={answers[currentGapIndex] || ""}
+                onChange={(e) => onChange(currentGapIndex, e.target.value)}
+                className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-center font-semibold"
+              />
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
 
   const submitListening = async () => {
     const mockId = selectedMocks.listening?.id;
@@ -309,6 +454,7 @@ export default function FullMockExam() {
 
   const startSpeakingRecording = async (questionKey) => {
     if (recordingQuestionKey) return;
+    if (!questionKey) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       speakingStreamRef.current = stream;
@@ -340,11 +486,14 @@ export default function FullMockExam() {
           type: recorder.mimeType || "audio/webm",
         });
         speakingBlobsRef.current[questionKey] = blob;
-        const oldUrl = speakingRecordings[questionKey];
-        if (oldUrl) URL.revokeObjectURL(oldUrl);
         const localUrl = URL.createObjectURL(blob);
-        setSpeakingRecordings((prev) => ({ ...prev, [questionKey]: localUrl }));
+        setSpeakingRecordings((prev) => {
+          const oldUrl = prev[questionKey];
+          if (oldUrl) URL.revokeObjectURL(oldUrl);
+          return { ...prev, [questionKey]: localUrl };
+        });
         setRecordingQuestionKey(null);
+        speakingRecorderRef.current = null;
         if (speakingStreamRef.current) {
           speakingStreamRef.current.getTracks().forEach((t) => t.stop());
           speakingStreamRef.current = null;
@@ -354,16 +503,26 @@ export default function FullMockExam() {
       speakingRecorderRef.current = recorder;
       setRecordingQuestionKey(questionKey);
       recorder.start();
-    } catch (error) {
+    } catch {
       alert("Microphone access required for speaking section.");
     }
   };
 
-  const stopSpeakingRecording = async () => {
-    const recorder = speakingRecorderRef.current;
-    if (!recorder || recorder.state === "inactive") return;
-    recorder.stop();
-  };
+  const stopSpeakingRecording = async () =>
+    new Promise((resolve) => {
+      const recorder = speakingRecorderRef.current;
+      if (!recorder || recorder.state === "inactive") {
+        resolve();
+        return;
+      }
+
+      const originalOnStop = recorder.onstop;
+      recorder.onstop = (event) => {
+        if (originalOnStop) originalOnStop.call(recorder, event);
+        resolve();
+      };
+      recorder.stop();
+    });
 
   const buildSpeakingPromptText = (question, idx) => {
     const number = idx + 1;
@@ -383,8 +542,32 @@ export default function FullMockExam() {
   };
 
   const submitSpeaking = async () => {
+    if (!speakingQuestions.length) {
+      setScores((prev) => ({ ...prev, speaking: 0 }));
+      setAiData((prev) => ({ ...prev, speakingRaw: "" }));
+      return;
+    }
+
     const questionTexts = speakingQuestions.map((q, idx) => buildSpeakingPromptText(q, idx));
     const transcriptions = [];
+
+    const formData = new FormData();
+    formData.append("mock_id", String(selectedMocks.speaking?.id || ""));
+    formData.append("total_duration", String(SECTION_DURATION_SECONDS.speaking));
+
+    speakingQuestions.forEach((q) => {
+      const blob = speakingBlobsRef.current[q.key];
+      if (blob) {
+        formData.append("audios", blob, `${q.key}.webm`);
+      }
+    });
+
+    if (selectedMocks.speaking?.id && formData.getAll("audios").length > 0) {
+      setSpeakingAiStatus("Uploading speaking recordings...");
+      await api.post("/mock/speaking/submit", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    }
 
     for (let i = 0; i < speakingQuestions.length; i += 1) {
       const q = speakingQuestions[i];
@@ -405,7 +588,7 @@ export default function FullMockExam() {
           questionNum: i + 1,
           text: text || "[No speech detected]",
         });
-      } catch (e) {
+      } catch {
         transcriptions.push({
           questionNum: i + 1,
           text: "[Transcription failed]",
@@ -467,6 +650,13 @@ export default function FullMockExam() {
 
   const renderListening = () => {
     const mock = selectedMocks.listening;
+    if (!mock) {
+      return (
+        <div className="rounded-xl bg-white p-5 border border-slate-200 text-slate-600">
+          Listening mock not available.
+        </div>
+      );
+    }
     const data = mock?.data || {};
     const part1 = data?.part_1 || [];
     const part2 = data?.part_2 || [];
@@ -530,12 +720,74 @@ export default function FullMockExam() {
           </div>
         )}
 
+        <div className="rounded-xl border border-slate-200 bg-slate-900 p-4 text-white">
+          <audio ref={listeningAudioRef} preload="auto" />
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={!selectedMocks.listening?.[`audio_part_${listeningPart}`] || !listeningAudioLoaded}
+              onClick={() => {
+                const audio = listeningAudioRef.current;
+                if (!audio) return;
+                if (listeningAudioPlaying) {
+                  audio.pause();
+                } else {
+                  audio.play();
+                }
+              }}
+              className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-900 disabled:opacity-50"
+            >
+              {listeningAudioPlaying ? "Pause Audio" : "Play Audio"}
+            </button>
+            <div className="min-w-[180px] flex-1">
+              <div className="h-2 overflow-hidden rounded-full bg-white/20">
+                <div
+                  className="h-full bg-emerald-400 transition-all"
+                  style={{ width: `${listeningAudioProgress}%` }}
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const audio = listeningAudioRef.current;
+                if (!audio) return;
+                audio.muted = !listeningMuted;
+                setListeningMuted(!listeningMuted);
+              }}
+              className="rounded-lg border border-white/20 px-3 py-2 text-sm"
+            >
+              {listeningMuted ? "Unmute" : "Mute"}
+            </button>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={listeningVolume}
+              onChange={(e) => {
+                const nextVolume = Number(e.target.value);
+                setListeningVolume(nextVolume);
+                if (listeningAudioRef.current) {
+                  listeningAudioRef.current.volume = nextVolume;
+                }
+              }}
+            />
+            {!selectedMocks.listening?.[`audio_part_${listeningPart}`] && (
+              <p className="text-sm text-amber-300">This part has no audio file.</p>
+            )}
+            {selectedMocks.listening?.[`audio_part_${listeningPart}`] && !listeningAudioLoaded && (
+              <p className="text-sm text-slate-300">Loading audio...</p>
+            )}
+          </div>
+        </div>
+
         {listeningPart === 2 && (
           <div className="rounded-xl bg-white p-5 border border-slate-200">
             <h3 className="font-bold text-slate-900 mb-3">Part 2</h3>
             {part2.map((item, idx) => (
               <div key={`p2-${idx}`} className="mb-3">
-                <p className="text-sm mb-1">{item?.before} ____ {item?.after}</p>
+                <p className="text-sm mb-1">{stripHtml(item?.before)} ____ {stripHtml(item?.after)}</p>
                 <input
                   className="w-full rounded-lg border border-slate-300 px-3 py-2"
                   value={listeningAnswers.part2[idx] || ""}
@@ -671,7 +923,7 @@ export default function FullMockExam() {
             <h3 className="font-bold text-slate-900 mb-3">Part 6</h3>
             {part6.map((q, idx) => (
               <div key={`p6-${idx}`} className="mb-3">
-                <p className="text-sm mb-1">{q?.before} ____ {q?.after}</p>
+                <p className="text-sm mb-1">{stripHtml(q?.before)} ____ {stripHtml(q?.after)}</p>
                 <input
                   className="w-full rounded-lg border border-slate-300 px-3 py-2"
                   value={listeningAnswers.part6[idx] || ""}
@@ -691,6 +943,13 @@ export default function FullMockExam() {
 
   const renderReading = () => {
     const mock = selectedMocks.reading;
+    if (!mock) {
+      return (
+        <div className="rounded-xl bg-white p-5 border border-slate-200 text-slate-600">
+          Reading mock not available.
+        </div>
+      );
+    }
     const p1Text = mock?.part1?.text || "";
     const p2Statements = mock?.part2?.statements || [];
     const p2Texts = mock?.part2?.texts || [];
@@ -727,22 +986,16 @@ export default function FullMockExam() {
         {readingPart === 1 && (
           <div className="rounded-xl bg-white p-5 border border-slate-200">
             <h3 className="font-bold mb-3">Part 1</h3>
-            <p className="text-sm text-slate-600 mb-4 whitespace-pre-wrap">{p1Text}</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {readingAnswers.part1.map((value, idx) => (
-                <input
-                  key={`rp1-${idx}`}
-                  className="rounded-lg border border-slate-300 px-3 py-2"
-                  placeholder={`Answer ${idx + 1}`}
-                  value={value}
-                  onChange={(e) => {
-                    const next = [...readingAnswers.part1];
-                    next[idx] = e.target.value;
-                    setReadingAnswers((prev) => ({ ...prev, part1: next }));
-                  }}
-                />
-              ))}
-            </div>
+            {renderGapText(
+              p1Text,
+              readingAnswers.part1,
+              (idx, value) => {
+                const next = [...readingAnswers.part1];
+                next[idx] = value;
+                setReadingAnswers((prev) => ({ ...prev, part1: next }));
+              },
+              "reading-p1"
+            )}
           </div>
         )}
 
@@ -754,14 +1007,17 @@ export default function FullMockExam() {
                 {p2Texts.map((text, idx) => (
                   <div key={`p2-text-${idx}`} className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-sm">
                     <p className="font-semibold mb-1">Text {idx + 1}</p>
-                    <p className="whitespace-pre-wrap">{text}</p>
+                    {renderRichText(text, "whitespace-pre-wrap")}
                   </div>
                 ))}
               </div>
             )}
             {p2Statements.map((statement, idx) => (
               <div key={`rp2-${idx}`} className="mb-3">
-                <p className="text-sm mb-1">{idx + 1}. {statement}</p>
+                <div className="text-sm mb-1 flex gap-1">
+                  <span>{idx + 1}.</span>
+                  <div className="flex-1">{renderRichText(statement)}</div>
+                </div>
                 <input
                   className="w-full rounded-lg border border-slate-300 px-3 py-2"
                   value={readingAnswers.part2[idx] || ""}
@@ -791,7 +1047,10 @@ export default function FullMockExam() {
             )}
             {p3Paragraphs.map((paragraph, idx) => (
               <div key={`rp3-${idx}`} className="mb-3">
-                <p className="text-sm mb-1">{idx + 1}. {paragraph}</p>
+                <div className="text-sm mb-1 flex gap-1">
+                  <span>{idx + 1}.</span>
+                  <div className="flex-1">{renderRichText(paragraph)}</div>
+                </div>
                 <input
                   className="w-full rounded-lg border border-slate-300 px-3 py-2"
                   value={readingAnswers.part3[idx] || ""}
@@ -809,11 +1068,11 @@ export default function FullMockExam() {
         {readingPart === 4 && (
           <div className="rounded-xl bg-white p-5 border border-slate-200">
             <h3 className="font-bold mb-3">Part 4</h3>
-            {p4Text && <p className="text-sm text-slate-600 mb-4 whitespace-pre-wrap">{p4Text}</p>}
+            {p4Text && renderRichText(p4Text, "text-sm text-slate-600 mb-4 whitespace-pre-wrap")}
             <h4 className="font-semibold mb-2">Multiple Choice</h4>
             {p4MC.map((q, idx) => (
               <div key={`rp4mc-${idx}`} className="mb-4 p-3 rounded-lg bg-slate-50">
-                <p className="font-semibold mb-2">{q?.question || `Question ${idx + 1}`}</p>
+                {renderRichText(q?.question || `Question ${idx + 1}`, "font-semibold mb-2")}
                 {(q?.options || []).map((opt, optIdx) => {
                   const value = String.fromCharCode(65 + optIdx);
                   return (
@@ -838,7 +1097,7 @@ export default function FullMockExam() {
             <h4 className="font-semibold mb-2 mt-6">True / False / Not Given</h4>
             {p4TF.map((item, idx) => (
               <div key={`rp4tf-${idx}`} className="mb-3">
-                <p className="text-sm mb-1">{item?.statement || `Statement ${idx + 1}`}</p>
+                {renderRichText(item?.statement || `Statement ${idx + 1}`, "text-sm mb-1")}
                 <div className="flex flex-wrap gap-3">
                   {["True", "False", "Not Given"].map((opt) => (
                     <label key={`rp4tf-${idx}-${opt}`} className="flex items-center gap-2 text-sm">
@@ -865,26 +1124,24 @@ export default function FullMockExam() {
         {readingPart === 5 && (
           <div className="rounded-xl bg-white p-5 border border-slate-200">
             <h3 className="font-bold mb-3">Part 5</h3>
-            {p5MainText && <p className="text-sm text-slate-600 mb-4 whitespace-pre-wrap">{p5MainText}</p>}
-            {p5MiniText && <p className="text-sm text-slate-700 mb-4 p-3 rounded-lg bg-slate-50 whitespace-pre-wrap">{p5MiniText}</p>}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
-              {readingAnswers.part5Mini.map((value, idx) => (
-                <input
-                  key={`rp5mini-${idx}`}
-                  className="rounded-lg border border-slate-300 px-3 py-2"
-                  placeholder={`Mini answer ${idx + 1}`}
-                  value={value}
-                  onChange={(e) => {
+            {p5MainText && renderRichText(p5MainText, "text-sm text-slate-600 mb-4 whitespace-pre-wrap")}
+            {p5MiniText && (
+              <div className="mb-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+                {renderGapText(
+                  p5MiniText,
+                  readingAnswers.part5Mini,
+                  (idx, value) => {
                     const next = [...readingAnswers.part5Mini];
-                    next[idx] = e.target.value;
+                    next[idx] = value;
                     setReadingAnswers((prev) => ({ ...prev, part5Mini: next }));
-                  }}
-                />
-              ))}
-            </div>
+                  },
+                  "reading-p5"
+                )}
+              </div>
+            )}
             {p5MC.map((q, idx) => (
               <div key={`rp5mc-${idx}`} className="mb-3 p-3 rounded-lg bg-slate-50">
-                <p className="font-semibold mb-2">{q?.question || `Question ${idx + 1}`}</p>
+                {renderRichText(q?.question || `Question ${idx + 1}`, "font-semibold mb-2")}
                 {(q?.options || []).map((opt, optIdx) => {
                   const value = String.fromCharCode(65 + optIdx);
                   return (
@@ -914,6 +1171,13 @@ export default function FullMockExam() {
 
   const renderWriting = () => {
     const mock = selectedMocks.writing;
+    if (!mock) {
+      return (
+        <div className="rounded-xl bg-white p-5 border border-slate-200 text-slate-600">
+          Writing mock not available.
+        </div>
+      );
+    }
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-slate-800">Writing</h2>
@@ -939,13 +1203,13 @@ export default function FullMockExam() {
         </div>
 
         <div className="rounded-xl bg-white p-5 border border-slate-200">
-          {mock?.task1?.scenario && (
+          {writingTask !== "t2" && mock?.task1?.scenario && (
             <div className="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
               <p className="text-xs font-semibold text-slate-500 mb-1">SCENARIO</p>
               <p className="text-sm text-slate-700 whitespace-pre-wrap">{mock.task1.scenario}</p>
             </div>
           )}
-          {mock?.task1?.context && (
+          {writingTask !== "t2" && mock?.task1?.context && (
             <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
               <p className="text-xs font-semibold text-blue-700 mb-1">CONTEXT</p>
               <p className="text-sm text-slate-700 whitespace-pre-wrap">{mock.task1.context}</p>
@@ -993,6 +1257,14 @@ export default function FullMockExam() {
   };
 
   const renderSpeaking = () => {
+    if (!selectedMocks.speaking) {
+      return (
+        <div className="rounded-xl bg-white p-5 border border-slate-200 text-slate-600">
+          Speaking mock not available.
+        </div>
+      );
+    }
+
     if (!speakingQuestions.length) {
       return (
         <div className="rounded-xl bg-white p-5 border border-slate-200 text-slate-600">
@@ -1012,7 +1284,9 @@ export default function FullMockExam() {
       <div className="space-y-4">
         <h2 className="text-2xl font-bold text-slate-800">Speaking</h2>
         <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-600">Question {speakingIndex + 1} / {total}</p>
+          <p className="text-sm text-slate-600">
+            Question {speakingIndex + 1} / {total} of {getQuestionCountLabel(selectedMocks.speaking?.questions?.questions || selectedMocks.speaking?.questions || {})}
+          </p>
           <div className="flex gap-2">
             <button
               disabled={speakingIndex === 0}
