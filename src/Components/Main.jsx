@@ -12,20 +12,21 @@ export default function Main() {
     const [slides, setSlides] = useState([]);
 
     useEffect(() => {
+        api.get("/news/").then(res => {
+            setSlides(res.data);
+        }).catch(err => {
+            console.log(err);
+        })
+    }, [])
+
+    useEffect(() => {
         if (!autoPlay || !slides.length) return
 
         const timer = setInterval(() => {
             setCurrentSlide((prev) => (prev + 1) % slides.length)
         }, 5000)
 
-        api.get("/news/").then(res => {
-            setSlides(res.data);
-        }).catch(err => {
-            console.log(err);
-        })
         return () => clearInterval(timer)
-
-
     }, [autoPlay, slides.length])
 
     const nextSlide = () => {
