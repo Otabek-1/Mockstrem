@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react'
-import { ChevronDown, ChevronUp, Send, BookOpen, Clock, ArrowLeft, Download } from 'lucide-react'
+import { ChevronDown, ChevronUp, Send, BookOpen, Clock } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 
 const API_BASE_URL = 'https://english-server-p7y6.onrender.com'
 
 export default function ReadingExamInterface() {
     const { id } = useParams();
+    const createAnswerState = (mock = null) => ({
+        part1: Array((mock?.part1?.text?.match(/\(\d+\)/g) || []).length || 6).fill(''),
+        part2: Array((mock?.part2?.statements || []).length || 10).fill(''),
+        part3: Array((mock?.part3?.paragraphs || []).length || 6).fill(''),
+        part4MC: Array((mock?.part4?.multipleChoice || []).length || 4).fill(''),
+        part4TF: Array((mock?.part4?.trueFalse || []).length || 5).fill(''),
+        part5Mini: Array((mock?.part5?.miniText?.match(/\(\d+\)/g) || []).length || 5).fill(''),
+        part5MC: Array((mock?.part5?.multipleChoice || []).length || 2).fill('')
+    })
     const [currentPart, setCurrentPart] = useState(1)
     const [fontSize, setFontSize] = useState(16)
     const [isDark, setIsDark] = useState(false)
-    const [answers, setAnswers] = useState({})
+    const [answers, setAnswers] = useState(createAnswerState())
     const [submitted, setSubmitted] = useState(false)
     const [results, setResults] = useState(null)
     const [mockData, setMockData] = useState(null)
@@ -32,19 +41,12 @@ export default function ReadingExamInterface() {
             try {
                 setLoading(true)
                 const response = await fetch(`${API_BASE_URL}/mock/reading/mock/${id}`)
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`)
+                }
                 const data = await response.json()
                 setMockData(data.mock)
-                console.log(response);
-
-                setAnswers({
-                    part1: Array(6).fill(''),
-                    part2: Array(10).fill(''),
-                    part3: Array(6).fill(''),
-                    part4MC: Array(4).fill(''),
-                    part4TF: Array(5).fill(''),
-                    part5Mini: Array(5).fill(''),
-                    part5MC: Array(2).fill('')
-                })
+                setAnswers(createAnswerState(data.mock))
 
                 setError(null)
             } catch (err) {
@@ -120,6 +122,15 @@ export default function ReadingExamInterface() {
         return 'bg-teal-600'
     }
 
+    const totalQuestions =
+        answers.part1.length +
+        answers.part2.length +
+        answers.part3.length +
+        answers.part4MC.length +
+        answers.part4TF.length +
+        answers.part5Mini.length +
+        answers.part5MC.length
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-teal-50 to-emerald-50">
@@ -182,9 +193,7 @@ export default function ReadingExamInterface() {
                                                                 disabled={submitted}
                                                                 style={{ fontSize: `${fontSize}px` }}
                                                                 className={`w-32 px-3 py-2 border-2 rounded-xl text-center font-semibold transition-all ${submitted
-                                                                    ? results?.part1 >= currentGapIndex + 1
-                                                                        ? 'border-green-500 bg-green-100'
-                                                                        : 'border-red-500 bg-red-100'
+                                                                    ? 'border-gray-300 bg-gray-100'
                                                                     : 'border-teal-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-200 outline-none'
                                                                     }`}
                                                             />
@@ -324,13 +333,13 @@ export default function ReadingExamInterface() {
                                                 <input
                                                     type="radio"
                                                     name={`part4-mc-${idx}`}
-                                                    value={opt}
-                                                    checked={answers.part4MC[idx] === opt}
+                                                    value={String.fromCharCode(65 + oIdx)}
+                                                    checked={answers.part4MC[idx] === String.fromCharCode(65 + oIdx)}
                                                     onChange={(e) => handleAnswerChange('part4MC', idx, e.target.value)}
                                                     disabled={submitted}
                                                     className="w-5 h-5 text-teal-600"
                                                 />
-                                                <span style={{ fontSize: `${fontSize}px` }}>{opt}</span>
+                                                <span style={{ fontSize: `${fontSize}px` }}>{String.fromCharCode(65 + oIdx)}. {opt}</span>
                                             </label>
                                         ))}
                                     </div>
@@ -407,7 +416,7 @@ export default function ReadingExamInterface() {
                                                                     disabled={submitted}
                                                                     style={{ fontSize: `${fontSize}px` }}
                                                                     className={`w-32 px-3 py-2 border-2 rounded-xl text-center font-semibold transition-all ${submitted
-                                                                        ? 'border-green-500 bg-green-100'
+                                                                        ? 'border-gray-300 bg-gray-100'
                                                                         : 'border-teal-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-200 outline-none'
                                                                         }`}
                                                                 />
@@ -434,13 +443,13 @@ export default function ReadingExamInterface() {
                                                 <input
                                                     type="radio"
                                                     name={`part5-mc-${idx}`}
-                                                    value={opt}
-                                                    checked={answers.part5MC[idx] === opt}
+                                                    value={String.fromCharCode(65 + oIdx)}
+                                                    checked={answers.part5MC[idx] === String.fromCharCode(65 + oIdx)}
                                                     onChange={(e) => handleAnswerChange('part5MC', idx, e.target.value)}
                                                     disabled={submitted}
                                                     className="w-5 h-5 text-teal-600"
                                                 />
-                                                <span style={{ fontSize: `${fontSize}px` }}>{opt}</span>
+                                                <span style={{ fontSize: `${fontSize}px` }}>{String.fromCharCode(65 + oIdx)}. {opt}</span>
                                             </label>
                                         ))}
                                     </div>
@@ -527,17 +536,28 @@ export default function ReadingExamInterface() {
                                 <h2 className="text-4xl font-bold mb-4 text-teal-600">🎉 Results</h2>
                                 <div className="inline-block bg-gradient-to-br from-teal-500 to-emerald-500 text-white rounded-3xl p-8 shadow-2xl mb-6">
                                     <p className="text-6xl font-bold mb-2">
-                                        {results.total}/{38}
+                                        {results.total}/{totalQuestions}
                                     </p>
-                                    <p className="text-2xl opacity-90">{Math.round((results.total / 38) * 100)}% Correct</p>
+                                    <p className="text-2xl opacity-90">{Math.round((results.total / totalQuestions) * 100)}% Correct</p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                                 {[1, 2, 3, 4, 5].map(part => {
-                                    const partMap = { 1: 'part1', 2: 'part2', 3: 'part3', 4: 'part4MC', 5: 'part5Mini' }
-                                    const score = results[partMap[part]]
-                                    const totals = [6, 10, 6, 4, 5]
+                                    const scoreMap = {
+                                        1: results.part1,
+                                        2: results.part2,
+                                        3: results.part3,
+                                        4: (results.part4MC || 0) + (results.part4TF || 0),
+                                        5: (results.part5Mini || 0) + (results.part5MC || 0)
+                                    }
+                                    const totals = [
+                                        answers.part1.length,
+                                        answers.part2.length,
+                                        answers.part3.length,
+                                        answers.part4MC.length + answers.part4TF.length,
+                                        answers.part5Mini.length + answers.part5MC.length
+                                    ]
                                     return (
                                         <button
                                             key={part}
@@ -548,7 +568,7 @@ export default function ReadingExamInterface() {
                                                 }`}
                                         >
                                             <p className="font-bold text-lg">Part {part}</p>
-                                            <p className="text-sm opacity-75">{score}/{totals[part - 1]}</p>
+                                            <p className="text-sm opacity-75">{scoreMap[part]}/{totals[part - 1]}</p>
                                         </button>
                                     )
                                 })}
@@ -655,7 +675,7 @@ export default function ReadingExamInterface() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="w-3 h-3 bg-red-500 rounded-full"></span>
-                                <span className="font-semibold">{38 - (results?.total || 0)} Incorrect</span>
+                                <span className="font-semibold">{totalQuestions - (results?.total || 0)} Incorrect</span>
                             </div>
                         </div>
                     </div>

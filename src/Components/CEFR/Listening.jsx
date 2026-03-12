@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { Clock, Volume2, VolumeX, BookOpen, Send, Download } from 'lucide-react'
+import { Clock, Volume2, VolumeX, BookOpen, Send } from 'lucide-react'
 import api from '../../api'
 import { 
     getListeningAnswers, 
@@ -9,11 +9,8 @@ import {
     getPerformanceMessage 
 } from './listeningAnswerService'
 
-const API_BASE_URL = 'https://english-server-p7y6.onrender.com'
-
 export default function ListeningExamInterface() {
     const { id } = useParams()
-    const [mockId, setMockId] = useState(id || 1)
     const createAnswerState = (data = null) => ({
         part1: Array(data?.data?.part_1?.length || 0).fill(''),
         part2: Array(data?.data?.part_2?.length || 0).fill(''),
@@ -40,19 +37,11 @@ export default function ListeningExamInterface() {
     
     const audioRef = useRef(null)
 
-    const getAuthHeaders = () => {
-        const token = localStorage.getItem('access_token')
-        return {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
-        }
-    }
-
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true)
-                const response = await api.get(`/cefr/listening/${mockId}`)
+                const response = await api.get(`/cefr/listening/${id || 1}`)
                                 
                 if (response.status !== 200) {
                     throw new Error(`HTTP error! status: ${response.status}`)
@@ -74,7 +63,7 @@ export default function ListeningExamInterface() {
         }
 
         fetchData()
-    }, [mockId])
+    }, [id])
 
     useEffect(() => {
         if (submitted) return
@@ -91,23 +80,20 @@ export default function ListeningExamInterface() {
     }, [submitted])
 
     // Get current audio URL based on part
-    const getCurrentAudioUrl = () => {
-        if (!mockData) return null
-        const audioKeys = {
-            1: 'audio_part_1',
-            2: 'audio_part_2',
-            3: 'audio_part_3',
-            4: 'audio_part_4',
-            5: 'audio_part_5',
-            6: 'audio_part_6'
-        }
-        return mockData[audioKeys[currentPart]] || null
+    const audioKeys = {
+        1: 'audio_part_1',
+        2: 'audio_part_2',
+        3: 'audio_part_3',
+        4: 'audio_part_4',
+        5: 'audio_part_5',
+        6: 'audio_part_6'
     }
+    const currentAudioUrl = mockData ? mockData[audioKeys[currentPart]] || null : null
 
     // Audio controls
     useEffect(() => {
         const audio = audioRef.current
-        const audioUrl = getCurrentAudioUrl()
+        const audioUrl = currentAudioUrl
         
         if (!audio || !audioUrl) return
 
@@ -141,7 +127,7 @@ export default function ListeningExamInterface() {
             audio.removeEventListener('pause', handlePause)
             audio.removeEventListener('timeupdate', handleTimeUpdate)
         }
-    }, [mockData, currentPart])
+    }, [currentAudioUrl])
 
     const toggleAudio = () => {
         if (audioRef.current) {
@@ -186,8 +172,8 @@ export default function ListeningExamInterface() {
             document.body.appendChild(loadingToast)
 
             // Submit to backend (archive + score)
-            const submitResponse = await api.post('/cefr/listening/submit', {
-                mock_id: Number(mockId),
+                const submitResponse = await api.post('/cefr/listening/submit', {
+                mock_id: Number(id || 1),
                 part1: answers.part1,
                 part2: answers.part2,
                 part3: answers.part3,
@@ -206,7 +192,7 @@ export default function ListeningExamInterface() {
             console.error('Error submitting:', err)
             // Fallback: local scoring
             try {
-                const correctAnswers = await getListeningAnswers(mockId)
+                const correctAnswers = await getListeningAnswers(id || 1)
                 const calculatedResults = calculateListeningScore(answers, correctAnswers)
                 setResults(calculatedResults)
                 setSubmitted(true)
@@ -392,6 +378,7 @@ export default function ListeningExamInterface() {
     const renderPart5 = () => {
         const part5Data = mockData?.data?.part_5 || []
         let questionNumber = 23
+        let answerIndex = -1
         
         return (
             <div className="space-y-6">
@@ -404,9 +391,9 @@ export default function ListeningExamInterface() {
                     <div key={extractIndex} className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border-2 border-purple-200">
                         <h3 className="text-xl font-bold mb-4 text-purple-700">{extract.name}</h3>
                         
-                        {extract.questions.map((question, qIndex) => {
+                        {(Array.isArray(extract.questions) ? extract.questions : [extract.q1, extract.q2].filter(Boolean)).map((question, qIndex) => {
                             const currentQ = questionNumber++
-                            const answerIndex = extractIndex * 2 + qIndex
+                            answerIndex += 1
                             
                             return (
                                 <div key={qIndex} className="mb-6 last:mb-0 bg-white p-5 rounded-lg">
