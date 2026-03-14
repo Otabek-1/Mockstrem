@@ -788,7 +788,7 @@ export default function App() {
               Made by <span className="text-white font-semibold">Codecraft Co.</span> • &copy; 2025. All rights reserved.
             </p>
             <div className="flex gap-6 text-sm">
-              <a href="#" className="text-slate-400 hover:text-white transition-colors">Privacy Policy</a>
+              <Link to="/privacy" className="text-slate-400 hover:text-white transition-colors">Privacy Policy</Link>
               <a href="#" className="text-slate-400 hover:text-white transition-colors">Terms of Service</a>
             </div>
           </div>

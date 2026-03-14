@@ -24,6 +24,7 @@ import Listening from './Components/CEFR/Listening.jsx'
 import ListeningMockForm from './Admin/ListeningMockForm.jsx'
 import IeltsExamCDI from './Components/IELTS/IeltsExamCDI.jsx'
 import FullMockExam from './Components/CEFR/FullMockExam.jsx'
+import PrivacyPolicy from './PrivacyPolicy.jsx'
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
@@ -33,6 +34,7 @@ createRoot(document.getElementById('root')).render(
       <Route path='/contact' element={<Contact />} />
       <Route path='/dashboard' element={<Dashboard />} />
       <Route path='/plans' element={<Plan />} />
+      <Route path='/privacy' element={<PrivacyPolicy />} />
       <Route path='/mock/cefr/writing/:id' element={<Writing />} />
       <Route path='/mock/result/:resultId' element={<MockResult />} />
       <Route path='/admin/dashboard' element={<Dashboard_admin />} />
