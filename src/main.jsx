@@ -34,6 +34,7 @@ createRoot(document.getElementById('root')).render(
       <Route path='/contact' element={<Contact />} />
       <Route path='/dashboard' element={<Dashboard />} />
       <Route path='/plans' element={<Plan />} />
+      <Route path='/policy' element={<PrivacyPolicy />} />
       <Route path='/privacy' element={<PrivacyPolicy />} />
       <Route path='/mock/cefr/writing/:id' element={<Writing />} />
       <Route path='/mock/result/:resultId' element={<MockResult />} />
