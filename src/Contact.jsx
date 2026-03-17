@@ -20,8 +20,6 @@ export default function Contact() {
     e.preventDefault();
   };
 
-  // Comment
-
   return (
     <div className="w-full min-h-screen bg-gradient-to-t from-blue-500 to-cyan-400 flex items-center justify-center px-4">
       <title>MockStream: Contact</title>
