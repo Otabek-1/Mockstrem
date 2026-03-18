@@ -227,7 +227,7 @@ export default function WritingExam() {
 
       setIsSubmitting(false)
 
-      if (isPremiumActive && isFullMock) {
+      if (isPremiumActive) {
         setAiEvaluating(true)
         try {
           const result = await evaluateWritingWithGemini({
@@ -571,7 +571,7 @@ export default function WritingExam() {
                     <FaCheck className="text-green-600 text-2xl" />
                     <span><strong>Status:</strong> Submitted successfully</span>
                   </div>
-                  {isPremiumActive && isFullMock && (
+                  {isPremiumActive && (
                     <div className={`flex items-center gap-3 text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                       <FaCheck className="text-green-600 text-2xl" />
                       <span><strong>AI:</strong> Evaluation is processing</span>
@@ -579,21 +579,21 @@ export default function WritingExam() {
                   )}
                 </div>
 
-                {isPremiumActive && isFullMock && aiEvaluating && (
+                {isPremiumActive && aiEvaluating && (
                   <div className={`border-l-4 p-6 rounded-lg text-left mb-4 ${isDarkMode ? 'bg-gray-600 border-blue-400' : 'bg-blue-50 border-blue-600'}`}>
                     <p className={`font-bold mb-3 text-lg ${isDarkMode ? 'text-blue-200' : 'text-blue-900'}`}>AI is analyzing your writing...</p>
                     <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                   </div>
                 )}
 
-                {isPremiumActive && isFullMock && aiEvalError && (
+                {isPremiumActive && aiEvalError && (
                   <div className="border-l-4 border-red-500 bg-red-50 p-4 rounded text-left mb-4">
                     <p className="font-semibold text-red-700">AI evaluation failed</p>
                     <p className="text-sm text-red-600">{aiEvalError}</p>
                   </div>
                 )}
 
-                {isPremiumActive && isFullMock && aiEvaluation && (
+                {isPremiumActive && aiEvaluation && (
                   <div className={`border-l-4 p-6 rounded-lg text-left ${isDarkMode ? 'bg-gray-600 border-blue-400' : 'bg-blue-50 border-blue-600'}`}>
                     <p className={`font-bold mb-3 text-lg ${isDarkMode ? 'text-blue-200' : 'text-blue-900'}`}>AI Evaluation Result</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
@@ -608,11 +608,11 @@ export default function WritingExam() {
                   </div>
                 )}
 
-                {(!isPremiumActive || !isFullMock) && (
+                {!isPremiumActive && (
                   <div className={`border-l-4 p-6 rounded-lg text-left ${isDarkMode ? 'bg-gray-600 border-blue-400' : 'bg-blue-50 border-blue-600'}`}>
                     <p className={`font-bold mb-3 text-lg ${isDarkMode ? 'text-blue-200' : 'text-blue-900'}`}>What's Next?</p>
                     <p className={`text-base ${isDarkMode ? 'text-blue-100' : 'text-blue-800'}`}>
-                      AI evaluation is available for premium full mock submissions.
+                      AI evaluation is available for premium users.
                     </p>
                   </div>
                 )}
