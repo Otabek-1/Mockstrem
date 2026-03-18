@@ -7,6 +7,7 @@ import {
   runSpeakingGeminiAnalysis,
   transcribeAudioWithGemini,
 } from "../../services/geminiService";
+import { createFullMockAttempt, getMockProgress, saveMockProgress } from "../../services/mockProgress";
 
 const SECTION_ORDER = ["listening", "reading", "writing", "speaking"];
 const SECTION_DURATION_SECONDS = {
@@ -188,11 +189,22 @@ export default function FullMockExam() {
     writing: null,
     speakingRaw: "",
   });
+  const restoreDoneRef = useRef(false);
+  const completionPostedRef = useRef(false);
 
   const speakingQuestions = useMemo(
     () => normalizeSpeakingQuestions(selectedMocks.speaking),
     [selectedMocks.speaking]
   );
+  const sectionKey = SECTION_ORDER[currentSection];
+  const isSectionChecked = scores[sectionKey] !== null;
+  const allDone = SECTION_ORDER.every((key) => scores[key] !== null);
+
+  const overallScore = useMemo(() => {
+    if (!allDone) return 0;
+    const total = SECTION_ORDER.reduce((sum, key) => sum + Number(scores[key] || 0), 0);
+    return clamp75(total / 4);
+  }, [allDone, scores]);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -212,18 +224,45 @@ export default function FullMockExam() {
         const chosenWriting = randomItem(writingRes.data || []);
         const chosenSpeaking = randomItem(speakingRes.data || []);
 
-        if (!chosenListening || !chosenReading || !chosenWriting || !chosenSpeaking) {
+        const progress = await getMockProgress("cefr_full_mock", "full").catch(() => null);
+        const savedState = progress?.progress_state || {};
+        const ids = savedState.selectedMockIds || {};
+
+        const restoredListening = (listeningRes.data || []).find((item) => String(item?.id) === String(ids.listening)) || chosenListening;
+        const restoredReading = (readingRes.data?.mocks || []).find((item) => String(item?.id) === String(ids.reading)) || chosenReading;
+        const restoredWriting = (writingRes.data || []).find((item) => String(item?.id) === String(ids.writing)) || chosenWriting;
+        const restoredSpeaking = (speakingRes.data || []).find((item) => String(item?.id) === String(ids.speaking)) || chosenSpeaking;
+
+        if (!restoredListening || !restoredReading || !restoredWriting || !restoredSpeaking) {
           throw new Error("Mock data yetarli emas. Iltimos keyinroq urinib ko'ring.");
         }
 
         setSelectedMocks({
-          listening: chosenListening,
-          reading: chosenReading,
-          writing: chosenWriting,
-          speaking: chosenSpeaking,
+          listening: restoredListening,
+          reading: restoredReading,
+          writing: restoredWriting,
+          speaking: restoredSpeaking,
         });
-        setListeningAnswers(getListeningDefaults(chosenListening));
-        setReadingAnswers(getReadingDefaultsFromMock(chosenReading));
+        setListeningAnswers(savedState.listeningAnswers || getListeningDefaults(restoredListening));
+        setReadingAnswers(savedState.readingAnswers || getReadingDefaultsFromMock(restoredReading));
+        setWritingAnswers(savedState.writingAnswers || { t11: "", t12: "", t2: "" });
+        setSpeakingAnswers(savedState.speakingAnswers || {});
+        setScores(savedState.scores || {
+          listening: null,
+          reading: null,
+          writing: null,
+          speaking: null,
+        });
+        setAiData(savedState.aiData || { writing: null, speakingRaw: "" });
+        if (typeof savedState.currentSection === "number") setCurrentSection(savedState.currentSection);
+        if (typeof savedState.listeningPart === "number") setListeningPart(savedState.listeningPart);
+        if (typeof savedState.readingPart === "number") setReadingPart(savedState.readingPart);
+        if (savedState.writingTask) setWritingTask(savedState.writingTask);
+        if (typeof savedState.speakingIndex === "number") setSpeakingIndex(savedState.speakingIndex);
+        if (typeof progress?.remaining_seconds === "number") {
+          setTimeLeft(progress.remaining_seconds);
+        }
+        restoreDoneRef.current = true;
       } catch (error) {
         setLoadError(error?.message || "Full mock yuklanmadi.");
       } finally {
@@ -245,18 +284,67 @@ export default function FullMockExam() {
   }, [speakingQuestions.length]);
 
   useEffect(() => {
+    if (!restoreDoneRef.current || loading || allDone || !selectedMocks.listening || !selectedMocks.reading || !selectedMocks.writing || !selectedMocks.speaking) return;
+
+    const timer = setTimeout(() => {
+      saveMockProgress({
+        exam_type: "cefr_full_mock",
+        skill_area: null,
+        mock_id: "full",
+        title: "CEFR Full Mock",
+        route_path: "/mock/cefr/full",
+        remaining_seconds: timeLeft,
+        progress_state: {
+          currentSection,
+          listeningPart,
+          readingPart,
+          writingTask,
+          speakingIndex,
+          listeningAnswers,
+          readingAnswers,
+          writingAnswers,
+          speakingAnswers,
+          scores,
+          aiData,
+          selectedMockIds: {
+            listening: selectedMocks.listening?.id,
+            reading: selectedMocks.reading?.id,
+            writing: selectedMocks.writing?.id,
+            speaking: selectedMocks.speaking?.id,
+          },
+        },
+      }).catch((error) => {
+        console.error("Full mock save failed:", error);
+      });
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [loading, allDone, timeLeft, currentSection, listeningPart, readingPart, writingTask, speakingIndex, listeningAnswers, readingAnswers, writingAnswers, speakingAnswers, scores, aiData, selectedMocks]);
+
+  useEffect(() => {
+    if (!allDone || completionPostedRef.current) return;
+    completionPostedRef.current = true;
+
+    createFullMockAttempt({
+      overall_score_75: overallScore,
+      section_scores: {
+        listening: scores.listening || 0,
+        reading: scores.reading || 0,
+        writing: scores.writing || 0,
+        speaking: scores.speaking || 0,
+      },
+      details: {
+        writing_feedback: aiData.writing?.overall_feedback || null,
+        speaking_feedback: aiData.speakingRaw || null,
+      },
+    }).catch((error) => {
+      console.error("Full mock completion log failed:", error);
+    });
+  }, [allDone, overallScore, scores, aiData]);
+
+  useEffect(() => {
     speakingRecordingsRef.current = speakingRecordings;
   }, [speakingRecordings]);
-
-  const sectionKey = SECTION_ORDER[currentSection];
-  const isSectionChecked = scores[sectionKey] !== null;
-  const allDone = SECTION_ORDER.every((key) => scores[key] !== null);
-
-  const overallScore = useMemo(() => {
-    if (!allDone) return 0;
-    const total = SECTION_ORDER.reduce((sum, key) => sum + Number(scores[key] || 0), 0);
-    return clamp75(total / 4);
-  }, [allDone, scores]);
 
   useEffect(() => {
     if (sectionKey === "listening") setListeningPart(1);

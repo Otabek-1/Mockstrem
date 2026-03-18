@@ -1,220 +1,355 @@
-import React, { useState, useEffect } from 'react'
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
-import api from '../api'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useEffect, useMemo, useState } from "react";
+import { Flame, Radar, PlayCircle, RefreshCcw, Sparkles, Trophy, Clock3, Target } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import api from "../api";
+import { getActiveMockProgress } from "../services/mockProgress";
+
+const SKILL_META = {
+  listening: { label: "Listening", color: "#0f766e" },
+  reading: { label: "Reading", color: "#0ea5e9" },
+  writing: { label: "Writing", color: "#f97316" },
+  speaking: { label: "Speaking", color: "#db2777" },
+};
+
+function RadarChart({ data }) {
+  const size = 320;
+  const center = size / 2;
+  const radius = 108;
+  const labels = Object.keys(SKILL_META);
+  const points = labels.map((key, index) => {
+    const angle = (-Math.PI / 2) + (index * Math.PI * 2) / labels.length;
+    const value = Math.max(0, Math.min(100, Number(data?.[key]?.score || 0))) / 100;
+    return {
+      key,
+      angle,
+      x: center + Math.cos(angle) * radius * value,
+      y: center + Math.sin(angle) * radius * value,
+      labelX: center + Math.cos(angle) * (radius + 28),
+      labelY: center + Math.sin(angle) * (radius + 28),
+    };
+  });
+
+  const polygon = points.map((point) => `${point.x},${point.y}`).join(" ");
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-[320px]">
+      {[0.25, 0.5, 0.75, 1].map((step) => {
+        const ring = labels
+          .map((key, index) => {
+            const angle = (-Math.PI / 2) + (index * Math.PI * 2) / labels.length;
+            return `${center + Math.cos(angle) * radius * step},${center + Math.sin(angle) * radius * step}`;
+          })
+          .join(" ");
+        return <polygon key={step} points={ring} fill="none" stroke="rgba(148,163,184,0.28)" strokeWidth="1" />;
+      })}
+      {labels.map((key, index) => {
+        const angle = (-Math.PI / 2) + (index * Math.PI * 2) / labels.length;
+        return (
+          <line
+            key={key}
+            x1={center}
+            y1={center}
+            x2={center + Math.cos(angle) * radius}
+            y2={center + Math.sin(angle) * radius}
+            stroke="rgba(148,163,184,0.22)"
+          />
+        );
+      })}
+      <polygon points={polygon} fill="rgba(14,165,233,0.16)" stroke="#38bdf8" strokeWidth="3" />
+      {points.map((point) => (
+        <g key={point.key}>
+          <circle cx={point.x} cy={point.y} r="5" fill={SKILL_META[point.key].color} />
+          <text x={point.labelX} y={point.labelY} textAnchor="middle" className="fill-slate-200 text-[13px] font-semibold">
+            {SKILL_META[point.key].label}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function formatDateLabel(raw) {
+  if (!raw) return "No attempts yet";
+  return new Date(raw).toLocaleString();
+}
+
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds)) return "Saved";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    return `${hours}h ${mins % 60}m left`;
+  }
+  return `${mins}m ${secs.toString().padStart(2, "0")}s left`;
+}
 
 export default function Main() {
-    const navigate = useNavigate()
-    const [currentSlide, setCurrentSlide] = useState(0)
-    const [autoPlay, setAutoPlay] = useState(true)
-    const [fullMockModalOpen, setFullMockModalOpen] = useState(false)
+  const navigate = useNavigate();
+  const [dashboard, setDashboard] = useState(null);
+  const [news, setNews] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    const [slides, setSlides] = useState([]);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const [dashboardRes, newsRes] = await Promise.all([
+          api.get("/dashboard/home"),
+          api.get("/news/"),
+        ]);
+        setDashboard(dashboardRes.data);
+        setNews(Array.isArray(newsRes.data) ? newsRes.data.slice(0, 3) : []);
+      } catch (error) {
+        console.error("Dashboard load failed:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    useEffect(() => {
-        api.get("/news/").then(res => {
-            setSlides(res.data);
-        }).catch(err => {
-            console.log(err);
-        })
-    }, [])
+    load();
+  }, []);
 
-    useEffect(() => {
-        if (!autoPlay || !slides.length) return
+  const activeProgress = dashboard?.active_progress || null;
+  const history = dashboard?.history || [];
+  const skillScores = dashboard?.skill_scores || {};
+  const focus = dashboard?.cards?.focus;
+  const trend = dashboard?.cards?.trend;
 
-        const timer = setInterval(() => {
-            setCurrentSlide((prev) => (prev + 1) % slides.length)
-        }, 5000)
+  const strongestSkill = useMemo(() => {
+    const entries = Object.entries(skillScores);
+    if (!entries.length) return null;
+    return entries.sort((a, b) => (b[1]?.score || 0) - (a[1]?.score || 0))[0];
+  }, [skillScores]);
 
-        return () => clearInterval(timer)
-    }, [autoPlay, slides.length])
+  const weakestSkill = useMemo(() => {
+    const entries = Object.entries(skillScores);
+    if (!entries.length) return null;
+    return entries.sort((a, b) => (a[1]?.score || 0) - (b[1]?.score || 0))[0];
+  }, [skillScores]);
 
-    const nextSlide = () => {
-        setCurrentSlide((prev) => (prev + 1) % slides.length)
-        setAutoPlay(false)
-        setTimeout(() => setAutoPlay(true), 5000)
-    }
+  useEffect(() => {
+    if (dashboard?.active_progress) return;
+    getActiveMockProgress().then((progress) => {
+      if (progress) {
+        setDashboard((prev) => (prev ? { ...prev, active_progress: progress } : prev));
+      }
+    }).catch(() => {});
+  }, [dashboard?.active_progress]);
 
-    const prevSlide = () => {
-        setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)
-        setAutoPlay(false)
-        setTimeout(() => setAutoPlay(true), 5000)
-    }
-
-    const goToSlide = (index) => {
-        setCurrentSlide(index)
-        setAutoPlay(false)
-        setTimeout(() => setAutoPlay(true), 5000)
-    }
-
+  if (loading) {
     return (
-        <div className='w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-8 rounded-lg'>
-            <div className="mb-6 rounded-3xl bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white p-6 shadow-2xl relative overflow-hidden">
-                <div className="absolute inset-0 opacity-25">
-                    <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white blur-2xl"></div>
-                    <div className="absolute -bottom-10 -left-8 w-44 h-44 rounded-full bg-yellow-300 blur-2xl"></div>
-                </div>
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                        <p className="uppercase tracking-widest text-xs font-semibold text-orange-100">New Exam Mode</p>
-                        <h2 className="text-2xl md:text-3xl font-black mt-1">Try Full Mock</h2>
-                        <p className="text-sm md:text-base text-orange-100 mt-1">
-                            Complete CEFR in CDI-like order: Listening, Reading, Writing, Speaking.
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => setFullMockModalOpen(true)}
-                        className="px-6 py-3 rounded-xl bg-white text-red-600 font-bold shadow-lg hover:scale-105 transition"
-                    >
-                        <span className="text-red-600">Try Full Mock</span>
-                    </button>
-                </div>
-            </div>
-
-            <section className="news w-full h-max flex flex-col gap-6">
-                {/* Header */}
-                <div className="space-y-2">
-                    <h3 className="text-4xl font-bold text-gray-800 dark:text-white">What's New</h3>
-                    <p className="text-gray-600 dark:text-gray-400">Check out our latest course updates and features</p>
-                </div>
-
-                {/* Carousel Container */}
-                <div className="relative w-full h-96 rounded-2xl overflow-hidden shadow-2xl dark:shadow-cyan-500/20 group">
-                    {/* Slides */}
-                    <div className="relative w-full h-full z-0">
-                        {slides.map((slide, index) => (
-                            <Link
-                                key={slide.id}
-                                to={`/news/${slide.slug}`}
-                                className={`absolute w-full h-full transition-all duration-1000 ease-in-out ${index === currentSlide
-                                        ? 'opacity-100 scale-100 z-20 pointer-events-auto'
-                                        : 'opacity-0 scale-95 z-0 pointer-events-none'
-                                    }`}
-                            >
-                                {/* Gradient Background - Chiroyli */}
-                                <div className='absolute inset-0 w-full h-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 dark:from-blue-700 dark:via-purple-800 dark:to-pink-700 z-0' />
-
-                                {/* Content */}
-                                <div className="absolute inset-0 flex flex-col justify-between p-8 text-white z-20 overflow-hidden">
-                                    {/* Top Section */}
-                                    <div className="flex justify-between items-start flex-shrink-0">
-                                        <div>
-                                            <p className="text-sm font-semibold text-cyan-200 uppercase tracking-wider">📰 Featured News</p>
-                                        </div>
-                                        <div className="backdrop-blur-md bg-white/10 px-4 py-2 rounded-full border border-white/30">
-                                            <p className="text-sm font-semibold">{currentSlide + 1} / {slides.length}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Bottom Section */}
-                                    <div className="space-y-3 animate-fade-in flex flex-col">
-                                        <h2 className="text-5xl font-bold leading-tight drop-shadow-lg flex-shrink-0">{slide.title}</h2>
-                                        <div className="text-lg text-blue-100 drop-shadow-md line-clamp-3 flex-shrink-0" dangerouslySetInnerHTML={{ __html: slide.body }}></div>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-
-                    {/* Navigation Arrows */}
-                    <button
-                        onClick={prevSlide}
-                        className="absolute left-4 top-1/2 transform -translate-y-1/2 z-50 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white p-3 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100"
-                    >
-                        <FaChevronLeft size={20} />
-                    </button>
-
-                    <button
-                        onClick={nextSlide}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 z-50 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white p-3 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100"
-                    >
-                        <FaChevronRight size={20} />
-                    </button>
-
-                    {/* Pagination Dots */}
-                    <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex gap-3">
-                        {slides.map((_, index) => (
-                            <button
-                                key={index}
-                                onClick={() => goToSlide(index)}
-                                className={`transition-all duration-300 rounded-full backdrop-blur-md ${index === currentSlide
-                                        ? 'bg-white w-8 h-3'
-                                        : 'bg-white/50 hover:bg-white/70 w-3 h-3'
-                                    }`}
-                            />
-                        ))}
-                    </div>
-                </div>
-
-                {/* Info Cards Below */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
-                    {slides.map((slide, index) => (
-                        <div
-                            key={slide.id}
-                            onClick={() => goToSlide(index)}
-                            className={`p-6 rounded-xl cursor-pointer max-h-30 overflow-hidden transition-all duration-300 transform hover:scale-105 ${index === currentSlide
-                                    ? 'bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 text-white shadow-2xl'
-                                    : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white hover:shadow-lg'
-                                }`}
-                        >
-                            <h4 className="font-bold text-sm line-clamp-2">{slide.title}</h4>
-                            <div dangerouslySetInnerHTML={{ __html: slide.body }} className={`text-xs mt-2 line-clamp-2 ${index === currentSlide ? 'text-blue-100' : 'text-gray-600 dark:text-gray-400'}`}>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            <style jsx>{`
-                @keyframes fadeIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(20px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-                .animate-fade-in {
-                    animation: fadeIn 0.6s ease-out;
-                }
-            `}</style>
-
-            {fullMockModalOpen && (
-                <div className="fixed inset-0 z-[999] bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="w-full max-w-xl rounded-2xl bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 p-6">
-                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Full Mock Instructions</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
-                            This mode runs a complete CEFR simulation in sequence:
-                            <strong> Listening - Reading - Writing - Speaking</strong>.
-                        </p>
-                        <ul className="mt-4 text-sm text-gray-700 dark:text-gray-200 space-y-2 list-disc pl-5">
-                            <li>Each skill uses a random mock from your current pool.</li>
-                            <li>Reading and Listening are auto-checked after submission.</li>
-                            <li>Writing and Speaking are analyzed by AI.</li>
-                            <li>Final page shows certificate-style score for each skill /75 and overall /75.</li>
-                        </ul>
-                        <div className="mt-6 flex justify-end gap-3">
-                            <button
-                                onClick={() => setFullMockModalOpen(false)}
-                                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setFullMockModalOpen(false)
-                                    navigate('/mock/cefr/full')
-                                }}
-                                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold"
-                            >
-                                Start
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+      <div className="min-h-[70vh] rounded-[32px] bg-slate-950 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 mx-auto rounded-full border-4 border-cyan-400 border-t-transparent animate-spin mb-4" />
+          <p className="text-slate-300">Building your dashboard...</p>
         </div>
-    )
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full min-h-screen rounded-[32px] overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.28),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(249,115,22,0.24),_transparent_24%),linear-gradient(135deg,_#020617,_#0f172a_48%,_#111827)] text-white p-4 md:p-6">
+      <section className="grid gap-4 lg:grid-cols-[1.45fr_0.9fr]">
+        <div className="rounded-[28px] border border-white/10 bg-white/5 backdrop-blur-xl p-6 md:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/80">Performance Room</p>
+              <h1 className="mt-3 text-3xl md:text-5xl font-black leading-tight">
+                Pressure reveals the gap.
+                <span className="block text-cyan-300">Consistency closes it.</span>
+              </h1>
+              <p className="mt-4 max-w-xl text-sm md:text-base text-slate-300 leading-7">
+                {dashboard?.quote}
+              </p>
+            </div>
+            <div className="grid gap-3 min-w-[220px]">
+              <div className="rounded-2xl bg-emerald-400/10 border border-emerald-300/20 p-4">
+                <div className="flex items-center gap-2 text-emerald-300 text-sm font-semibold">
+                  <Flame size={16} />
+                  Daily streak
+                </div>
+                <p className="mt-3 text-4xl font-black">{dashboard?.streak?.current || 0}</p>
+                <p className="text-xs text-slate-300 mt-1">This week: {dashboard?.streak?.this_week || 0} attempts</p>
+              </div>
+              <div className="rounded-2xl bg-white/6 border border-white/10 p-4">
+                <div className="flex items-center gap-2 text-cyan-200 text-sm font-semibold">
+                  <Trophy size={16} />
+                  Strongest edge
+                </div>
+                <p className="mt-3 text-2xl font-bold">
+                  {strongestSkill ? `${SKILL_META[strongestSkill[0]].label} ${strongestSkill[1]?.score || 0}%` : "Build your first score"}
+                </p>
+                <p className="text-xs text-slate-300 mt-1">
+                  {weakestSkill ? `Weakest signal: ${SKILL_META[weakestSkill[0]].label}` : "No weak area yet"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {activeProgress && (
+            <div className="mt-6 rounded-[24px] border border-cyan-300/30 bg-cyan-400/10 p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/80">Continue Last Mock</p>
+                <h2 className="mt-2 text-2xl font-bold">{activeProgress.title || "Saved mock session"}</h2>
+                <p className="mt-2 text-sm text-slate-200">
+                  Your timer and answers are saved. Resume from the exact point you left.
+                </p>
+                <p className="mt-3 text-xs text-cyan-100/80">
+                  {formatTime(activeProgress.remaining_seconds)} • last activity {formatDateLabel(activeProgress.last_activity_at)}
+                </p>
+              </div>
+              <button
+                onClick={() => navigate(activeProgress.route_path)}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-slate-950 px-5 py-3 font-bold hover:scale-[1.02] transition"
+              >
+                <RefreshCcw size={18} />
+                Continue
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-[28px] border border-white/10 bg-white/5 backdrop-blur-xl p-6 md:p-8">
+          <div className="flex items-center gap-2 text-cyan-200 text-sm font-semibold">
+            <Radar size={16} />
+            4-skill map
+          </div>
+          <div className="mt-4 flex justify-center">
+            <RadarChart data={skillScores} />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {Object.keys(SKILL_META).map((skill) => (
+              <div key={skill} className="rounded-2xl bg-black/20 border border-white/8 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-400">{SKILL_META[skill].label}</p>
+                <p className="mt-1 text-2xl font-bold">{skillScores?.[skill]?.score || 0}%</p>
+                <p className="text-xs text-slate-400 mt-1">{skillScores?.[skill]?.attempts || 0} scored attempts</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 mt-4 xl:grid-cols-[0.95fr_1.05fr_0.95fr]">
+        <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+          <div className="flex items-center gap-2 text-amber-200 text-sm font-semibold">
+            <Sparkles size={16} />
+            Motivation engine
+          </div>
+          <div className="mt-4 rounded-[22px] bg-gradient-to-br from-amber-400/16 to-orange-500/10 border border-amber-300/20 p-5">
+            <p className="text-sm uppercase tracking-[0.24em] text-amber-100/70">Daily focus</p>
+            <h3 className="mt-3 text-2xl font-bold">{focus?.title}</h3>
+            <p className="mt-3 text-sm leading-7 text-slate-200">{focus?.body}</p>
+            <button
+              onClick={() => navigate(focus?.route_path || "/dashboard")}
+              className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-amber-300 text-slate-950 px-4 py-3 font-bold"
+            >
+              <PlayCircle size={18} />
+              {focus?.button_label || "Start"}
+            </button>
+          </div>
+          <div className="mt-4 rounded-[22px] bg-white/6 border border-white/10 p-5">
+            <p className="text-sm uppercase tracking-[0.24em] text-cyan-100/70">Trend card</p>
+            <h3 className="mt-3 text-xl font-bold">{trend?.title}</h3>
+            <p className="mt-3 text-sm leading-7 text-slate-300">{trend?.body}</p>
+            <button
+              onClick={() => navigate(trend?.route_path || "/mock/cefr/full")}
+              className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-white/15 px-4 py-3 font-semibold hover:bg-white/8 transition"
+            >
+              <Target size={18} />
+              {trend?.button_label || "Open"}
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-cyan-200">Last 10 mocks</p>
+              <p className="text-xs text-slate-400 mt-1">Your recent history and result trail.</p>
+            </div>
+            <Link to="/mock/cefr/full" className="text-xs text-cyan-200 hover:text-cyan-100">
+              Try full mock
+            </Link>
+          </div>
+          <div className="mt-5 space-y-3">
+            {history.length > 0 ? history.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => item.route_path && navigate(item.route_path)}
+                className="w-full rounded-[22px] border border-white/8 bg-black/15 p-4 text-left hover:bg-white/8 transition"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.2em] text-slate-500">{item.exam_type.replaceAll("_", " ")}</p>
+                    <h3 className="mt-1 text-lg font-bold text-white">{item.title || "Mock attempt"}</h3>
+                    <p className="mt-1 text-xs text-slate-400">{formatDateLabel(item.created_at)}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="rounded-xl bg-white text-slate-950 px-3 py-2 text-sm font-black inline-flex items-center gap-2">
+                      <Clock3 size={15} />
+                      {item.score_75 !== null && item.score_75 !== undefined ? `${item.score_75}/75` : item.status === "pending_review" ? "Pending" : "Saved"}
+                    </div>
+                    {item.band && <p className="mt-2 text-xs text-cyan-200">Band {item.band}</p>}
+                  </div>
+                </div>
+              </button>
+            )) : (
+              <div className="rounded-[22px] border border-dashed border-white/14 bg-black/10 p-8 text-center text-slate-400">
+                Your completed mocks will appear here.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-cyan-200">News and pressure points</p>
+              <p className="text-xs text-slate-400 mt-1">Keep the dashboard alive with fresh context.</p>
+            </div>
+          </div>
+          <div className="mt-5 space-y-3">
+            {news.map((item) => (
+              <Link
+                key={item.id}
+                to={`/news/${item.slug}`}
+                className="block rounded-[22px] border border-white/8 bg-gradient-to-br from-white/10 to-white/5 p-5 hover:from-cyan-400/12 hover:to-white/10 transition"
+              >
+                <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/70">Update</p>
+                <h3 className="mt-2 text-lg font-bold text-white line-clamp-2">{item.title}</h3>
+                <div className="mt-3 text-sm text-slate-300 line-clamp-3" dangerouslySetInnerHTML={{ __html: item.body }} />
+              </Link>
+            ))}
+            {!news.length && (
+              <div className="rounded-[22px] border border-dashed border-white/14 bg-black/10 p-8 text-center text-slate-400">
+                No news cards available right now.
+              </div>
+            )}
+          </div>
+          <div className="mt-4 rounded-[22px] border border-white/8 bg-black/15 p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Quick jump</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button onClick={() => navigate("/dashboard?tab=cefr_listening")} className="rounded-2xl bg-emerald-400/12 px-4 py-3 text-left">
+                <p className="font-semibold">Listening</p>
+                <p className="text-xs text-slate-300 mt-1">Timed audio pressure</p>
+              </button>
+              <button onClick={() => navigate("/dashboard?tab=cefr_reading")} className="rounded-2xl bg-sky-400/12 px-4 py-3 text-left">
+                <p className="font-semibold">Reading</p>
+                <p className="text-xs text-slate-300 mt-1">Accuracy under pace</p>
+              </button>
+              <button onClick={() => navigate("/dashboard?tab=cefr_writing")} className="rounded-2xl bg-orange-400/12 px-4 py-3 text-left">
+                <p className="font-semibold">Writing</p>
+                <p className="text-xs text-slate-300 mt-1">Timed production</p>
+              </button>
+              <button onClick={() => navigate("/dashboard?tab=cefr_speaking")} className="rounded-2xl bg-pink-400/12 px-4 py-3 text-left">
+                <p className="font-semibold">Speaking</p>
+                <p className="text-xs text-slate-300 mt-1">Live answer pressure</p>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 }

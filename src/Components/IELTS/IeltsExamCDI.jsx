@@ -8,6 +8,7 @@ import {
   evaluateIeltsWritingWithGemini,
   transcribeAudioWithGemini,
 } from "../../services/geminiService";
+import { getMockProgress, saveMockProgress } from "../../services/mockProgress";
 
 const MODULE_COLORS = {
   reading: "from-sky-700 to-cyan-600",
@@ -123,6 +124,7 @@ export default function IeltsExamCDI() {
   const [ttsMap, setTtsMap] = useState({});
   const [playingPromptIndex, setPlayingPromptIndex] = useState(null);
   const [selectedListeningAudio, setSelectedListeningAudio] = useState(0);
+  const [restoreDone, setRestoreDone] = useState(false);
 
   const gradient = MODULE_COLORS[module] || MODULE_COLORS.reading;
 
@@ -261,6 +263,28 @@ export default function IeltsExamCDI() {
   }, [id, module]);
 
   useEffect(() => {
+    if (!section || restoreDone) return;
+
+    const restore = async () => {
+      try {
+        const progress = await getMockProgress(`ielts_${module}`, String(id));
+        const state = progress?.progress_state || {};
+        if (!progress) return;
+        if (typeof state.started === "boolean") setStarted(state.started);
+        if (Array.isArray(state.answers)) setAnswers(state.answers);
+        if (typeof progress.remaining_seconds === "number") setTimeLeft(progress.remaining_seconds);
+        if (typeof state.selectedListeningAudio === "number") setSelectedListeningAudio(state.selectedListeningAudio);
+      } catch (error) {
+        console.error("IELTS progress restore failed:", error);
+      } finally {
+        setRestoreDone(true);
+      }
+    };
+
+    restore();
+  }, [section, restoreDone, module, id]);
+
+  useEffect(() => {
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
@@ -319,6 +343,30 @@ export default function IeltsExamCDI() {
 
     return () => clearInterval(timer);
   }, [started, result, loading]);
+
+  useEffect(() => {
+    if (!section || !restoreDone || result) return;
+
+    const timer = setTimeout(() => {
+      saveMockProgress({
+        exam_type: `ielts_${module}`,
+        skill_area: module,
+        mock_id: String(id),
+        title: `${test?.title || "IELTS"} - ${section?.title || module}`,
+        route_path: window.location.pathname,
+        remaining_seconds: timeLeft,
+        progress_state: {
+          started,
+          answers,
+          selectedListeningAudio,
+        },
+      }).catch((error) => {
+        console.error("IELTS progress save failed:", error);
+      });
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [section, restoreDone, result, module, id, test?.title, timeLeft, started, answers, selectedListeningAudio]);
 
   useEffect(() => {
     if (timeLeft === 0 && started && !result && !submitting) {

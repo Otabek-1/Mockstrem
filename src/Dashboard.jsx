@@ -19,7 +19,7 @@ import Main from "./Components/Main";
 import Writing_list from "./Components/CEFR/Writing_list";
 import logo from "./assets/logo.jpg";
 import Profile from "./Components/Profile";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import api from "./api";
 import { User } from "lucide-react";
 import Reading_list from "./Components/CEFR/Reading_list";
@@ -143,6 +143,7 @@ export default function Dashboard() {
   // floating popup for collapsed sidebar
   const [floatingMenu, setFloatingMenu] = useState(null); // item.name | null
   const nav = useNavigate();
+  const location = useLocation();
 
   // ─── Helpers ────────────────────────────────────────────────
   const toggleTheme = () => {
@@ -192,6 +193,13 @@ export default function Dashboard() {
 
     fetchUser();
   }, []);
+
+  useEffect(() => {
+    const tab = new URLSearchParams(location.search).get("tab");
+    if (tab) {
+      setActive(tab);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const visitCount = Number(localStorage.getItem(FEEDBACK_VISIT_KEY) || "0") + 1;

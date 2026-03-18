@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp, Send, BookOpen, Clock } from 'lucide-react'
 import { useParams } from 'react-router-dom'
+import { getMockProgress, saveMockProgress } from '../../services/mockProgress'
 
 const API_BASE_URL = 'https://english-server-p7y6.onrender.com'
 
@@ -27,6 +28,7 @@ export default function ReadingExamInterface() {
     const [timeRemaining, setTimeRemaining] = useState(60 * 60)
     const [showConfirmModal, setShowConfirmModal] = useState(false)
     const [showReviewModal, setShowReviewModal] = useState(false)
+    const [restoreDone, setRestoreDone] = useState(false)
 
     const getAuthHeaders = () => {
         const token = localStorage.getItem('access_token')
@@ -61,12 +63,60 @@ export default function ReadingExamInterface() {
     }, [id])
 
     useEffect(() => {
+        if (!mockData || restoreDone) return
+
+        const restore = async () => {
+            try {
+                const progress = await getMockProgress('cefr_reading', String(id))
+                const state = progress?.progress_state || {}
+                if (!progress) return
+                if (state.answers) setAnswers(state.answers)
+                if (typeof state.currentPart === 'number') setCurrentPart(state.currentPart)
+                if (typeof state.fontSize === 'number') setFontSize(state.fontSize)
+                if (typeof state.isDark === 'boolean') setIsDark(state.isDark)
+                if (typeof progress.remaining_seconds === 'number') setTimeRemaining(progress.remaining_seconds)
+            } catch (error) {
+                console.error('Reading progress restore failed:', error)
+            } finally {
+                setRestoreDone(true)
+            }
+        }
+
+        restore()
+    }, [mockData, restoreDone, id])
+
+    useEffect(() => {
         if (submitted) return
         const interval = setInterval(() => {
             setTimeRemaining(prev => prev - 1)
         }, 1000)
         return () => clearInterval(interval)
     }, [submitted])
+
+    useEffect(() => {
+        if (!mockData || submitted || !restoreDone) return
+
+        const timer = setTimeout(() => {
+            saveMockProgress({
+                exam_type: 'cefr_reading',
+                skill_area: 'reading',
+                mock_id: String(id),
+                title: mockData?.title || `CEFR Reading Mock #${id}`,
+                route_path: window.location.pathname,
+                remaining_seconds: timeRemaining,
+                progress_state: {
+                    answers,
+                    currentPart,
+                    fontSize,
+                    isDark,
+                },
+            }).catch((error) => {
+                console.error('Reading progress save failed:', error)
+            })
+        }, 1200)
+
+        return () => clearTimeout(timer)
+    }, [mockData, submitted, restoreDone, id, timeRemaining, answers, currentPart, fontSize, isDark])
 
     const handleAnswerChange = (part, index, value) => {
         setAnswers(prev => ({

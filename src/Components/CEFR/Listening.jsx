@@ -8,6 +8,7 @@ import {
     getCEFRLevel, 
     getPerformanceMessage 
 } from './listeningAnswerService'
+import { getMockProgress, saveMockProgress } from '../../services/mockProgress'
 
 export default function ListeningExamInterface() {
     const { id } = useParams()
@@ -34,6 +35,7 @@ export default function ListeningExamInterface() {
     const [audioProgress, setAudioProgress] = useState(0)
     const [volume, setVolume] = useState(1)
     const [muted, setMuted] = useState(false)
+    const [restoreDone, setRestoreDone] = useState(false)
     
     const audioRef = useRef(null)
 
@@ -66,6 +68,32 @@ export default function ListeningExamInterface() {
     }, [id])
 
     useEffect(() => {
+        if (!mockData || restoreDone) return
+
+        const restore = async () => {
+            try {
+                const progress = await getMockProgress('cefr_listening', String(id))
+                const state = progress?.progress_state || {}
+                if (!progress) return
+                if (state.answers) setAnswers(state.answers)
+                if (typeof state.currentPart === 'number') setCurrentPart(state.currentPart)
+                if (typeof progress.remaining_seconds === 'number') setTimeRemaining(progress.remaining_seconds)
+                if (typeof state.volume === 'number') setVolume(state.volume)
+                if (typeof state.muted === 'boolean') setMuted(state.muted)
+                if (typeof state.audioTime === 'number' && audioRef.current) {
+                    audioRef.current.currentTime = state.audioTime
+                }
+            } catch (error) {
+                console.error('Listening progress restore failed:', error)
+            } finally {
+                setRestoreDone(true)
+            }
+        }
+
+        restore()
+    }, [mockData, restoreDone, id])
+
+    useEffect(() => {
         if (submitted) return
         const interval = setInterval(() => {
             setTimeRemaining(prev => {
@@ -78,6 +106,32 @@ export default function ListeningExamInterface() {
         }, 1000)
         return () => clearInterval(interval)
     }, [submitted])
+
+    useEffect(() => {
+        if (!mockData || submitted || !restoreDone) return
+
+        const timer = setTimeout(() => {
+            saveMockProgress({
+                exam_type: 'cefr_listening',
+                skill_area: 'listening',
+                mock_id: String(id),
+                title: mockData?.title || `CEFR Listening Mock #${id}`,
+                route_path: window.location.pathname,
+                remaining_seconds: timeRemaining,
+                progress_state: {
+                    answers,
+                    currentPart,
+                    volume,
+                    muted,
+                    audioTime: audioRef.current?.currentTime || 0,
+                },
+            }).catch((error) => {
+                console.error('Listening progress save failed:', error)
+            })
+        }, 1200)
+
+        return () => clearTimeout(timer)
+    }, [mockData, submitted, restoreDone, id, timeRemaining, answers, currentPart, volume, muted])
 
     // Get current audio URL based on part
     const audioKeys = {
