@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react'
+﻿import React, { useState, useRef, useEffect } from 'react'
 import { Mic, Play, Volume2, CheckCircle, Clock, AlertCircle, Download, Settings, BookOpen, Upload } from 'lucide-react'
 import api from '../../api'
 import JSZip from 'jszip'
 import { useParams } from 'react-router-dom'
 import { runSpeakingGeminiAnalysis, transcribeAudioWithGemini } from '../../services/geminiService'
+import { getMockProgress, saveMockProgress } from '../../services/mockProgress'
 
 export default function CERFSpeakingExam() {
   const { id } = useParams("id")
@@ -52,6 +53,7 @@ export default function CERFSpeakingExam() {
   const micTestAudioChunksRef = useRef([])
   const recordedBlobsRef = useRef({})
   const aiRequestedRef = useRef(false)
+  const restoreDoneRef = useRef(false)
 
   // Premium & User states
   const [isPremium, setIsPremium] = useState(false)
@@ -137,7 +139,19 @@ export default function CERFSpeakingExam() {
         setLoading(true)
         setError('')
         const response = await api.get('/mock/speaking/all')
-        setMocks(response.data)
+        const mockList = response.data || []
+        setMocks(mockList)
+        if (!restoreDoneRef.current) {
+          const progress = await getMockProgress('cefr_speaking', String(id)).catch(() => null)
+          const state = progress?.progress_state || {}
+          if (progress?.mock_id) {
+            const targetMockId = Number(progress.mock_id)
+            if (mockList.some((mock) => Number(mock.id) === targetMockId)) {
+              await loadMockData(targetMockId, state)
+            }
+          }
+          restoreDoneRef.current = true
+        }
       } catch (err) {
         setError('Failed to load mocks')
         // console.error(err)
@@ -152,20 +166,20 @@ export default function CERFSpeakingExam() {
   }, [screen])
 
   // ===== FETCH MOCK DATA =====
-  const loadMockData = async (mockId) => {
+  const loadMockData = async (mockId, restoredState = null) => {
     try {
       setError('')
       setLoading(true)
       setTtsLoading(true)
       setScreen('loading')
 
-      // 1️⃣ MOCK DATA
+      // 1ï¸âƒ£ MOCK DATA
       const res = await api.get(`/mock/speaking/mock/${mockId}`)
       const questions = res.data.questions.questions
       setMockData(questions)
       setSelectedMockId(mockId)
 
-      // 2️⃣ FAQAT TEXTLARNI AJRATIB OLAMIZ
+      // 2ï¸âƒ£ FAQAT TEXTLARNI AJRATIB OLAMIZ
       const payload = {}
       Object.values(questions)
         .flat()
@@ -174,12 +188,12 @@ export default function CERFSpeakingExam() {
         })
       // console.log(payload);
 
-      // 3️⃣ TTS ZIP OLAMIZ
+      // 3ï¸âƒ£ TTS ZIP OLAMIZ
       const zipRes = await api.post('/tts/audio', payload, {
         responseType: 'blob'
       })
 
-      // 4️⃣ ZIPNI O‘QISH
+      // 4ï¸âƒ£ ZIPNI Oâ€˜QISH
       const zip = await JSZip.loadAsync(zipRes.data)
       const audioMap = {}
 
@@ -190,9 +204,18 @@ export default function CERFSpeakingExam() {
       }
 
       setAudioCache(audioMap)
-
-      // 5️⃣ MIC CHECK
-      setScreen('miccheck')
+      if (restoredState) {
+        setCurrentPart(restoredState.currentPart || '1.1')
+        setCurrentQuestion(typeof restoredState.currentQuestion === 'number' ? restoredState.currentQuestion : 0)
+        setStage(restoredState.stage || 'idle')
+        setTimeLeft(typeof restoredState.timeLeft === 'number' ? restoredState.timeLeft : 0)
+        setTotalTime(typeof restoredState.totalTime === 'number' ? restoredState.totalTime : 0)
+        setSoundEnabled(typeof restoredState.soundEnabled === 'boolean' ? restoredState.soundEnabled : true)
+        setMicPermissionGranted(typeof restoredState.micPermissionGranted === 'boolean' ? restoredState.micPermissionGranted : false)
+        setScreen(restoredState.screen || 'miccheck')
+      } else {
+        setScreen('miccheck')
+      }
 
     } catch (err) {
       // console.error(err)
@@ -419,6 +442,57 @@ export default function CERFSpeakingExam() {
     return questions[currentQuestion]
   }
 
+  const persistProgress = () => {
+    if (!selectedMockId || !mockData || screen === 'results') return Promise.resolve()
+    return saveMockProgress({
+      exam_type: 'cefr_speaking',
+      skill_area: 'speaking',
+      mock_id: String(selectedMockId),
+      title: `CEFR Speaking Mock #${selectedMockId}`,
+      route_path: window.location.pathname,
+      remaining_seconds: timeLeft,
+      progress_state: {
+        screen,
+        currentPart,
+        currentQuestion,
+        stage,
+        timeLeft,
+        totalTime,
+        soundEnabled,
+        micPermissionGranted,
+      },
+    }).catch((error) => {
+      console.error('Speaking progress save failed:', error)
+    })
+  }
+
+  useEffect(() => {
+    if (!selectedMockId || !mockData || screen === 'results') return
+
+    const timer = setTimeout(() => {
+      persistProgress()
+    }, 1200)
+
+    return () => clearTimeout(timer)
+  }, [selectedMockId, mockData, screen, currentPart, currentQuestion, stage, timeLeft, totalTime, soundEnabled, micPermissionGranted])
+
+  useEffect(() => {
+    if (!selectedMockId || !mockData || screen === 'results') return
+
+    const handlePageHide = () => {
+      persistProgress()
+    }
+
+    window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('beforeunload', handlePageHide)
+
+    return () => {
+      handlePageHide()
+      window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('beforeunload', handlePageHide)
+    }
+  }, [selectedMockId, mockData, screen, currentPart, currentQuestion, stage, timeLeft, totalTime, soundEnabled, micPermissionGranted])
+
   // ===== TIMER EFFECT =====
   useEffect(() => {
     if (timeLeft <= 0 || stage === 'idle') return
@@ -626,6 +700,15 @@ export default function CERFSpeakingExam() {
   }, [screen, currentPart, currentQuestion, mockData, stage])
 
   useEffect(() => {
+    if (screen !== 'exam' || stage !== 'speaking' || !mockData) return
+    const q = getCurrentQuestion()
+    if (!q) return
+    const key = `q${q.id}`
+    if (recordings[key] || recordedBlobsRef.current[key] || mediaRecorderRef.current?.state === 'recording') return
+    startRecording(q.id)
+  }, [screen, stage, currentPart, currentQuestion, mockData, recordings])
+
+  useEffect(() => {
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop())
@@ -697,7 +780,7 @@ export default function CERFSpeakingExam() {
         formData.append('audios', blob, `${key}.webm`)
       })
 
-      // console.log('📤 Submitting exam with', Object.keys(recordedBlobsRef.current).length, 'audios')
+      // console.log('ğŸ“¤ Submitting exam with', Object.keys(recordedBlobsRef.current).length, 'audios')
 
       await api.post('/mock/speaking/submit', formData, {
         headers: {
@@ -733,7 +816,7 @@ export default function CERFSpeakingExam() {
             Preparing your exam
           </h2>
           <p className="text-slate-600 text-sm">
-            Generating audio questions…
+            Generating audio questionsâ€¦
           </p>
         </div>
       </div>
@@ -776,7 +859,7 @@ export default function CERFSpeakingExam() {
                       className="w-full bg-slate-100 hover:bg-emerald-100 p-4 rounded-lg text-left transition-all border-2 border-transparent hover:border-emerald-500"
                     >
                       <h3 className="font-bold text-slate-800">{mock.title}</h3>
-                      <p className="text-sm text-slate-600">8 Questions • ~20 minutes</p>
+                      <p className="text-sm text-slate-600">8 Questions â€¢ ~20 minutes</p>
                     </button>
                   ))
                 ) : (
@@ -795,7 +878,7 @@ export default function CERFSpeakingExam() {
     return (
       <div className="min-h-screen bg-slate-100 p-4 flex items-center justify-center">
         <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">🎤 Microphone Test</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">ğŸ¤ Microphone Test</h2>
           <p className="text-slate-600 mb-6">Read aloud and test your microphone</p>
 
           <div className="bg-sky-100 p-4 rounded-lg mb-6 text-left">
@@ -817,7 +900,7 @@ export default function CERFSpeakingExam() {
               : 'bg-emerald-500 text-white hover:bg-emerald-600'
               }`}
           >
-            {micTestRecording ? '⏹' : '🎙️'}
+            {micTestRecording ? 'â¹' : 'ğŸ™ï¸'}
           </button>
 
           <p className="text-sm text-slate-600 mb-6">
@@ -848,7 +931,7 @@ export default function CERFSpeakingExam() {
             disabled={!micTestAudio}
             className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-300 text-white font-bold py-3 rounded-lg transition-all"
           >
-            ✓ Start Exam
+            âœ“ Start Exam
           </button>
         </div>
       </div>
@@ -897,10 +980,10 @@ export default function CERFSpeakingExam() {
               stage === 'preparing' ? 'text-yellow-600' :
                 stage === 'speaking' ? 'text-red-600' : ''
               }`}>
-              {stage === 'reading' && '📖 Question is being read'}
-              {stage === 'preparing' && '⏱️ Prepare your answer'}
-              {stage === 'speaking' && '🎤 SPEAKING (Recording)'}
-              {stage === 'idle' && '⏸️ Ready to begin'}
+              {stage === 'reading' && 'ğŸ“– Question is being read'}
+              {stage === 'preparing' && 'â±ï¸ Prepare your answer'}
+              {stage === 'speaking' && 'ğŸ¤ SPEAKING (Recording)'}
+              {stage === 'idle' && 'â¸ï¸ Ready to begin'}
             </div>
           </div>
         </div>
@@ -937,7 +1020,7 @@ export default function CERFSpeakingExam() {
               {currentPart === '2' && q.bullets && q.bullets.length > 0 && (
                 <ul className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-4 space-y-2">
                   {q.bullets.map((b, idx) => (
-                    <li key={idx} className="text-sm text-slate-700">• {b}</li>
+                    <li key={idx} className="text-sm text-slate-700">â€¢ {b}</li>
                   ))}
                 </ul>
               )}
@@ -945,18 +1028,18 @@ export default function CERFSpeakingExam() {
               {currentPart === '3' && q.for_points && q.against_points && (
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="bg-green-50 border-2 border-green-500 p-4 rounded-lg">
-                    <h4 className="font-bold text-green-700 mb-2">FOR ✓</h4>
+                    <h4 className="font-bold text-green-700 mb-2">FOR âœ“</h4>
                     <ul className="text-sm text-slate-700 space-y-1">
                       {q.for_points.map((item, idx) => (
-                        <li key={idx}>• {item}</li>
+                        <li key={idx}>â€¢ {item}</li>
                       ))}
                     </ul>
                   </div>
                   <div className="bg-red-50 border-2 border-red-500 p-4 rounded-lg">
-                    <h4 className="font-bold text-red-700 mb-2">AGAINST ✗</h4>
+                    <h4 className="font-bold text-red-700 mb-2">AGAINST âœ—</h4>
                     <ul className="text-sm text-slate-700 space-y-1">
                       {q.against_points.map((item, idx) => (
-                        <li key={idx}>• {item}</li>
+                        <li key={idx}>â€¢ {item}</li>
                       ))}
                     </ul>
                   </div>
@@ -986,9 +1069,9 @@ export default function CERFSpeakingExam() {
             </div>
             <p className="text-slate-600 mb-8">(It can take up to 1 minute)</p>
             <div className="space-y-2">
-              <p className="text-sm text-slate-500">• Uploading your recordings...</p>
-              <p className="text-sm text-slate-500">• Processing your submission...</p>
-              <p className="text-sm text-slate-500">• Sending to the backend...</p>
+              <p className="text-sm text-slate-500">â€¢ Uploading your recordings...</p>
+              <p className="text-sm text-slate-500">â€¢ Processing your submission...</p>
+              <p className="text-sm text-slate-500">â€¢ Sending to the backend...</p>
             </div>
           </div>
         </div>
@@ -1281,4 +1364,5 @@ export default function CERFSpeakingExam() {
   }
   return null
 }
+
 

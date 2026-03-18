@@ -93,29 +93,51 @@ export default function ReadingExamInterface() {
         return () => clearInterval(interval)
     }, [submitted])
 
+    const persistProgress = () => {
+        if (!mockData || submitted || !restoreDone) return Promise.resolve()
+        return saveMockProgress({
+            exam_type: 'cefr_reading',
+            skill_area: 'reading',
+            mock_id: String(id),
+            title: mockData?.title || `CEFR Reading Mock #${id}`,
+            route_path: window.location.pathname,
+            remaining_seconds: timeRemaining,
+            progress_state: {
+                answers,
+                currentPart,
+                fontSize,
+                isDark,
+            },
+        }).catch((error) => {
+            console.error('Reading progress save failed:', error)
+        })
+    }
+
     useEffect(() => {
         if (!mockData || submitted || !restoreDone) return
 
         const timer = setTimeout(() => {
-            saveMockProgress({
-                exam_type: 'cefr_reading',
-                skill_area: 'reading',
-                mock_id: String(id),
-                title: mockData?.title || `CEFR Reading Mock #${id}`,
-                route_path: window.location.pathname,
-                remaining_seconds: timeRemaining,
-                progress_state: {
-                    answers,
-                    currentPart,
-                    fontSize,
-                    isDark,
-                },
-            }).catch((error) => {
-                console.error('Reading progress save failed:', error)
-            })
+            persistProgress()
         }, 1200)
 
         return () => clearTimeout(timer)
+    }, [mockData, submitted, restoreDone, id, timeRemaining, answers, currentPart, fontSize, isDark])
+
+    useEffect(() => {
+        if (!mockData || submitted || !restoreDone) return
+
+        const handlePageHide = () => {
+            persistProgress()
+        }
+
+        window.addEventListener('pagehide', handlePageHide)
+        window.addEventListener('beforeunload', handlePageHide)
+
+        return () => {
+            handlePageHide()
+            window.removeEventListener('pagehide', handlePageHide)
+            window.removeEventListener('beforeunload', handlePageHide)
+        }
     }, [mockData, submitted, restoreDone, id, timeRemaining, answers, currentPart, fontSize, isDark])
 
     const handleAnswerChange = (part, index, value) => {

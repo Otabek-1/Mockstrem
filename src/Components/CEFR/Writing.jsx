@@ -308,8 +308,8 @@ export default function WritingExam() {
   useEffect(() => {
     if (!user || !mockData || submitted || !restoreDoneRef.current) return
 
-    const timer = setTimeout(() => {
-      saveMockProgress({
+    const persistProgress = () => {
+      return saveMockProgress({
         exam_type: 'cefr_writing',
         skill_area: 'writing',
         mock_id: String(id),
@@ -329,9 +329,25 @@ export default function WritingExam() {
       }).catch((error) => {
         console.error('Writing progress save failed:', error)
       })
+    }
+
+    const timer = setTimeout(() => {
+      persistProgress()
     }, 1200)
 
-    return () => clearTimeout(timer)
+    const handlePageHide = () => {
+      persistProgress()
+    }
+
+    window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('beforeunload', handlePageHide)
+
+    return () => {
+      clearTimeout(timer)
+      handlePageHide()
+      window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('beforeunload', handlePageHide)
+    }
   }, [user, mockData, submitted, id, timeLeft, answers, activeTask, fontSize, isDarkMode, leftPanelWidth, mobileSplit, part, isFullMock])
 
   // Expanded textarea modal component

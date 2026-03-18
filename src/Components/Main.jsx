@@ -91,6 +91,15 @@ export default function Main() {
   const [loading, setLoading] = useState(true);
   const [currentNews, setCurrentNews] = useState(0);
 
+  const refreshActiveProgress = () => {
+    getActiveMockProgress().then((progress) => {
+      setDashboard((prev) => {
+        if (!prev) return prev;
+        return { ...prev, active_progress: progress || null };
+      });
+    }).catch(() => {});
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -131,13 +140,22 @@ export default function Main() {
   }, [skillScores]);
 
   useEffect(() => {
-    if (dashboard?.active_progress) return;
-    getActiveMockProgress().then((progress) => {
-      if (progress) {
-        setDashboard((prev) => (prev ? { ...prev, active_progress: progress } : prev));
-      }
-    }).catch(() => {});
-  }, [dashboard?.active_progress]);
+    if (!dashboard) return undefined;
+
+    refreshActiveProgress();
+
+    const handleFocus = () => refreshActiveProgress();
+    const timer = setInterval(() => refreshActiveProgress(), 8000);
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+    };
+  }, [Boolean(dashboard)]);
 
   useEffect(() => {
     if (news.length <= 1) return undefined;
