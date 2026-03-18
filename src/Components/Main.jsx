@@ -230,6 +230,7 @@ export default function Main() {
               <button
                 onClick={() => navigate(activeProgress.route_path)}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-slate-950 px-5 py-3 font-bold hover:scale-[1.02] transition"
+                style={{color:"#111827"}}
               >
                 <RefreshCcw size={18} />
                 Continue
