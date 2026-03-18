@@ -37,3 +37,8 @@ export async function createFullMockAttempt(payload) {
   const response = await api.post("/dashboard/attempts/full-mock", payload);
   return response.data?.attempt || null;
 }
+
+export async function resolveLatestMockAttempt(payload) {
+  const response = await api.patch("/dashboard/attempts/latest", payload);
+  return response.data?.attempt || null;
+}

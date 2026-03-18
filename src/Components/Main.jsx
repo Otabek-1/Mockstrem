@@ -298,7 +298,7 @@ export default function Main() {
                   <div className="text-right">
                     <div className="rounded-xl bg-white text-slate-950 px-3 py-2 text-sm font-black inline-flex items-center gap-2">
                       <Clock3 size={15} />
-                      {item.score_75 !== null && item.score_75 !== undefined ? `${item.score_75}/75` : item.status === "pending_review" ? "Pending" : "Saved"}
+                      {item.score_75 !== null && item.score_75 !== undefined ? `${item.score_75}/75` : "Submitted"}
                     </div>
                     {item.band && <p className="mt-2 text-xs text-cyan-200">Band {item.band}</p>}
                   </div>

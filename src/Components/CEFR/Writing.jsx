@@ -3,7 +3,7 @@ import { FaClock, FaCheck, FaPlus, FaMinus, FaMoon, FaSun } from 'react-icons/fa
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import api from '../../api'
 import { evaluateWritingWithGemini } from '../../services/geminiService'
-import { getMockProgress, saveMockProgress } from '../../services/mockProgress'
+import { getMockProgress, resolveLatestMockAttempt, saveMockProgress } from '../../services/mockProgress'
 
 export default function WritingExam() {
   const [examStarted, setExamStarted] = useState(false)
@@ -241,6 +241,22 @@ export default function WritingExam() {
             t2: answers.t2
           })
           setAiEvaluation(result)
+          await resolveLatestMockAttempt({
+            exam_type: 'cefr_writing',
+            mock_id: String(id),
+            title: `CEFR Writing Mock #${id}`,
+            route_path: `${window.location.pathname}${window.location.search}`,
+            score: Number(result?.raw_score || 0),
+            max_score: 16,
+            score_75: Number(result?.certificate_score || 0),
+            band: result?.cefr_level || null,
+            attempt_meta: {
+              overall_feedback: result?.overall_feedback || null,
+              raw_score: result?.raw_score || null,
+              certificate_score: result?.certificate_score || null,
+              cefr_level: result?.cefr_level || null,
+            },
+          })
         } catch (aiErr) {
           setAiEvalError(aiErr?.message || 'Failed to generate AI evaluation')
         } finally {
