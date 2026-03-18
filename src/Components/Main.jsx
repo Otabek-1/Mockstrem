@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Flame, Radar, PlayCircle, RefreshCcw, Sparkles, Trophy, Clock3, Target } from "lucide-react";
+import { Flame, Radar, PlayCircle, RefreshCcw, Sparkles, Trophy, Clock3, Target, Newspaper, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api";
 import { getActiveMockProgress } from "../services/mockProgress";
@@ -89,6 +89,7 @@ export default function Main() {
   const [dashboard, setDashboard] = useState(null);
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentNews, setCurrentNews] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -115,6 +116,7 @@ export default function Main() {
   const skillScores = dashboard?.skill_scores || {};
   const focus = dashboard?.cards?.focus;
   const trend = dashboard?.cards?.trend;
+  const featuredNews = news[currentNews] || null;
 
   const strongestSkill = useMemo(() => {
     const entries = Object.entries(skillScores);
@@ -136,6 +138,14 @@ export default function Main() {
       }
     }).catch(() => {});
   }, [dashboard?.active_progress]);
+
+  useEffect(() => {
+    if (news.length <= 1) return undefined;
+    const timer = setInterval(() => {
+      setCurrentNews((prev) => (prev + 1) % news.length);
+    }, 5500);
+    return () => clearInterval(timer);
+  }, [news]);
 
   if (loading) {
     return (
@@ -305,30 +315,11 @@ export default function Main() {
         <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-cyan-200">News and pressure points</p>
-              <p className="text-xs text-slate-400 mt-1">Keep the dashboard alive with fresh context.</p>
+              <p className="text-sm font-semibold text-cyan-200">Quick jump</p>
+              <p className="text-xs text-slate-400 mt-1">Go straight into the skill you want to pressure-test.</p>
             </div>
           </div>
-          <div className="mt-5 space-y-3">
-            {news.map((item) => (
-              <Link
-                key={item.id}
-                to={`/news/${item.slug}`}
-                className="block rounded-[22px] border border-white/8 bg-gradient-to-br from-white/10 to-white/5 p-5 hover:from-cyan-400/12 hover:to-white/10 transition"
-              >
-                <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/70">Update</p>
-                <h3 className="mt-2 text-lg font-bold text-white line-clamp-2">{item.title}</h3>
-                <div className="mt-3 text-sm text-slate-300 line-clamp-3" dangerouslySetInnerHTML={{ __html: item.body }} />
-              </Link>
-            ))}
-            {!news.length && (
-              <div className="rounded-[22px] border border-dashed border-white/14 bg-black/10 p-8 text-center text-slate-400">
-                No news cards available right now.
-              </div>
-            )}
-          </div>
           <div className="mt-4 rounded-[22px] border border-white/8 bg-black/15 p-5">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Quick jump</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <button onClick={() => navigate("/dashboard?tab=cefr_listening")} className="rounded-2xl bg-emerald-400/12 px-4 py-3 text-left">
                 <p className="font-semibold">Listening</p>
@@ -349,6 +340,78 @@ export default function Main() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="mt-4 rounded-[28px] border border-white/10 bg-white/5 p-6 md:p-7 backdrop-blur-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-cyan-200 text-sm font-semibold">
+              <Newspaper size={16} />
+              Platform news
+            </div>
+            <p className="text-xs text-slate-400 mt-1">Updates, releases, announcements and what to watch next.</p>
+          </div>
+          {news.length > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentNews((prev) => (prev - 1 + news.length) % news.length)}
+                className="h-10 w-10 rounded-full border border-white/10 bg-white/5 flex items-center justify-center hover:bg-white/10 transition"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                onClick={() => setCurrentNews((prev) => (prev + 1) % news.length)}
+                className="h-10 w-10 rounded-full border border-white/10 bg-white/5 flex items-center justify-center hover:bg-white/10 transition"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {featuredNews ? (
+          <div className="mt-5 grid gap-4 xl:grid-cols-[1.35fr_0.9fr]">
+            <Link
+              to={`/news/${featuredNews.slug}`}
+              className="block rounded-[26px] overflow-hidden border border-cyan-300/10 bg-gradient-to-br from-cyan-400/14 via-sky-400/10 to-transparent p-6 hover:from-cyan-400/20 hover:via-sky-400/14 transition"
+            >
+              <p className="text-xs uppercase tracking-[0.28em] text-cyan-100/70">Featured update</p>
+              <h2 className="mt-3 text-2xl md:text-3xl font-black text-white leading-tight max-w-2xl">
+                {featuredNews.title}
+              </h2>
+              <div
+                className="mt-4 text-sm md:text-base text-slate-200 leading-7 line-clamp-5"
+                dangerouslySetInnerHTML={{ __html: featuredNews.body }}
+              />
+              <div className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white text-slate-950 px-4 py-3 font-bold">
+                Read update
+              </div>
+            </Link>
+
+            <div className="space-y-3">
+              {news.map((item, index) => (
+                <Link
+                  key={item.id}
+                  to={`/news/${item.slug}`}
+                  className={[
+                    "block rounded-[22px] border p-4 transition",
+                    index === currentNews
+                      ? "border-cyan-300/20 bg-cyan-400/10"
+                      : "border-white/8 bg-black/15 hover:bg-white/8",
+                  ].join(" ")}
+                >
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">News #{index + 1}</p>
+                  <h3 className="mt-2 text-lg font-bold text-white line-clamp-2">{item.title}</h3>
+                  <div className="mt-2 text-sm text-slate-300 line-clamp-2" dangerouslySetInnerHTML={{ __html: item.body }} />
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-5 rounded-[22px] border border-dashed border-white/14 bg-black/10 p-10 text-center text-slate-400">
+            News cards are not available right now.
+          </div>
+        )}
       </section>
     </div>
   );
