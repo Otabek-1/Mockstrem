@@ -38,6 +38,7 @@ export default function ListeningExamInterface() {
     const [restoreDone, setRestoreDone] = useState(false)
     
     const audioRef = useRef(null)
+    const restoredAudioTimeRef = useRef(null)
 
     useEffect(() => {
         const fetchData = async () => {
@@ -80,9 +81,7 @@ export default function ListeningExamInterface() {
                 if (typeof progress.remaining_seconds === 'number') setTimeRemaining(progress.remaining_seconds)
                 if (typeof state.volume === 'number') setVolume(state.volume)
                 if (typeof state.muted === 'boolean') setMuted(state.muted)
-                if (typeof state.audioTime === 'number' && audioRef.current) {
-                    audioRef.current.currentTime = state.audioTime
-                }
+                if (typeof state.audioTime === 'number') restoredAudioTimeRef.current = state.audioTime
             } catch (error) {
                 console.error('Listening progress restore failed:', error)
             } finally {
@@ -107,30 +106,52 @@ export default function ListeningExamInterface() {
         return () => clearInterval(interval)
     }, [submitted])
 
+    const persistProgress = () => {
+        if (!mockData || submitted || !restoreDone) return Promise.resolve()
+        return saveMockProgress({
+            exam_type: 'cefr_listening',
+            skill_area: 'listening',
+            mock_id: String(id),
+            title: mockData?.title || `CEFR Listening Mock #${id}`,
+            route_path: window.location.pathname,
+            remaining_seconds: timeRemaining,
+            progress_state: {
+                answers,
+                currentPart,
+                volume,
+                muted,
+                audioTime: audioRef.current?.currentTime || 0,
+            },
+        }).catch((error) => {
+            console.error('Listening progress save failed:', error)
+        })
+    }
+
     useEffect(() => {
         if (!mockData || submitted || !restoreDone) return
 
         const timer = setTimeout(() => {
-            saveMockProgress({
-                exam_type: 'cefr_listening',
-                skill_area: 'listening',
-                mock_id: String(id),
-                title: mockData?.title || `CEFR Listening Mock #${id}`,
-                route_path: window.location.pathname,
-                remaining_seconds: timeRemaining,
-                progress_state: {
-                    answers,
-                    currentPart,
-                    volume,
-                    muted,
-                    audioTime: audioRef.current?.currentTime || 0,
-                },
-            }).catch((error) => {
-                console.error('Listening progress save failed:', error)
-            })
+            persistProgress()
         }, 1200)
 
         return () => clearTimeout(timer)
+    }, [mockData, submitted, restoreDone, id, timeRemaining, answers, currentPart, volume, muted])
+
+    useEffect(() => {
+        if (!mockData || submitted || !restoreDone) return
+
+        const handlePageHide = () => {
+            persistProgress()
+        }
+
+        window.addEventListener('pagehide', handlePageHide)
+        window.addEventListener('beforeunload', handlePageHide)
+
+        return () => {
+            handlePageHide()
+            window.removeEventListener('pagehide', handlePageHide)
+            window.removeEventListener('beforeunload', handlePageHide)
+        }
     }, [mockData, submitted, restoreDone, id, timeRemaining, answers, currentPart, volume, muted])
 
     // Get current audio URL based on part
@@ -160,6 +181,12 @@ export default function ListeningExamInterface() {
 
         const handleLoadedData = () => {
             setAudioLoaded(true)
+            if (typeof restoredAudioTimeRef.current === 'number') {
+                audio.currentTime = restoredAudioTimeRef.current
+                restoredAudioTimeRef.current = null
+            }
+            audio.volume = volume
+            audio.muted = muted
         }
 
         const handlePlay = () => setAudioPlaying(true)
@@ -181,7 +208,7 @@ export default function ListeningExamInterface() {
             audio.removeEventListener('pause', handlePause)
             audio.removeEventListener('timeupdate', handleTimeUpdate)
         }
-    }, [currentAudioUrl])
+    }, [currentAudioUrl, volume, muted])
 
     const toggleAudio = () => {
         if (audioRef.current) {
