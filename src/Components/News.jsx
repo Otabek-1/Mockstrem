@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { FaArrowLeft, FaCalendar, FaUser } from 'react-icons/fa'
 import api from '../api'
+import { sanitizeHtml } from '../utils/html'
 
 const emojis = ["👍", "🔥", "💖", "👎", "🫨"]
 
@@ -135,7 +136,7 @@ export default function News() {
                         <div className='prose prose-invert max-w-none dark:prose-invert'>
                             <div
                                 className='text-gray-800 dark:text-gray-200 leading-relaxed text-base'
-                                dangerouslySetInnerHTML={{ __html: news.body }}
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(news.body) }}
                             />
                         </div>
                     )}

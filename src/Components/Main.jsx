@@ -3,6 +3,7 @@ import { Flame, Radar, PlayCircle, RefreshCcw, Sparkles, Trophy, Clock3, Target,
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api";
 import { getActiveMockProgress } from "../services/mockProgress";
+import { sanitizeHtml } from "../utils/html";
 
 const SKILL_META = {
   listening: { label: "Listening", color: "#0f766e" },
@@ -400,7 +401,7 @@ export default function Main() {
               </h2>
               <div
                 className="mt-4 text-sm md:text-base text-slate-200 leading-7 line-clamp-5"
-                dangerouslySetInnerHTML={{ __html: featuredNews.body }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(featuredNews.body) }}
               />
               <div className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white text-slate-950 px-4 py-3 font-bold">
                 Read update
@@ -421,7 +422,10 @@ export default function Main() {
                 >
                   <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">News #{index + 1}</p>
                   <h3 className="mt-2 text-lg font-bold text-white line-clamp-2">{item.title}</h3>
-                  <div className="mt-2 text-sm text-slate-300 line-clamp-2" dangerouslySetInnerHTML={{ __html: item.body }} />
+                  <div
+                    className="mt-2 text-sm text-slate-300 line-clamp-2"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }}
+                  />
                 </Link>
               ))}
             </div>

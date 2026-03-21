@@ -1,243 +1,128 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { FaRandom, FaVolumeUp, FaCrown } from "react-icons/fa"
-import { MdClose } from "react-icons/md"
-import api from "../../api"
+import { useEffect, useMemo, useState } from "react";
+import { Crown, Headphones } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import api from "../../api";
+import { CatalogAside, CatalogCard, CatalogModal, CatalogShell } from "./CefrCatalogLayout";
 
+const FREE_LIMIT = 4;
+
+function getParts(mock) {
+  if (!mock) return [];
+  return [1, 2, 3, 4, 5, 6].map((num) => ({ num, audio: mock[`audio_part_${num}`] })).filter((item) => Boolean(item.audio));
+}
 
 export default function ListeningList({ isPremium = false }) {
-  const [mocks, setMocks] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const navigate = useNavigate();
+  const [mocks, setMocks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [selectedMock, setSelectedMock] = useState(null);
 
-  const [modalOpen, setModalOpen] = useState(false)
-  const [selectedMock, setSelectedMock] = useState(null)
-  const [selectedPart, setSelectedPart] = useState(null)
-
-  // ================= FETCH =================
   useEffect(() => {
-    async function loadMocks() {
+    const loadMocks = async () => {
       try {
-        setLoading(true)
-        const res = await api.get("/cefr/listening/all")
-        setMocks(Array.isArray(res.data) ? res.data : [])
-      } catch (e) {
-        console.log(e)
-        setError("Failed to load listening mocks")
+        setLoading(true);
+        const res = await api.get("/cefr/listening/all");
+        setMocks(Array.isArray(res.data) ? res.data : []);
+        setError("");
+      } catch (err) {
+        console.error("Listening mocks fetch failed:", err);
+        setMocks([]);
+        setError("Listening mocks could not be loaded right now.");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
+    };
+    loadMocks();
+  }, []);
+
+  const visibleMocks = useMemo(() => mocks.filter((mock) => !search.trim() || `${mock.title || ""}`.toLowerCase().includes(search.trim().toLowerCase())), [mocks, search]);
+
+  const openMock = (mock, index) => {
+    const canAccess = isPremium || index < FREE_LIMIT;
+    if (!canAccess) {
+      navigate("/plans");
+      return;
     }
-    loadMocks()
-  }, [])
-
-  // ================= HELPERS =================
-  const openMock = (mock) => {
-    setSelectedMock(mock)
-    setSelectedPart(null)
-    setModalOpen(true)
-  }
-
-  const closeModal = () => {
-    setModalOpen(false)
-    setSelectedMock(null)
-    setSelectedPart(null)
-  }
+    setSelectedMock(mock);
+  };
 
   const selectRandomMock = () => {
-    if (!mocks.length) return
-    const accessibleMocks = isPremium ? mocks : mocks.slice(0, 4)
-    if (!accessibleMocks.length) {
-      alert("Premium mocks are locked. Please upgrade to access more.")
-      return
-    }
-    const random = accessibleMocks[Math.floor(Math.random() * accessibleMocks.length)]
-    openMock(random)
-  }
+    const accessible = visibleMocks.filter((_, index) => isPremium || index < FREE_LIMIT);
+    if (!accessible.length) return;
+    setSelectedMock(accessible[Math.floor(Math.random() * accessible.length)]);
+  };
 
-  const getParts = (mock) => {
-    if (!mock) return []
-    return [
-      { num: 1, audio: mock.audio_part_1 },
-      { num: 2, audio: mock.audio_part_2 },
-      { num: 3, audio: mock.audio_part_3 },
-      { num: 4, audio: mock.audio_part_4 },
-      { num: 5, audio: mock.audio_part_5 },
-      { num: 6, audio: mock.audio_part_6 },
-    ].filter((p) => Boolean(p.audio))
-  }
-
-  // ================= RENDER =================
   return (
-    <div className="w-full min-h-screen p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">
-        CEFR Listening
-      </h1>
+    <>
+      <CatalogShell
+        badge="CEFR Listening"
+        title="Audio mocks with part-level entry and less friction."
+        description="The catalog shows how many listening parts are available in each mock and lets the learner jump into the exact part or the full mock from one place."
+        accentClass="from-teal-500 to-emerald-400"
+        stats={[
+          { label: "Available mocks", value: loading ? "..." : String(mocks.length), helper: "Audio sets ready to open" },
+          { label: "Open for free", value: isPremium ? "All" : String(Math.min(FREE_LIMIT, mocks.length)), helper: "First listening mocks" },
+          { label: "Part structure", value: "1-6", helper: "Starts from any available part" },
+        ]}
+        searchValue={search}
+        onSearchChange={setSearch}
+        onRandom={selectRandomMock}
+        aside={<CatalogAside title="Learners should not guess the audio structure." description="Each card now exposes the number of available parts before opening the mock. Inside the modal, every part is a direct launch button." bullets={["Part count is visible on the card.", "Full mock action stays pinned in the modal header.", "Free and premium access are clearly separated."]} />}
+      >
+        {loading && <div className="col-span-full rounded-[28px] border border-slate-200 bg-white/80 px-6 py-16 text-center text-slate-500">Loading listening mocks...</div>}
+        {!loading && error && <div className="col-span-full rounded-[28px] border border-rose-200 bg-rose-50 px-6 py-10 text-sm text-rose-700">{error}</div>}
+        {!loading && !error && visibleMocks.length === 0 && <div className="col-span-full rounded-[28px] border border-dashed border-slate-300 bg-white/70 px-6 py-16 text-center text-slate-500">No listening mocks matched your search.</div>}
 
-      {/* TOOLBAR */}
-      <div className="flex gap-4 mb-6">
-        <button
-          onClick={selectRandomMock}
-          disabled={loading || !mocks.length}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-full font-semibold hover:scale-105 transition disabled:opacity-50"
-        >
-          <FaRandom /> Random Mock
-        </button>
-      </div>
-
-      {/* CONTENT */}
-      {loading && (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500" />
-        </div>
-      )}
-
-      {error && (
-        <div className="p-4 bg-red-100 border border-red-300 rounded-lg text-red-700">
-          {error}
-        </div>
-      )}
-
-      {!loading && !error && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {mocks.map((mock, index) => (
-            <div
+        {!loading &&
+          !error &&
+          visibleMocks.map((mock, index) => (
+            <CatalogCard
               key={mock.id}
-              onClick={() => {
-                const canAccess = isPremium || index < 4
-                if (!canAccess) {
-                  alert("Premium mock. Please upgrade to access this mock.")
-                  return
-                }
-                openMock(mock)
-              }}
-              className={[
-                "p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow transition",
-                isPremium || index < 4
-                  ? "cursor-pointer hover:shadow-lg"
-                  : "opacity-60 cursor-not-allowed",
-              ].join(" ")}
-            >
-              <div className="flex items-center gap-3">
-                <FaVolumeUp className="text-blue-600 text-xl" />
-                <div>
-                  <h3 className="font-semibold text-gray-800 dark:text-white">
-                    {mock.title || `Listening Mock #${mock.id}`}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {getParts(mock).length} parts available
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {isPremium || index < 4 ? "Free" : "Premium"}
-                  </p>
-                </div>
-              </div>
-            </div>
+              title={mock.title || `Listening mock ${index + 1}`}
+              description="Timed CEFR listening practice with audio-led parts and direct launch flow."
+              meta={[`${getParts(mock).length} parts`, "Audio ready", !isPremium && index >= FREE_LIMIT ? "Premium" : "Open now"]}
+              badge="Audio set"
+              accentClass="from-teal-500 to-emerald-400"
+              locked={!isPremium && index >= FREE_LIMIT}
+              onClick={() => openMock(mock, index)}
+            />
           ))}
-        </div>
-      )}
+      </CatalogShell>
 
-      {/* MODAL BACKDROP */}
-      {modalOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[998]"
-          onClick={closeModal}
-        />
-      )}
-
-      {/* MODAL */}
-      {modalOpen && selectedMock && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[999] w-full max-w-xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden">
-          {/* HEADER */}
-          <div className="p-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <FaCrown />
-              <div>
-                <p className="font-bold">{selectedMock.title}</p>
-                <p className="text-xs opacity-90">
-                  Select a part or take full mock
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() =>
-                isPremium
-                  ? (window.location.href = `/mock/cefr/listening/${selectedMock.id}?part=all`)
-                  : (window.location.href = "/plans")
-              }
-              className="bg-white text-blue-600 px-4 py-1 rounded font-semibold"
-              style={{color:"blue"}}
-            >
-              Full Mock
-            </button>
+      <CatalogModal
+        open={Boolean(selectedMock)}
+        title={selectedMock?.title || "Listening mock"}
+        subtitle="Choose a single listening part or launch the full mock."
+        accentClass="from-teal-500 to-emerald-500"
+        onClose={() => setSelectedMock(null)}
+        headerAction={
+          <button
+            type="button"
+            onClick={() => (isPremium ? navigate(`/mock/cefr/listening/${selectedMock.id}?part=all`) : navigate("/plans"))}
+            className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-bold text-slate-950"
+            style={{ backgroundColor: "#ffffff", color: "#020617" }}
+          >
+            <Crown size={16} />
+            Full mock
+          </button>
+        }
+      >
+        {selectedMock && (
+          <div className="grid gap-4 md:grid-cols-2">
+            {getParts(selectedMock).map((part) => (
+              <button key={part.num} type="button" onClick={() => navigate(`/mock/cefr/listening/${selectedMock.id}?part=${part.num}`)} className="rounded-[28px] border border-slate-200 bg-slate-50 p-5 text-left transition hover:bg-white">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600"><Headphones size={18} /></div>
+                <h3 className="mt-4 text-xl font-black text-slate-950">Part {part.num}</h3>
+                <p className="mt-2 text-sm leading-7 text-slate-600">Start directly from this section with the saved CEFR listening interface.</p>
+              </button>
+            ))}
           </div>
-
-          {/* BODY */}
-          <div className="p-6">
-            {!selectedPart ? (
-              <div className="space-y-3">
-                {getParts(selectedMock).map((p) => (
-                  <div
-                    key={p.num}
-                    onClick={() => setSelectedPart(p.num)}
-                    className="flex items-center justify-between p-3 border rounded cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FaVolumeUp className="text-blue-500" />
-                      <span className="font-semibold">
-                        Part {p.num}
-                      </span>
-                    </div>
-                    <span className="text-sm text-gray-500">Start</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <button
-                  onClick={() => setSelectedPart(null)}
-                  className="text-blue-600 font-semibold"
-                >
-                  ← Back
-                </button>
-
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded">
-                  <h3 className="font-bold mb-2">
-                    Part {selectedPart}
-                  </h3>
-
-                  {/* <audio
-                    controls
-                    className="w-full"
-                    src={selectedMock[`audio_part_${selectedPart}`]}
-                  /> */}
-                </div>
-
-                <button
-                  onClick={() =>
-                    (window.location.href = `/mock/cefr/listening/${selectedMock.id}?part=${selectedPart}`)
-                  }
-                  className="w-full py-2 bg-blue-600 text-white rounded font-semibold"
-                >
-                  Start Part {selectedPart}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* FOOTER */}
-          <div className="p-4 border-t flex justify-end">
-            <button
-              onClick={closeModal}
-              className="px-4 py-1 bg-gray-200 dark:bg-gray-700 rounded"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+        )}
+      </CatalogModal>
+    </>
+  );
 }

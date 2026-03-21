@@ -1,458 +1,152 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { FaRandom, FaCrown } from "react-icons/fa"
-import { FiFilter } from "react-icons/fi"
-import { MdClose } from "react-icons/md"
-import { useNavigate } from "react-router-dom"
-import api from "../../api"
+import { useEffect, useMemo, useState } from "react";
+import { Crown, PenSquare } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import api from "../../api";
+import { CatalogAside, CatalogCard, CatalogModal, CatalogShell } from "./CefrCatalogLayout";
+
+const FREE_LIMIT = 4;
 
 export default function WritingList({ isPremium = false }) {
-  const navigate = useNavigate()
-  const [mockData, setMockData] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [filterOpen, setFilterOpen] = useState(false)
-  const [mockModalOpen, setMockModalOpen] = useState(false)
-  const [selectedTaskId, setSelectedTaskId] = useState(null)
-  const [selectedPart, setSelectedPart] = useState(null)
-  const [userPremium, setUserPremium] = useState(isPremium)
-  const [filters, setFilters] = useState({
-    solved: false,
-    unsolved: false,
-    easy: false,
-    medium: false,
-    hard: false,
-    recent: false,
-    popular: false,
-  })
+  const navigate = useNavigate();
+  const [mocks, setMocks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [difficulty, setDifficulty] = useState("all");
+  const [selectedMock, setSelectedMock] = useState(null);
 
   useEffect(() => {
     const fetchMocks = async () => {
       try {
-        setLoading(true)
-        const data = await api.get("/mock/writing/all").catch(err=>{
-          alert("Error in getting writing tasks. Reload page or contact to support.")
-        })
-        setMockData(Array.isArray(data.data) ? data.data : [])
-        setError(null)
+        setLoading(true);
+        const res = await api.get("/mock/writing/all");
+        setMocks(Array.isArray(res.data) ? res.data : []);
+        setError("");
       } catch (err) {
-        console.log("[v0] Error fetching mocks:", err.message)
-        setError("Failed to load writing tasks. Please try again later.")
-        setMockData([])
+        console.error("Writing mocks fetch failed:", err);
+        setMocks([]);
+        setError("Writing tasks could not be loaded right now.");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
+    };
+    fetchMocks();
+  }, []);
+
+  const visibleMocks = useMemo(() => {
+    return mocks.filter((mock) => {
+      const text = `${mock.task1?.title || ""} ${mock.task1?.description || ""} ${mock.task2?.title || ""} ${mock.task2?.description || ""}`.toLowerCase();
+      const level = (mock.task1?.difficulty || "medium").toLowerCase();
+      const matchesSearch = !search.trim() || text.includes(search.trim().toLowerCase());
+      const matchesDifficulty = difficulty === "all" || level === difficulty;
+      return matchesSearch && matchesDifficulty;
+    });
+  }, [difficulty, mocks, search]);
+
+  const openMock = (mock, index) => {
+    const canAccess = isPremium || index < FREE_LIMIT;
+    if (!canAccess) {
+      navigate("/plans");
+      return;
     }
+    setSelectedMock(mock);
+  };
 
-    fetchMocks()
-  }, [])
-
-  const handleFilterChange = (key) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }))
-  }
-
-  const filterOptions = [
-    { group: "Status", items: ["solved", "unsolved"] },
-    { group: "Difficulty", items: ["easy", "medium", "hard"] },
-    { group: "Sorting", items: ["recent", "popular"] },
-  ]
-
-  const getLabel = (key) => {
-    const labels = {
-      solved: "Solved",
-      unsolved: "Unsolved",
-      easy: "Easy",
-      medium: "Medium",
-      hard: "Hard",
-      recent: "Most Recent",
-      popular: "Most Popular",
-    }
-    return labels[key] || key
-  }
-
-  const activeFiltersCount = Object.values(filters).filter(Boolean).length
-
-  const openTaskModal = (taskId) => {
-    setSelectedTaskId(taskId)
-    setMockModalOpen(true)
-    setSelectedPart(null)
-  }
-
-  const selectRandomTask = () => {
-    if (mockData.length === 0) return
-    const accessibleMocks = isPremium ? mockData : mockData.slice(0, 4)
-    if (accessibleMocks.length === 0) {
-      alert("Premium mocks are locked. Please upgrade to access more.")
-      return
-    }
-    const randomIndex = Math.floor(Math.random() * accessibleMocks.length)
-    openTaskModal(accessibleMocks[randomIndex].id)
-  }
-
-  const closeMockModal = () => {
-    setMockModalOpen(false)
-    setSelectedTaskId(null)
-    setSelectedPart(null)
-  }
-
-  const getDifficultyColor = (difficulty) => {
-    const lowerDifficulty = difficulty?.toLowerCase()
-    switch (lowerDifficulty) {
-      case "easy":
-        return "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
-      case "medium":
-        return "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"
-      case "hard":
-        return "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200"
-      default:
-        return "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-    }
-  }
-
-  const getSelectedTask = () => {
-    return mockData.find((m) => m.id === selectedTaskId)
-  }
-
-  const selectedTask = getSelectedTask()
+  const selectRandomMock = () => {
+    const accessible = visibleMocks.filter((_, index) => isPremium || index < FREE_LIMIT);
+    if (!accessible.length) return;
+    setSelectedMock(accessible[Math.floor(Math.random() * accessible.length)]);
+  };
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-start gap-5 p-6 bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/50">
-      <h3 className="text-4xl font-bold text-gray-800 dark:text-white">CEFR writing tasks</h3>
-
-      <div className="list w-full dark:bg-slate-700 bg-slate-300 rounded-lg p-5 flex flex-col gap-5">
-        {/* ... existing toolbar code ... */}
-        <div className="extras w-full flex items-center gap-4 flex-wrap">
-          <button
-            onClick={selectRandomTask}
-            disabled={loading || mockData.length === 0}
-            className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg rounded-full text-white font-semibold hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FaRandom className="text-white" size={16} />
-            <span>Select random</span>
-          </button>
-
-          <div className="relative">
-            <button
-              onClick={() => setFilterOpen(!filterOpen)}
-              className={`flex items-center gap-3 px-4 py-2 shadow-lg rounded-full font-semibold transition-all duration-200 cursor-pointer ${
-                filterOpen
-                  ? "bg-gradient-to-r from-yellow-500 to-yellow-600 text-white scale-105"
-                  : "bg-gray-200/50 dark:bg-gray-700 text-gray-800 dark:text-white hover:brightness-90"
-              }`}
-            >
-              <FiFilter size={16} />
-              <span>Filter</span>
-              {activeFiltersCount > 0 && (
-                <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
-                  {activeFiltersCount}
-                </span>
-              )}
-            </button>
-
-            {filterOpen && (
-              <div className="absolute top-full left-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50">
-                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h4 className="text-lg font-bold text-gray-800 dark:text-white">Filter Options</h4>
-                  <button
-                    onClick={() => setFilterOpen(false)}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <MdClose size={20} className="text-gray-600 dark:text-gray-400" />
-                  </button>
-                </div>
-
-                <div className="p-4 flex flex-col gap-6 max-h-96 overflow-y-auto">
-                  {filterOptions.map((group, idx) => (
-                    <div key={idx} className="flex flex-col gap-3">
-                      <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                        {group.group}
-                      </h5>
-                      <div className="flex flex-col gap-2 ml-2">
-                        {group.items.map((item) => (
-                          <label
-                            key={item}
-                            className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={filters[item]}
-                              onChange={() => handleFilterChange(item)}
-                              className="w-4 h-4 accent-blue-500 cursor-pointer"
-                            />
-                            <span className="text-gray-700 dark:text-gray-300 font-medium">{getLabel(item)}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex gap-3">
-                  <button
-                    onClick={() =>
-                      setFilters({
-                        solved: false,
-                        unsolved: false,
-                        easy: false,
-                        medium: false,
-                        hard: false,
-                        recent: false,
-                        popular: false,
-                      })
-                    }
-                    className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                  >
-                    Clear All
-                  </button>
-                  <button
-                    onClick={() => setFilterOpen(false)}
-                    className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:shadow-lg transition-all"
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ... existing tasks list code ... */}
-        <div className="mt-4 flex flex-col gap-3">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Active Filters:{" "}
-            {activeFiltersCount > 0
-              ? Object.entries(filters)
-                  .filter(([_, v]) => v)
-                  .map(([k]) => getLabel(k))
-                  .join(", ")
-              : "None"}
-          </p>
-
-          {loading && (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            </div>
-          )}
-
-          {error && (
-            <div className="p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-800 dark:text-red-300">
-              {error}
-            </div>
-          )}
-
-          {!loading && mockData.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {mockData.map((mock, index) => (
-                <div
-                  onClick={() => {
-                    const canAccess = isPremium || index < 4
-                    if (!canAccess) {
-                      alert("Premium mock. Please upgrade to access this mock.")
-                      return
-                    }
-                    openTaskModal(mock.id)
-                  }}
-                  key={mock.id}
-                  className={[
-                    "p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md transition-all border border-gray-200 dark:border-gray-700",
-                    isPremium || index < 4
-                      ? "hover:shadow-lg cursor-pointer hover:scale-105 transform"
-                      : "opacity-60 cursor-not-allowed",
-                  ].join(" ")}
-                >
-                  <h5 className="font-semibold text-gray-800 dark:text-white">
-                    {mock.task1?.title || `Writing Task ${index +1}`}
-                  </h5>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    {mock.task1?.description || "Complete this writing exercise"}
-                  </p>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full font-semibold ${getDifficultyColor(mock.task1?.difficulty || "medium")}`}
-                    >
-                      {mock.task1?.difficulty || "Medium"}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {isPremium || index < 4 ? "Free" : "Premium"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!loading && mockData.length === 0 && !error && (
-            <div className="text-center py-12 text-gray-600 dark:text-gray-400">
-              <p>No writing tasks available</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ... existing modal code ... */}
-      {mockModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[998] transition-opacity duration-300"
-          onClick={closeMockModal}
-        />
-      )}
-
-      {mockModalOpen && selectedTask && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[999] w-full max-w-2xl max-h-[90vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FaCrown size={20} />
-                <div>
-                  <p className="font-bold">Take Full Mock Exam</p>
-                  <p className="text-xs text-white/90">Premium feature - Complete all parts with instant feedback</p>
-                </div>
-              </div>
+    <>
+      <CatalogShell
+        badge="CEFR Writing"
+        title="Clear writing entry points instead of messy task picking."
+        description="Users can search by prompt, filter difficulty, and choose Task 1, Task 2, or the full mock from one focused setup window."
+        accentClass="from-orange-500 to-amber-400"
+        stats={[
+          { label: "Available mocks", value: loading ? "..." : String(mocks.length), helper: "Task 1 and Task 2 flows" },
+          { label: "Open for free", value: isPremium ? "All" : String(Math.min(FREE_LIMIT, mocks.length)), helper: "Visible without upgrade" },
+          { label: "Mode", value: "Timed", helper: "Single task or full mock" },
+        ]}
+        searchValue={search}
+        onSearchChange={setSearch}
+        onRandom={selectRandomMock}
+        controls={
+          <div className="flex flex-wrap gap-2">
+            {["all", "easy", "medium", "hard"].map((option) => (
               <button
-              style={{color:"purple"}}
-                onClick={() => navigate(!isPremium ? '/plans' : `/mock/cefr/writing/${selectedTask.id}?part=all`)}
-                className="px-4 py-2 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100 transition-all transform hover:scale-105 cursor-pointer"
+                key={option}
+                type="button"
+                onClick={() => setDifficulty(option)}
+                className={["rounded-full px-4 py-2 text-sm font-semibold transition", difficulty === option ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"].join(" ")}
               >
-                Try Full Mock
+                {option === "all" ? "All levels" : option}
               </button>
-            </div>
+            ))}
+          </div>
+        }
+        aside={<CatalogAside title="Writing should feel deliberate." description="The new flow shows exactly what the learner is opening, how hard it is, and whether they want a single task or the full timed route." bullets={["Prompt preview on every card.", "Difficulty filter works before opening the modal.", "Premium boundary is visible before the user clicks deep."]} />}
+      >
+        {loading && <div className="col-span-full rounded-[28px] border border-slate-200 bg-white/80 px-6 py-16 text-center text-slate-500">Loading writing mocks...</div>}
+        {!loading && error && <div className="col-span-full rounded-[28px] border border-rose-200 bg-rose-50 px-6 py-10 text-sm text-rose-700">{error}</div>}
+        {!loading && !error && visibleMocks.length === 0 && <div className="col-span-full rounded-[28px] border border-dashed border-slate-300 bg-white/70 px-6 py-16 text-center text-slate-500">No writing mocks matched your filter.</div>}
 
+        {!loading &&
+          !error &&
+          visibleMocks.map((mock, index) => (
+            <CatalogCard
+              key={mock.id}
+              title={mock.task1?.title || `Writing mock ${index + 1}`}
+              description={mock.task1?.description || "Timed CEFR writing practice with structured prompts."}
+              meta={[`${mock.task1?.difficulty || "Medium"} level`, mock.task1?.time || "20 min task", mock.task2?.time || "40 min task"]}
+              badge="Task flow"
+              accentClass="from-orange-500 to-amber-400"
+              locked={!isPremium && index >= FREE_LIMIT}
+              onClick={() => openMock(mock, index)}
+            />
+          ))}
+      </CatalogShell>
 
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-                {selectedTask.task1?.title || `Writing Task ${selectedTask.id}`}
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{selectedTask.task1?.description || ""}</p>
-            </div>
-            <button
-              onClick={closeMockModal}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              <MdClose size={24} className="text-gray-600 dark:text-gray-400" />
+      <CatalogModal
+        open={Boolean(selectedMock)}
+        title={selectedMock?.task1?.title || "Writing mock"}
+        subtitle={selectedMock?.task1?.description || ""}
+        accentClass="from-orange-500 to-amber-500"
+        onClose={() => setSelectedMock(null)}
+        headerAction={
+          <button
+            type="button"
+            onClick={() => (isPremium ? navigate(`/mock/cefr/writing/${selectedMock.id}?part=all`) : navigate("/plans"))}
+            className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-bold text-slate-950"
+            style={{ backgroundColor: "#ffffff", color: "#020617" }}
+          >
+            <Crown size={16} />
+            Full mock
+          </button>
+        }
+      >
+        {selectedMock && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <button type="button" onClick={() => navigate(`/mock/cefr/writing/${selectedMock.id}?part=1`)} className="rounded-[28px] border border-slate-200 bg-slate-50 p-5 text-left transition hover:bg-white">
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-600"><PenSquare size={18} /></div>
+              <h3 className="mt-4 text-xl font-black text-slate-950">Task 1</h3>
+              <p className="mt-2 text-sm leading-7 text-slate-600">{selectedMock.task1?.description || "Visual or structured response practice."}</p>
+              <p className="mt-4 text-sm font-semibold text-slate-700">{selectedMock.task1?.time || "20 min"}</p>
+            </button>
+
+            <button type="button" onClick={() => navigate(`/mock/cefr/writing/${selectedMock.id}?part=2`)} className="rounded-[28px] border border-slate-200 bg-slate-50 p-5 text-left transition hover:bg-white">
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-600"><PenSquare size={18} /></div>
+              <h3 className="mt-4 text-xl font-black text-slate-950">Task 2</h3>
+              <p className="mt-2 text-sm leading-7 text-slate-600">{selectedMock.task2?.description || "Extended opinion or discussion essay."}</p>
+              <p className="mt-4 text-sm font-semibold text-slate-700">{selectedMock.task2?.time || "40 min"}</p>
             </button>
           </div>
-
-          <div className="flex-1 overflow-y-auto p-6">
-            {!selectedPart ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Difficulty</p>
-                    <p
-                      className={`text-lg font-bold ${getDifficultyColor(selectedTask.task1?.difficulty || "medium")}`}
-                    >
-                      {selectedTask.task1?.difficulty || "Medium"}
-                    </p>
-                  </div>
-                  <div className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Time</p>
-                    <p className="text-lg font-bold text-green-700 dark:text-green-300">
-                      {selectedTask.task1?.time || "1 hour"}
-                    </p>
-                  </div>
-                </div>
-
-                <p className="text-gray-600 dark:text-gray-400 mb-6">Select a part to start practicing:</p>
-
-                <div className="grid grid-cols-1 gap-3">
-                  <div
-                    onClick={() => setSelectedPart(1)}
-                    className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-all transform hover:scale-102 group"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-bold text-gray-800 dark:text-white text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          Task 1
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {selectedTask.task1?.description || "Complete Task 1"}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          ~⏱️ {selectedTask.task1?.time || "20 min"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    onClick={() => setSelectedPart(2)}
-                    className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-all transform hover:scale-102 group"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-bold text-gray-800 dark:text-white text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          Task 2
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {selectedTask.task2?.description || "Complete Task 2"}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          ~⏱️ {selectedTask.task2?.time || "40 min"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <button
-                  onClick={() => setSelectedPart(null)}
-                  className="mb-4 text-blue-600 dark:text-blue-400 font-semibold hover:underline flex items-center gap-2"
-                >
-                  ← Back to parts
-                </button>
-
-                <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                  <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-2">
-                    {selectedPart === 1 ? "Task 1" : "Task 2"}
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    {selectedPart === 1 ? selectedTask.task1?.description : selectedTask.task2?.description}
-                  </p>
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                  <a
-                    href={`/mock/cefr/writing/${selectedTask.id}?part=${selectedPart}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:shadow-lg transition-all text-center"
-                  >
-                    Start Writing
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Premium Guard Modal */}
-
-      <style jsx>{`
-        @keyframes slideInFromTop {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .slide-in-from-top-2 {
-          animation: slideInFromTop 0.2s ease-out;
-        }
-      `}</style>
-    </div>
-  )
+        )}
+      </CatalogModal>
+    </>
+  );
 }

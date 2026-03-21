@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import api, { createSession } from "./api";
+ï»¿import React, { useEffect, useState } from "react";
+import api from "./api";
 import { useNavigate } from "react-router-dom";
 
 export default function Auth() {
@@ -42,21 +42,10 @@ export default function Auth() {
         localStorage.setItem("access_token", res.data.access_token);
         localStorage.setItem("refresh_token", res.data.refresh_token);
 
-        try {
-          await createSession();
-        } catch (sessionErr) {
-          console.warn("Session creation failed:", sessionErr);
-        }
       } else {
         const res = await api.post("/auth/login", { email, password });
         localStorage.setItem("access_token", res.data.access_token);
         localStorage.setItem("refresh_token", res.data.refresh_token);
-
-        try {
-          await createSession();
-        } catch (sessionErr) {
-          console.warn("Session creation failed:", sessionErr);
-        }
       }
 
       nav("/dashboard");
@@ -167,7 +156,7 @@ export default function Auth() {
         }}
         className="mb-6 text-indigo-600 hover:text-indigo-700 font-semibold text-sm flex items-center gap-2"
       >
-        ‹ Back to Login
+        â€¹ Back to Login
       </button>
 
       <h2 className="text-3xl font-bold text-slate-800 mb-2">Reset Password</h2>
@@ -343,7 +332,7 @@ export default function Auth() {
               ) : (
                 <>
                   {isRegister ? "Create Account" : "Sign In"}
-                  <span>›</span>
+                  <span>â€º</span>
                 </>
               )}
             </button>
@@ -357,7 +346,8 @@ export default function Auth() {
 
           <button
             onClick={() => {
-              window.location.href = "https://english-server-p7y6.onrender.com/auth/google/login";
+              const authBaseUrl = (import.meta.env.VITE_API_URL || "https://english-server-p7y6.onrender.com").replace(/\/$/, "");
+              window.location.href = `${authBaseUrl}/auth/google/login`;
             }}
             className="w-full flex items-center justify-center gap-3 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-semibold"
           >
@@ -399,3 +389,4 @@ export default function Auth() {
     </div>
   );
 }
+
