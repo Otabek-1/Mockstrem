@@ -318,7 +318,7 @@ export default function Dashboard() {
             {!isPremium && <Link to="/plans" className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-950">Upgrade plan<ChevronRight size={16} /></Link>}
           </div>
 
-          <nav className="mt-6 flex-1 space-y-6 overflow-y-auto pr-1">
+          <nav className="ms-scrollbar ms-scrollbar-dark mt-6 flex-1 space-y-6 overflow-y-auto pr-1">
             {menuGroups.map((group) => (
               <div key={group.title}>
                 <p className="px-2 text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">{group.title}</p>
@@ -425,7 +425,7 @@ export default function Dashboard() {
               </div>
               <button type="button" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100" onClick={() => setNotificationsOpen(false)}><X size={16} /></button>
             </div>
-            <div className="mt-3 max-h-[420px] space-y-2 overflow-y-auto">
+            <div className="ms-scrollbar mt-3 max-h-[420px] space-y-2 overflow-y-auto pr-1">
               {notifications.length > 0 ? notifications.map((item) => (
                 <button key={item.id} type="button" onClick={() => gotoNotification(item)} className={["w-full rounded-2xl border p-4 text-left transition", item.is_read ? "border-slate-200 bg-slate-50 hover:bg-slate-100" : "border-sky-200 bg-sky-50 hover:bg-sky-100"].join(" ")}>
                   <div className="flex items-start justify-between gap-3">

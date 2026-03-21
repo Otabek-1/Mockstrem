@@ -139,7 +139,7 @@ export function CatalogModal({ open, title, subtitle, accentClass, headerAction,
             </button>
           </div>
         </div>
-        <div className="max-h-[72vh] overflow-y-auto p-6">{children}</div>
+        <div className="ms-scrollbar max-h-[72vh] overflow-y-auto p-6 pr-4">{children}</div>
       </div>
     </>
   );

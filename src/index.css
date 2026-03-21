@@ -6,6 +6,69 @@ body{
   overflow-x: hidden;
 }
 
+:root {
+  scrollbar-color: rgba(100, 116, 139, 0.55) rgba(226, 232, 240, 0.55);
+}
+
+* {
+  scrollbar-width: thin;
+}
+
+.ms-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.9) rgba(241, 245, 249, 0.9);
+}
+
+.ms-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.ms-scrollbar::-webkit-scrollbar-track {
+  background: linear-gradient(180deg, rgba(241, 245, 249, 0.95), rgba(226, 232, 240, 0.95));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.ms-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #94a3b8, #64748b);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.ms-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #64748b, #475569);
+}
+
+.ms-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.ms-scrollbar-dark {
+  scrollbar-color: rgba(148, 163, 184, 0.75) rgba(255, 255, 255, 0.08);
+}
+
+.ms-scrollbar-dark::-webkit-scrollbar-track {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.ms-scrollbar-dark::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(203, 213, 225, 0.9), rgba(148, 163, 184, 0.82));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.ms-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(226, 232, 240, 0.95), rgba(148, 163, 184, 0.92));
+}
+
 .nav{
   background: linear-gradient(to bottom, white 0%,  rgba(255, 255, 255, 0.512) 70%, rgba(255, 255, 255, 0) 100%);
 }
